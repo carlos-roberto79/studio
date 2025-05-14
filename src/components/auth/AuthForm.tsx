@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,13 +16,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserRoleSelector } from "./UserRoleSelector";
-import type { UserRole } from "@/lib/constants";
+// import { UserRoleSelector } from "./UserRoleSelector"; // Removido pois não será mais usado aqui
 import { USER_ROLES } from "@/lib/constants";
+import type { UserRole } from "@/lib/constants";
+
 
 const formSchemaBase = {
   email: z.string().email({ message: "Endereço de e-mail inválido." }),
@@ -33,9 +34,7 @@ const loginSchema = z.object(formSchemaBase);
 const signupSchema = z.object({
   ...formSchemaBase,
   confirmPassword: z.string(),
-  role: z.enum([USER_ROLES.CLIENT, USER_ROLES.PROFESSIONAL, USER_ROLES.COMPANY_ADMIN], {
-    required_error: "Você precisa selecionar um papel.",
-  }),
+  // O campo 'role' foi removido pois será fixo para COMPANY_ADMIN no cadastro público
 }).refine((data) => data.password === data.confirmPassword, {
   message: "As senhas não coincidem.",
   path: ["confirmPassword"],
@@ -55,7 +54,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     defaultValues: {
       email: "",
       password: "",
-      ...(isLogin ? {} : { confirmPassword: "", role: USER_ROLES.CLIENT }),
+      ...(isLogin ? {} : { confirmPassword: "" }),
     },
   });
 
@@ -70,11 +69,12 @@ export function AuthForm({ mode }: AuthFormProps) {
         toast({ title: "Login Bem-sucedido", description: "Bem-vindo(a) de volta!" });
         router.push("/dashboard");
       } else {
-        // Ensure values has role for signup
-        const signupValues = values as z.infer<typeof signupSchema>;
-        await authSignup(signupValues.email, signupValues.password, signupValues.role);
-        toast({ title: "Cadastro Bem-sucedido", description: "Bem-vindo(a) ao EasyAgenda! Por favor, faça login." });
-        router.push("/login"); // Redirect to login after signup
+        // Para signup, 'values' será do tipo z.infer<typeof signupSchema>
+        // que inclui email, password, confirmPassword.
+        // O papel é fixado como COMPANY_ADMIN.
+        await authSignup(values.email, values.password, USER_ROLES.COMPANY_ADMIN);
+        toast({ title: "Conta de Administrador Criada", description: "Prossiga para cadastrar os detalhes da sua empresa." });
+        router.push("/register-company"); // Redireciona para o formulário de detalhes da empresa
       }
     } catch (error: any) {
       toast({
@@ -90,10 +90,10 @@ export function AuthForm({ mode }: AuthFormProps) {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-center">
-            {isLogin ? "Bem-vindo(a) de Volta!" : "Crie uma Conta"}
+            {isLogin ? "Bem-vindo(a) de Volta!" : "Crie uma Conta para sua Empresa"}
           </CardTitle>
           <CardDescription className="text-center">
-            {isLogin ? "Faça login para gerenciar seus agendamentos." : "Cadastre-se para começar a agendar com o EasyAgenda."}
+            {isLogin ? "Faça login para gerenciar seus agendamentos." : "Cadastre sua empresa para começar a usar o EasyAgenda."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,9 +104,9 @@ export function AuthForm({ mode }: AuthFormProps) {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>E-mail</FormLabel>
+                    <FormLabel>E-mail do Administrador</FormLabel>
                     <FormControl>
-                      <Input placeholder="voce@exemplo.com" {...field} />
+                      <Input placeholder="voce@suaempresa.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -140,33 +140,20 @@ export function AuthForm({ mode }: AuthFormProps) {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                       <FormItem>
-                        <FormLabel>Eu sou um(a)...</FormLabel>
-                        <UserRoleSelector 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value as UserRole} // Cast as UserRole
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* O seletor de papel foi removido. O cadastro é sempre COMPANY_ADMIN. */}
                 </>
               )}
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Processando..." : (isLogin ? "Login" : "Cadastrar")}
+                {loading ? "Processando..." : (isLogin ? "Login" : "Criar Conta de Administrador")}
               </Button>
             </form>
           </Form>
           <div className="mt-6 text-center text-sm">
             {isLogin ? (
               <>
-                Não tem uma conta?{" "}
+                Não tem uma conta de empresa?{" "}
                 <Link href="/signup" className="font-medium text-primary hover:underline">
-                  Cadastre-se
+                  Cadastre sua empresa
                 </Link>
               </>
             ) : (

@@ -1,10 +1,11 @@
+
 import { AuthForm } from "@/components/auth/AuthForm";
 import type { Metadata } from "next";
 import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Cadastre-se no ${APP_NAME}`,
-  description: `Crie uma conta no ${APP_NAME} para começar a agendar consultas sem esforço.`,
+  title: `Cadastre sua Empresa no ${APP_NAME}`,
+  description: `Cadastre sua empresa no ${APP_NAME} para gerenciar agendamentos e oferecer seus serviços.`,
 };
 
 export default function SignupPage() {
