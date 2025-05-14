@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; // Usado para o Switch 'Ativo'
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,8 +30,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useParams, useRouter } // Import useRouter
+import { useParams, useRouter }
 from "next/navigation";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 
 const serviceCategories = [
@@ -57,7 +66,6 @@ const serviceSchema = z.object({
 
 type ServiceFormData = z.infer<typeof serviceSchema>;
 
-// Mock data for a single service, replace with actual data fetching
 const mockExistingServices: { [key: string]: ServiceFormData } = {
   "1": { name: "Corte de Cabelo Masculino", description: "Corte moderno e estiloso para homens.", category: "Beleza e Estética", duration: 45, displayDuration: true, active: true, image: "https://placehold.co/300x200.png?text=Corte+Masc", price: "50,00" },
   "2": { name: "Consulta Psicológica Online", description: "Sessão de terapia online com psicólogo.", category: "Saúde e Bem-estar", duration: 50, displayDuration: true, active: true, image: "https://placehold.co/300x200.png?text=Psico+Online", price: "120,00" },
@@ -67,7 +75,7 @@ const mockExistingServices: { [key: string]: ServiceFormData } = {
 export default function EditServicePage() {
   const { toast } = useToast();
   const params = useParams();
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter();
   const serviceId = params.serviceId as string;
   
   const [isSaving, setIsSaving] = useState(false);
@@ -77,7 +85,7 @@ export default function EditServicePage() {
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
-    defaultValues: { // Default values before loading
+    defaultValues: {
       name: "",
       description: "",
       category: "",
@@ -93,14 +101,12 @@ export default function EditServicePage() {
 
   useEffect(() => {
     if (serviceId) {
-      // Simulate fetching service data
       const existingService = mockExistingServices[serviceId];
       if (existingService) {
-        form.reset(existingService); // Populate form with existing data
+        form.reset(existingService);
         setImagePreview(existingService.image || "https://placehold.co/300x200.png?text=Serviço");
       } else {
         toast({ title: "Erro", description: "Serviço não encontrado.", variant: "destructive" });
-        // router.push('/dashboard/company/services'); // Redirect if service not found
       }
       setIsLoading(false);
     }
@@ -146,7 +152,6 @@ export default function EditServicePage() {
       description: `O serviço "${data.name}" foi atualizado com sucesso.`,
     });
     setIsSaving(false);
-    // router.push('/dashboard/company/services');
   };
 
   const handleDelete = async () => {
@@ -183,14 +188,16 @@ export default function EditServicePage() {
               name="active"
               control={form.control}
               render={({ field }) => (
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="service-active"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                  <Label htmlFor="service-active" className="text-sm">Ativo</Label>
-                </div>
+                 <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                        <Switch
+                            id="service-active"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                        />
+                    </FormControl>
+                    <Label htmlFor="service-active" className="text-sm mb-0">Ativo</Label>
+                 </FormItem>
               )}
             />
           <AlertDialog>
@@ -230,14 +237,16 @@ export default function EditServicePage() {
           <Card className="shadow-lg">
             <CardContent className="pt-6">
               <Form {...form}>
-                <form className="space-y-6"> {/* Removed onSubmit from here as it's handled by the main button */}
+                <form className="space-y-6"> {/* onSubmit é tratado pelo botão Salvar no header */}
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nome do Serviço</FormLabel>
-                        <Input {...field} />
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -248,7 +257,9 @@ export default function EditServicePage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Descrição</FormLabel>
-                        <Textarea {...field} rows={4} />
+                        <FormControl>
+                          <Textarea rows={4} {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -275,26 +286,36 @@ export default function EditServicePage() {
                       </FormItem>
                     )}
                   />
-                  <FormItem>
-                    <FormLabel>Imagem do Serviço</FormLabel>
-                     <div className="flex items-center gap-4">
-                      {imagePreview && (
-                        <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px]">
-                           <Image src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço"/>
-                           {form.getValues("image") !== "https://placehold.co/300x200.png?text=Serviço" && (
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
-                                <XCircle className="h-4 w-4"/>
-                            </Button>
-                           )}
-                        </div>
-                      )}
-                       <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload" />
-                      <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                        <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
-                      </Button>
-                    </div>
-                    <FormMessage>{form.formState.errors.image?.message}</FormMessage>
-                  </FormItem>
+                  <FormField
+                    control={form.control}
+                    name="image"
+                    render={({ field }) => ( // field é passado, mas não usado diretamente para input file. setValue é usado no onChange.
+                      <FormItem>
+                        <FormLabel>Imagem do Serviço</FormLabel>
+                        <FormControl>
+                          <>
+                            <div className="flex items-center gap-4">
+                              {imagePreview && (
+                                <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px]">
+                                  <Image src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço"/>
+                                  {form.getValues("image") !== "https://placehold.co/300x200.png?text=Serviço" && (
+                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
+                                      <XCircle className="h-4 w-4"/>
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                              <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload" />
+                              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
+                              </Button>
+                            </div>
+                          </>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="grid md:grid-cols-2 gap-6">
                     <FormField
@@ -303,7 +324,9 @@ export default function EditServicePage() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Duração (em minutos)</FormLabel>
-                            <Input type="number" {...field} />
+                            <FormControl>
+                              <Input type="number" {...field} />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -314,28 +337,31 @@ export default function EditServicePage() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Preço (R$)</FormLabel>
-                            <Input {...field} />
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
                     />
                   </div>
                   
-
-                  <Controller
-                    name="displayDuration"
+                  <FormField
                     control={form.control}
+                    name="displayDuration"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            id="display-duration-edit"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel>Exibir duração na página de agendamento</FormLabel>
+                          <FormLabel htmlFor="display-duration-edit">Exibir duração na página de agendamento</FormLabel>
                         </div>
+                        <FormMessage/>
                       </FormItem>
                     )}
                   />

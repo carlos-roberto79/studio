@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; // Usado para o switch 'Ativo'
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,6 +19,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { APP_NAME } from "@/lib/constants";
 import { ArrowLeft, Save, Trash2, ImagePlus, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 const serviceCategories = [
   "Beleza e Estética",
@@ -36,9 +45,9 @@ const serviceSchema = z.object({
   category: z.string().min(1, "Selecione uma categoria."),
   duration: z.coerce.number().int().positive("A duração deve ser um número positivo.").min(5, "Duração mínima de 5 minutos."),
   displayDuration: z.boolean().default(true),
-  price: z.string().min(1, "O preço é obrigatório.").regex(/^\d+(,\d{2})?$/, "Formato de preço inválido (ex: 50 ou 50,00)"), // Allow R$XX or R$XX,YY
+  price: z.string().min(1, "O preço é obrigatório.").regex(/^\d+(,\d{2})?$/, "Formato de preço inválido (ex: 50 ou 50,00)"),
   active: z.boolean().default(true),
-  image: z.string().optional(), // Store as base64 data URL or a placeholder URL
+  image: z.string().optional(),
 });
 
 type ServiceFormData = z.infer<typeof serviceSchema>;
@@ -75,7 +84,7 @@ export default function AddServicePage() {
       reader.onloadend = () => {
         const result = reader.result as string;
         setImagePreview(result);
-        form.setValue("image", result); // Store base64
+        form.setValue("image", result);
       };
       reader.readAsDataURL(file);
     }
@@ -93,16 +102,14 @@ export default function AddServicePage() {
   const onSubmit = async (data: ServiceFormData) => {
     setIsSaving(true);
     console.log("Salvando serviço:", data);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     toast({
       title: "Serviço Adicionado!",
       description: `O serviço "${data.name}" foi cadastrado com sucesso.`,
     });
     form.reset();
-    removeImage(); // Reset image to placeholder
+    removeImage(); 
     setIsSaving(false);
-    // Potentially redirect to services list: router.push('/dashboard/company/services');
   };
 
   return (
@@ -123,14 +130,16 @@ export default function AddServicePage() {
               name="active"
               control={form.control}
               render={({ field }) => (
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="service-active"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                  <Label htmlFor="service-active" className="text-sm">Ativo</Label>
-                </div>
+                <FormItem className="flex items-center space-x-2">
+                  <FormControl>
+                    <Switch
+                      id="service-active"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <Label htmlFor="service-active" className="text-sm mb-0">Ativo</Label>
+                </FormItem>
               )}
             />
           <Button type="button" variant="destructive" disabled> <Trash2 className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Excluir</span></Button>
@@ -152,14 +161,16 @@ export default function AddServicePage() {
           <Card className="shadow-lg">
             <CardContent className="pt-6">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form className="space-y-6"> {/* onSubmit é tratado pelo botão Salvar no header */}
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nome do Serviço</FormLabel>
-                        <Input {...field} placeholder="Ex: Psicoterapia Breve (Patrus)" />
+                        <FormControl>
+                          <Input placeholder="Ex: Psicoterapia Breve (Patrus)" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -170,7 +181,9 @@ export default function AddServicePage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Descrição</FormLabel>
-                        <Textarea {...field} placeholder="Transforme sua vida com..." rows={4} />
+                        <FormControl>
+                          <Textarea placeholder="Transforme sua vida com..." rows={4} {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -197,26 +210,36 @@ export default function AddServicePage() {
                       </FormItem>
                     )}
                   />
-                  <FormItem>
-                    <FormLabel>Imagem do Serviço</FormLabel>
-                    <div className="flex items-center gap-4">
-                      {imagePreview && (
-                        <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px]">
-                           <Image src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço" />
-                           {form.getValues("image") !== "https://placehold.co/300x200.png?text=Serviço" && (
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
-                                <XCircle className="h-4 w-4"/>
-                            </Button>
-                           )}
-                        </div>
-                      )}
-                       <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload" />
-                      <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                        <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
-                      </Button>
-                    </div>
-                     <FormMessage>{form.formState.errors.image?.message}</FormMessage>
-                  </FormItem>
+                  <FormField
+                    control={form.control}
+                    name="image"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Imagem do Serviço</FormLabel>
+                        <FormControl>
+                          <>
+                            <div className="flex items-center gap-4">
+                              {imagePreview && (
+                                <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px]">
+                                  <Image src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço" />
+                                  {form.getValues("image") !== "https://placehold.co/300x200.png?text=Serviço" && (
+                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
+                                      <XCircle className="h-4 w-4"/>
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                              <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload" />
+                              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
+                              </Button>
+                            </div>
+                          </>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                  <div className="grid md:grid-cols-2 gap-6">
                     <FormField
@@ -225,7 +248,9 @@ export default function AddServicePage() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Duração (em minutos)</FormLabel>
-                            <Input type="number" {...field} placeholder="60" />
+                            <FormControl>
+                              <Input type="number" placeholder="60" {...field} />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -236,31 +261,34 @@ export default function AddServicePage() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Preço (R$)</FormLabel>
-                            <Input {...field} placeholder="Ex: 120,00 ou 120" />
+                            <FormControl>
+                              <Input placeholder="Ex: 120,00 ou 120" {...field} />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
                     />
                  </div>
 
-                  <Controller
-                    name="displayDuration"
+                  <FormField
                     control={form.control}
+                    name="displayDuration"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            id="display-duration"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel>Exibir duração na página de agendamento</FormLabel>
+                          <FormLabel htmlFor="display-duration">Exibir duração na página de agendamento</FormLabel>
                         </div>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
-                  {/* Botão Salvar já está no cabeçalho da página */}
                 </form>
               </Form>
             </CardContent>
@@ -275,7 +303,7 @@ export default function AddServicePage() {
          <TabsContent value="users">
           <Card>
             <CardHeader><CardTitle>Profissionais</CardTitle><CardDescription>Associe profissionais a este serviço (em breve).</CardDescription></CardHeader>
-            <CardContent><p className="text-muted-foreground">Selecione quais profissionais podem realizar este serviço.</p></CardContent>
+            <CardContent><p className="text-muted-foreground">Selecione quaisissionais podem realizar este serviço.</p></CardContent>
           </Card>
         </TabsContent>
          <TabsContent value="bling">
