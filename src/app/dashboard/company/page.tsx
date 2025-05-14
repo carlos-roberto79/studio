@@ -1,12 +1,14 @@
+
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3 } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus } from "lucide-react"; // Added LinkIcon and UserPlus
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME } from "@/lib/constants";
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useToast } from "@/hooks/use-toast";
 
 
 // Mock data
@@ -22,10 +24,31 @@ const companyStats = [
     { title: "Receita Mensal", value: "R$12.500", icon: <BarChart3 className="h-6 w-6 text-primary" /> },
 ];
 
+// Mock: em uma aplicação real, isso viria do backend/DB
+const companyPublicSlug = "sua-empresa-incrivel"; 
+
 export default function CompanyAdminPage() {
+  const { toast } = useToast();
+  const [publicLink, setPublicLink] = useState("");
+
   useEffect(() => {
     document.title = `Painel da Empresa - ${APP_NAME}`;
+    // Simula a construção do link público completo
+    // Em um app real, o host viria de uma variável de ambiente ou config
+    const constructedLink = `${window.location.origin}/schedule/${companyPublicSlug}`;
+    setPublicLink(constructedLink);
   }, []);
+
+  const copyPublicLink = () => {
+    navigator.clipboard.writeText(publicLink)
+      .then(() => {
+        toast({ title: "Link Copiado!", description: "O link de agendamento público foi copiado para sua área de transferência." });
+      })
+      .catch(err => {
+        toast({ title: "Erro ao Copiar", description: "Não foi possível copiar o link.", variant: "destructive" });
+        console.error('Erro ao copiar link: ', err);
+      });
+  };
 
   return (
     <div className="space-y-8">
@@ -50,7 +73,7 @@ export default function CompanyAdminPage() {
       </div>
 
       <Card className="shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <CardTitle>Gerenciar Profissionais</CardTitle>
             <CardDescription>Veja, adicione ou edite profissionais em sua empresa.</CardDescription>
@@ -98,11 +121,38 @@ export default function CompanyAdminPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
+            <CardTitle>Gestão de Clientes e Acesso Público</CardTitle>
+            <CardDescription>Adicione novos clientes e compartilhe seu link de agendamento.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <div>
+                <h4 className="font-medium mb-2">Link Público de Agendamento</h4>
+                <div className="flex items-center space-x-2">
+                    <Input type="text" value={publicLink} readOnly className="bg-muted flex-grow" />
+                    <Button onClick={copyPublicLink} variant="outline">
+                        <LinkIcon className="mr-2 h-4 w-4" /> Copiar Link
+                    </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Compartilhe este link com seus clientes para que eles possam agendar horários online.</p>
+            </div>
+            <div className="border-t pt-6">
+                <h4 className="font-medium mb-2">Cadastro de Clientes</h4>
+                 <Button asChild>
+                  <Link href="/dashboard/company/add-client">
+                    <UserPlus className="mr-2 h-4 w-4" /> Adicionar Cliente Manualmente
+                  </Link>
+                </Button>
+                <p className="text-xs text-muted-foreground mt-1">Adicione clientes que não se cadastraram pelo link público ou que precisam de assistência.</p>
+            </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="shadow-lg">
+        <CardHeader>
             <CardTitle>Perfil e Configurações da Empresa</CardTitle>
-            <CardDescription>Atualize as informações da sua empresa e o link público de agendamento.</CardDescription>
+            <CardDescription>Atualize as informações da sua empresa e o slug do link público.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            <p className="text-muted-foreground">Seu link público de agendamento: <Link href="/schedule/your-company-slug" className="text-primary hover:underline">/agendar/sua-empresa-slug</Link></p>
             <Button asChild>
               <Link href="/dashboard/company/edit-profile">
                 <Edit className="mr-2 h-4 w-4" /> Editar Perfil da Empresa
