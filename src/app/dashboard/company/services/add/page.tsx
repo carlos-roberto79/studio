@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label"; // Usado para o switch 'Ativo'
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -113,207 +113,205 @@ export default function AddServicePage() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/dashboard/company/services">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <CardHeader className="p-0">
-            <CardTitle className="text-2xl md:text-3xl font-bold">Adicionar Novo Serviço</CardTitle>
-          </CardHeader>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="icon" asChild>
+              <Link href="/dashboard/company/services">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
+            <CardHeader className="p-0">
+              <CardTitle className="text-2xl md:text-3xl font-bold">Adicionar Novo Serviço</CardTitle>
+            </CardHeader>
+          </div>
+          <div className="flex items-center gap-2">
+             <Controller
+                name="active"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <Switch
+                        id="service-active-add"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <Label htmlFor="service-active-add" className="text-sm mb-0">Ativo</Label>
+                  </FormItem>
+                )}
+              />
+            <Button type="button" variant="destructive" disabled> <Trash2 className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Excluir</span></Button>
+            <Button type="submit" disabled={isSaving}>
+              <Save className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{isSaving ? "Salvando..." : "Salvar"}</span>
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-           <Controller
-              name="active"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem className="flex items-center space-x-2">
-                  <FormControl>
-                    <Switch
-                      id="service-active"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <Label htmlFor="service-active" className="text-sm mb-0">Ativo</Label>
-                </FormItem>
-              )}
-            />
-          <Button type="button" variant="destructive" disabled> <Trash2 className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Excluir</span></Button>
-          <Button onClick={form.handleSubmit(onSubmit)} disabled={isSaving}>
-            <Save className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{isSaving ? "Salvando..." : "Salvar"}</span>
-          </Button>
-        </div>
-      </div>
 
-      <Tabs defaultValue="configurations" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
-          <TabsTrigger value="configurations">Configurações</TabsTrigger>
-          <TabsTrigger value="availability" disabled>Disponibilidade</TabsTrigger>
-          <TabsTrigger value="users" disabled>Profissionais</TabsTrigger>
-          <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="configurations" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+            <TabsTrigger value="configurations">Configurações</TabsTrigger>
+            <TabsTrigger value="availability" disabled>Disponibilidade</TabsTrigger>
+            <TabsTrigger value="users" disabled>Profissionais</TabsTrigger>
+            <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="configurations">
-          <Card className="shadow-lg">
-            <CardContent className="pt-6">
-              <Form {...form}>
-                <form className="space-y-6"> {/* onSubmit é tratado pelo botão Salvar no header */}
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Serviço</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Psicoterapia Breve (Patrus)" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrição</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Transforme sua vida com..." rows={4} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Categoria</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione uma categoria" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {serviceCategories.map(cat => (
-                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="image"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Imagem do Serviço</FormLabel>
-                        <FormControl>
-                          <>
-                            <div className="flex items-center gap-4">
-                              {imagePreview && (
-                                <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px]">
-                                  <Image src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço" />
-                                  {form.getValues("image") !== "https://placehold.co/300x200.png?text=Serviço" && (
-                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
-                                      <XCircle className="h-4 w-4"/>
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                              <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload" />
-                              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
-                              </Button>
-                            </div>
-                          </>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                 <div className="grid md:grid-cols-2 gap-6">
+          <TabsContent value="configurations">
+            <Card className="shadow-lg">
+              <CardContent className="pt-6 space-y-6">
                     <FormField
-                        control={form.control}
-                        name="duration"
-                        render={({ field }) => (
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Duração (em minutos)</FormLabel>
-                            <FormControl>
-                              <Input type="number" placeholder="60" {...field} />
-                            </FormControl>
-                            <FormMessage />
+                          <FormLabel>Nome do Serviço</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Psicoterapia Breve (Patrus)" {...field} />
+                          </FormControl>
+                          <FormMessage />
                         </FormItem>
-                        )}
+                      )}
                     />
-                     <FormField
-                        control={form.control}
-                        name="price"
-                        render={({ field }) => (
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Preço (R$)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ex: 120,00 ou 120" {...field} />
-                            </FormControl>
-                            <FormMessage />
+                          <FormLabel>Descrição</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Transforme sua vida com..." rows={4} {...field} />
+                          </FormControl>
+                          <FormMessage />
                         </FormItem>
-                        )}
+                      )}
                     />
-                 </div>
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Categoria</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione uma categoria" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {serviceCategories.map(cat => (
+                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="image"
+                      render={({ field }) => ( // field é passado, mas não usado diretamente para input file. setValue é usado no onChange.
+                        <FormItem>
+                          <FormLabel>Imagem do Serviço</FormLabel>
+                          <FormControl>
+                            <>
+                              <div className="flex items-center gap-4">
+                                {imagePreview && (
+                                  <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px]">
+                                    <Image src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço" />
+                                    {form.getValues("image") !== "https://placehold.co/300x200.png?text=Serviço" && (
+                                      <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
+                                        <XCircle className="h-4 w-4"/>
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                                <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload" />
+                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                  <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
+                                </Button>
+                              </div>
+                            </>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="displayDuration"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            id="display-duration"
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel htmlFor="display-duration">Exibir duração na página de agendamento</FormLabel>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="availability">
-          <Card>
-            <CardHeader><CardTitle>Disponibilidade do Serviço</CardTitle><CardDescription>Defina quando este serviço está disponível (em breve).</CardDescription></CardHeader>
-            <CardContent><p className="text-muted-foreground">Configurações de disponibilidade específica para este serviço estarão disponíveis aqui.</p></CardContent>
-          </Card>
-        </TabsContent>
-         <TabsContent value="users">
-          <Card>
-            <CardHeader><CardTitle>Profissionais</CardTitle><CardDescription>Associe profissionais a este serviço (em breve).</CardDescription></CardHeader>
-            <CardContent><p className="text-muted-foreground">Selecione quaisissionais podem realizar este serviço.</p></CardContent>
-          </Card>
-        </TabsContent>
-         <TabsContent value="bling">
-          <Card>
-            <CardHeader><CardTitle>Integração Bling</CardTitle><CardDescription>Configure a integração com o Bling para este serviço (em breve).</CardDescription></CardHeader>
-            <CardContent><p className="text-muted-foreground">Detalhes da integração com o Bling.</p></CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+                   <div className="grid md:grid-cols-2 gap-6">
+                      <FormField
+                          control={form.control}
+                          name="duration"
+                          render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Duração (em minutos)</FormLabel>
+                              <FormControl>
+                                <Input type="number" placeholder="60" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                          </FormItem>
+                          )}
+                      />
+                       <FormField
+                          control={form.control}
+                          name="price"
+                          render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Preço (R$)</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Ex: 120,00 ou 120" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                          </FormItem>
+                          )}
+                      />
+                   </div>
+
+                    <FormField
+                      control={form.control}
+                      name="displayDuration"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              id="display-duration"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel htmlFor="display-duration">Exibir duração na página de agendamento</FormLabel>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="availability">
+            <Card>
+              <CardHeader><CardTitle>Disponibilidade do Serviço</CardTitle><CardDescription>Defina quando este serviço está disponível (em breve).</CardDescription></CardHeader>
+              <CardContent><p className="text-muted-foreground">Configurações de disponibilidade específica para este serviço estarão disponíveis aqui.</p></CardContent>
+            </Card>
+          </TabsContent>
+           <TabsContent value="users">
+            <Card>
+              <CardHeader><CardTitle>Profissionais</CardTitle><CardDescription>Associe profissionais a este serviço (em breve).</CardDescription></CardHeader>
+              <CardContent><p className="text-muted-foreground">Selecione quaisissionais podem realizar este serviço.</p></CardContent>
+            </Card>
+          </TabsContent>
+           <TabsContent value="bling">
+            <Card>
+              <CardHeader><CardTitle>Integração Bling</CardTitle><CardDescription>Configure a integração com o Bling para este serviço (em breve).</CardDescription></CardHeader>
+              <CardContent><p className="text-muted-foreground">Detalhes da integração com o Bling.</p></CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </form>
+    </Form>
   );
 }
 
