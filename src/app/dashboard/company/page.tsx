@@ -2,8 +2,9 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input"; // Adicionado Input
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus } from "lucide-react"; // Added LinkIcon and UserPlus
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock } from "lucide-react"; // Added LinkIcon and UserPlus, Clock
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME } from "@/lib/constants";
@@ -21,7 +22,7 @@ const professionals = [
 const companyStats = [
     { title: "Total de Agendamentos", value: "256", icon: <CalendarDays className="h-6 w-6 text-primary" /> },
     { title: "Profissionais Ativos", value: "3", icon: <Users className="h-6 w-6 text-primary" /> },
-    { title: "Receita Mensal", value: "R$12.500", icon: <BarChart3 className="h-6 w-6 text-primary" /> },
+    { title: "Receita Mensal Estimada", value: "R$12.500", icon: <BarChart3 className="h-6 w-6 text-primary" /> }, // Label alterado
 ];
 
 // Mock: em uma aplicação real, isso viria do backend/DB
@@ -137,12 +138,12 @@ export default function CompanyAdminPage() {
             </div>
             <div className="border-t pt-6">
                 <h4 className="font-medium mb-2">Cadastro de Clientes</h4>
+                <p className="text-sm text-muted-foreground mb-3">Adicione clientes que não se cadastraram pelo link público ou que precisam de assistência para o primeiro agendamento.</p>
                  <Button asChild>
                   <Link href="/dashboard/company/add-client">
                     <UserPlus className="mr-2 h-4 w-4" /> Adicionar Cliente Manualmente
                   </Link>
                 </Button>
-                <p className="text-xs text-muted-foreground mt-1">Adicione clientes que não se cadastraram pelo link público ou que precisam de assistência.</p>
             </div>
         </CardContent>
       </Card>
