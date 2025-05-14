@@ -2,9 +2,9 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // Adicionado Input
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock } from "lucide-react"; // Added LinkIcon and UserPlus, Clock
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag } from "lucide-react"; // Added Settings2 for services
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME } from "@/lib/constants";
@@ -22,10 +22,9 @@ const professionals = [
 const companyStats = [
     { title: "Total de Agendamentos", value: "256", icon: <CalendarDays className="h-6 w-6 text-primary" /> },
     { title: "Profissionais Ativos", value: "3", icon: <Users className="h-6 w-6 text-primary" /> },
-    { title: "Receita Mensal Estimada", value: "R$12.500", icon: <BarChart3 className="h-6 w-6 text-primary" /> }, // Label alterado
+    { title: "Receita Mensal Estimada", value: "R$12.500", icon: <BarChart3 className="h-6 w-6 text-primary" /> },
 ];
 
-// Mock: em uma aplicação real, isso viria do backend/DB
 const companyPublicSlug = "sua-empresa-incrivel"; 
 
 export default function CompanyAdminPage() {
@@ -34,8 +33,6 @@ export default function CompanyAdminPage() {
 
   useEffect(() => {
     document.title = `Painel da Empresa - ${APP_NAME}`;
-    // Simula a construção do link público completo
-    // Em um app real, o host viria de uma variável de ambiente ou config
     const constructedLink = `${window.location.origin}/schedule/${companyPublicSlug}`;
     setPublicLink(constructedLink);
   }, []);
@@ -55,7 +52,7 @@ export default function CompanyAdminPage() {
     <div className="space-y-8">
       <CardHeader className="px-0">
         <CardTitle className="text-3xl font-bold">Gerenciamento da Empresa</CardTitle>
-        <CardDescription>Supervisione as operações, profissionais e desempenho da sua empresa.</CardDescription>
+        <CardDescription>Supervisione as operações, profissionais, serviços e desempenho da sua empresa.</CardDescription>
       </CardHeader>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -67,7 +64,7 @@ export default function CompanyAdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">+10% do último mês</p> {/* Placeholder change */}
+              <p className="text-xs text-muted-foreground">+10% do último mês</p>
             </CardContent>
           </Card>
         ))}
@@ -122,6 +119,20 @@ export default function CompanyAdminPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
+            <CardTitle>Gerenciar Serviços</CardTitle>
+            <CardDescription>Configure os serviços oferecidos pela sua empresa.</CardDescription>
+        </CardHeader>
+        <CardContent>
+             <Button asChild>
+              <Link href="/dashboard/company/services">
+                <ShoppingBag className="mr-2 h-4 w-4" /> Configurar Serviços
+              </Link>
+            </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-lg">
+        <CardHeader>
             <CardTitle>Gestão de Clientes e Acesso Público</CardTitle>
             <CardDescription>Adicione novos clientes e compartilhe seu link de agendamento.</CardDescription>
         </CardHeader>
@@ -164,3 +175,5 @@ export default function CompanyAdminPage() {
     </div>
   );
 }
+
+    
