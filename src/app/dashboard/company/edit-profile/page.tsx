@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { APP_NAME } from "@/lib/constants";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from "next/link";
-import { ArrowLeft, Edit, Save, Image as ImageIcon } from "lucide-react"; // Renamed Image to ImageIcon
+import { ArrowLeft, Edit, Save, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import Image from "next/image"; // Next.js Image component
+import NextImage from "next/image"; // Renomeado para NextImage para evitar conflito com o ícone
 
 // Mock existing company data
 const mockCompanyData = {
@@ -36,6 +36,7 @@ export default function EditCompanyProfilePage() {
   const [description, setDescription] = useState(mockCompanyData.description);
   const [logoUrl, setLogoUrl] = useState(mockCompanyData.logoUrl);
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     document.title = `Editar Perfil da Empresa - ${APP_NAME}`;
@@ -60,6 +61,21 @@ export default function EditCompanyProfilePage() {
     setIsSaving(false);
   };
 
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -81,8 +97,22 @@ export default function EditCompanyProfilePage() {
           <CardContent className="pt-6 space-y-6">
             <div className="flex flex-col items-center space-y-4 md:flex-row md:space-y-0 md:space-x-6">
               <div className="relative">
-                <Image src={logoUrl} alt="Logo da Empresa" width={120} height={120} className="rounded-lg border" data-ai-hint="logotipo empresa" />
-                <Button size="sm" variant="outline" className="absolute -bottom-2 -right-2" onClick={() => alert("Funcionalidade de upload de logo a ser implementada.")}>
+                <NextImage 
+                  src={logoUrl} 
+                  alt="Logo da Empresa" 
+                  width={120} 
+                  height={120} 
+                  className="rounded-lg border object-cover" 
+                  data-ai-hint="logotipo empresa" 
+                />
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleLogoChange} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+                <Button type="button" size="sm" variant="outline" className="absolute -bottom-2 -right-2" onClick={triggerFileInput}>
                   <ImageIcon className="mr-1 h-3 w-3" /> Alterar
                 </Button>
               </div>
@@ -142,3 +172,4 @@ export default function EditCompanyProfilePage() {
     </div>
   );
 }
+
