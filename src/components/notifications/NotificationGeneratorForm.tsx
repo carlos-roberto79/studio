@@ -22,11 +22,11 @@ import { Wand2, MessageSquare } from "lucide-react";
 import { useState } from "react";
 
 const notificationSchema = z.object({
-  notificationType: z.enum(['confirmation', 'reminder', 'update'], { required_error: "Notification type is required." }),
-  userName: z.string().min(2, { message: "User name must be at least 2 characters." }),
-  appointmentDetails: z.string().min(10, { message: "Appointment details must be at least 10 characters." }),
-  companyName: z.string().min(2, { message: "Company name must be at least 2 characters." }),
-  channel: z.enum(['email', 'whatsapp'], { required_error: "Channel is required." }),
+  notificationType: z.enum(['confirmation', 'reminder', 'update'], { required_error: "O tipo de notificação é obrigatório." }),
+  userName: z.string().min(2, { message: "O nome do usuário deve ter pelo menos 2 caracteres." }),
+  appointmentDetails: z.string().min(10, { message: "Os detalhes do agendamento devem ter pelo menos 10 caracteres." }),
+  companyName: z.string().min(2, { message: "O nome da empresa deve ter pelo menos 2 caracteres." }),
+  channel: z.enum(['email', 'whatsapp'], { required_error: "O canal é obrigatório." }),
 });
 
 type NotificationFormData = z.infer<typeof notificationSchema>;
@@ -36,9 +36,9 @@ export function NotificationGeneratorForm() {
     resolver: zodResolver(notificationSchema),
     defaultValues: {
       notificationType: 'confirmation',
-      userName: "John Doe",
-      appointmentDetails: "Dental Check-up on July 20th at 10:00 AM",
-      companyName: "Bright Smiles Dental",
+      userName: "João Silva",
+      appointmentDetails: "Consulta Odontológica em 20 de Julho às 10:00",
+      companyName: "Sorriso Dental",
       channel: 'email',
     },
   });
@@ -55,14 +55,14 @@ export function NotificationGeneratorForm() {
       const result = await generateNotificationMessage(input);
       setGeneratedMessage(result.message);
       toast({
-        title: "Notification Generated!",
-        description: "AI has crafted a personalized message.",
+        title: "Notificação Gerada!",
+        description: "A IA criou uma mensagem personalizada.",
       });
     } catch (error: any) {
-      console.error("Error generating notification:", error);
+      console.error("Erro ao gerar notificação:", error);
       toast({
-        title: "Generation Failed",
-        description: error.message || "Could not generate notification. Please try again.",
+        title: "Falha na Geração",
+        description: error.message || "Não foi possível gerar a notificação. Por favor, tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -75,10 +75,10 @@ export function NotificationGeneratorForm() {
       <CardHeader>
         <div className="flex items-center space-x-2 mb-2">
           <Wand2 className="h-8 w-8 text-primary" />
-          <CardTitle className="text-2xl">AI Notification Generator</CardTitle>
+          <CardTitle className="text-2xl">Gerador de Notificações IA</CardTitle>
         </div>
         <CardDescription>
-          Test the AI's ability to craft personalized appointment notifications.
+          Teste a capacidade da IA de criar notificações de agendamento personalizadas.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -90,13 +90,13 @@ export function NotificationGeneratorForm() {
                 name="notificationType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notification Type</FormLabel>
+                    <FormLabel>Tipo de Notificação</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger></FormControl>
                       <SelectContent>
-                        <SelectItem value="confirmation">Confirmation</SelectItem>
-                        <SelectItem value="reminder">Reminder</SelectItem>
-                        <SelectItem value="update">Update</SelectItem>
+                        <SelectItem value="confirmation">Confirmação</SelectItem>
+                        <SelectItem value="reminder">Lembrete</SelectItem>
+                        <SelectItem value="update">Atualização</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -108,11 +108,11 @@ export function NotificationGeneratorForm() {
                 name="channel"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Channel</FormLabel>
+                    <FormLabel>Canal</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select channel" /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione o canal" /></SelectTrigger></FormControl>
                       <SelectContent>
-                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="email">E-mail</SelectItem>
                         <SelectItem value="whatsapp">WhatsApp</SelectItem>
                       </SelectContent>
                     </Select>
@@ -126,8 +126,8 @@ export function NotificationGeneratorForm() {
               name="userName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>User Name</FormLabel>
-                  <FormControl><Input placeholder="e.g., Jane Doe" {...field} /></FormControl>
+                  <FormLabel>Nome do Usuário</FormLabel>
+                  <FormControl><Input placeholder="ex: Maria Silva" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -137,8 +137,8 @@ export function NotificationGeneratorForm() {
               name="companyName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Company Name</FormLabel>
-                  <FormControl><Input placeholder="e.g., Acme Corp" {...field} /></FormControl>
+                  <FormLabel>Nome da Empresa</FormLabel>
+                  <FormControl><Input placeholder="ex: Consultório XYZ" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -148,16 +148,16 @@ export function NotificationGeneratorForm() {
               name="appointmentDetails"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Appointment Details</FormLabel>
+                  <FormLabel>Detalhes do Agendamento</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="e.g., Meeting on Oct 26th at 3 PM about Project X" {...field} />
+                    <Textarea placeholder="ex: Reunião em 26 de Outubro às 15h sobre o Projeto X" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Generating..." : <><Wand2 className="mr-2 h-4 w-4" /> Generate Message</>}
+              {loading ? "Gerando..." : <><Wand2 className="mr-2 h-4 w-4" /> Gerar Mensagem</>}
             </Button>
           </form>
         </Form>
@@ -165,7 +165,7 @@ export function NotificationGeneratorForm() {
         {generatedMessage && (
           <Card className="mt-8 bg-secondary">
             <CardHeader>
-              <CardTitle className="flex items-center"><MessageSquare className="mr-2 h-5 w-5 text-primary" /> Generated Message</CardTitle>
+              <CardTitle className="flex items-center"><MessageSquare className="mr-2 h-5 w-5 text-primary" /> Mensagem Gerada</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-foreground whitespace-pre-wrap">{generatedMessage}</p>

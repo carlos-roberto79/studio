@@ -19,9 +19,9 @@ export default function Error({
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center px-4">
       <Frown className="w-24 h-24 text-destructive mb-6" />
-      <h1 className="text-4xl font-bold text-foreground mb-4">Oops! Something went wrong.</h1>
+      <h1 className="text-4xl font-bold text-foreground mb-4">Oops! Algo deu errado.</h1>
       <p className="text-lg text-muted-foreground mb-8 max-w-md">
-        We encountered an unexpected issue. Please try again, or if the problem persists, contact support.
+        Encontramos um problema inesperado. Por favor, tente novamente ou, se o problema persistir, entre em contato com o suporte.
       </p>
       <Button
         onClick={
@@ -30,9 +30,9 @@ export default function Error({
         }
         size="lg"
       >
-        Try again
+        Tentar novamente
       </Button>
-      <p className="text-sm text-muted-foreground mt-10">Error details: {error.message}</p>
+      <p className="text-sm text-muted-foreground mt-10">Detalhes do erro: {error.message}</p>
       {error.digest && <p className="text-xs text-muted-foreground mt-1">Digest: {error.digest}</p>}
     </div>
   );

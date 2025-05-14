@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `AI Notification Tester - ${APP_NAME}`,
-  description: `Test and generate smart notifications using AI for ${APP_NAME}.`,
+  title: `Testador de Notificações IA - ${APP_NAME}`,
+  description: `Teste e gere notificações inteligentes usando IA para ${APP_NAME}.`,
 };
 
 export default function NotificationsTesterPage() {

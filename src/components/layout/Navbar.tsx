@@ -4,29 +4,30 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LogIn, UserPlus, LayoutDashboard, LogOut, Briefcase, Users, CalendarPlus, BellDot } from 'lucide-react';
+import { Menu, LogIn, UserPlus, LayoutDashboard, LogOut, Briefcase, Users, CalendarPlus, BellDot, Settings } from 'lucide-react';
 import { Logo } from '@/components/shared/Logo';
-import { useAuth } from '@/contexts/AuthContext'; // Placeholder, will be created
+import { useAuth } from '@/contexts/AuthContext'; 
 import { Separator } from '@/components/ui/separator';
 
 const navLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/#features', label: 'Features' },
-  { href: '/#pricing', label: 'Pricing' },
-  { href: '/contact', label: 'Contact' },
+  { href: '/', label: 'Início' },
+  { href: '/#features', label: 'Recursos' },
+  { href: '/#pricing', label: 'Preços' },
+  { href: '/contact', label: 'Contato' }, // Assuming a contact page might exist or be added
 ];
 
 const authenticatedNavLinks = (role: string | null) => [
-  { href: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, roles: ['client', 'professional', 'company_admin'] },
-  { href: '/dashboard/company', label: 'My Company', icon: <Briefcase className="h-5 w-5" />, roles: ['company_admin'] },
-  { href: '/dashboard/professional', label: 'My Schedule', icon: <CalendarPlus className="h-5 w-5" />, roles: ['professional'] },
-  { href: '/dashboard/client', label: 'My Appointments', icon: <Users className="h-5 w-5" />, roles: ['client'] },
-  { href: '/notifications-tester', label: 'Notifications AI', icon: <BellDot className="h-5 w-5" />, roles: ['company_admin', 'professional'] }, // For testing
+  { href: '/dashboard', label: 'Painel', icon: <LayoutDashboard className="h-5 w-5" />, roles: ['client', 'professional', 'company_admin'] },
+  { href: '/dashboard/company', label: 'Minha Empresa', icon: <Briefcase className="h-5 w-5" />, roles: ['company_admin'] },
+  { href: '/dashboard/professional', label: 'Minha Agenda', icon: <CalendarPlus className="h-5 w-5" />, roles: ['professional'] },
+  { href: '/dashboard/client', label: 'Meus Agendamentos', icon: <Users className="h-5 w-5" />, roles: ['client'] },
+  { href: '/notifications-tester', label: 'IA de Notificações', icon: <BellDot className="h-5 w-5" />, roles: ['company_admin', 'professional'] },
+  { href: "/dashboard/settings", label: "Configurações", icon: <Settings className="h-5 w-5" />, roles: ['client', 'professional', 'company_admin'] },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
-  const { user, role, loading, logout } = useAuth(); // Placeholder values
+  const { user, role, loading, logout } = useAuth(); 
 
   const renderNavLinks = (isMobile = false) => {
     const linksToRender = user ? authenticatedNavLinks(role).filter(link => link.roles.includes(role || '')) : navLinks;
@@ -58,12 +59,12 @@ export function Navbar() {
         </nav>
         <div className="flex items-center space-x-2">
           {loading ? (
-            <Button variant="outline" size="sm" disabled>Loading...</Button>
+            <Button variant="outline" size="sm" disabled>Carregando...</Button>
           ) : user ? (
             <>
-              <span className="hidden md:inline text-sm text-muted-foreground mr-2">Welcome, {user.email?.split('@')[0] || 'User'} ({role})</span>
+              <span className="hidden md:inline text-sm text-muted-foreground mr-2">Olá, {user.email?.split('@')[0] || 'Usuário'} ({role})</span>
               <Button variant="outline" size="sm" onClick={logout}>
-                <LogOut className="mr-2 h-4 w-4" /> Logout
+                <LogOut className="mr-2 h-4 w-4" /> Sair
               </Button>
             </>
           ) : (
@@ -72,7 +73,7 @@ export function Navbar() {
                 <Link href="/login"><LogIn className="mr-2 h-4 w-4" /> Login</Link>
               </Button>
               <Button size="sm" asChild>
-                <Link href="/signup"><UserPlus className="mr-2 h-4 w-4" /> Sign Up</Link>
+                <Link href="/signup"><UserPlus className="mr-2 h-4 w-4" /> Cadastrar</Link>
               </Button>
             </>
           )}
@@ -81,7 +82,7 @@ export function Navbar() {
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon">
                   <Menu className="h-6 w-6" />
-                  <span className="sr-only">Toggle navigation menu</span>
+                  <span className="sr-only">Alternar menu de navegação</span>
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px] pt-10">
@@ -90,7 +91,7 @@ export function Navbar() {
                   <Separator className="my-4"/>
                   {user && (
                     <Button variant="ghost" onClick={logout} className="w-full justify-start text-base py-3 text-destructive hover:text-destructive">
-                      <LogOut className="mr-2 h-5 w-5" /> Logout
+                      <LogOut className="mr-2 h-5 w-5" /> Sair
                     </Button>
                   )}
                 </nav>

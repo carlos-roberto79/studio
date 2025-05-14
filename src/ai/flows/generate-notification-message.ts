@@ -2,11 +2,11 @@
 'use server';
 
 /**
- * @fileOverview AI-powered notification message generator for appointment updates.
+ * @fileOverview Gerador de mensagens de notificação alimentado por IA para atualizações de agendamentos.
  *
- * - generateNotificationMessage - A function that generates personalized notification messages.
- * - NotificationMessageInput - The input type for the generateNotificationMessage function.
- * - NotificationMessageOutput - The return type for the generateNotificationMessage function.
+ * - generateNotificationMessage - Uma função que gera mensagens de notificação personalizadas.
+ * - NotificationMessageInput - O tipo de entrada para a função generateNotificationMessage.
+ * - NotificationMessageOutput - O tipo de retorno para a função generateNotificationMessage.
  */
 
 import {ai} from '@/ai/genkit';
@@ -15,17 +15,17 @@ import {z} from 'genkit';
 const NotificationMessageInputSchema = z.object({
   notificationType: z
     .enum(['confirmation', 'reminder', 'update'])
-    .describe('The type of notification: confirmation, reminder, or update.'),
-  userName: z.string().describe('The name of the user receiving the notification.'),
-  appointmentDetails: z.string().describe('Details of the appointment, such as date, time, and service.'),
-  companyName: z.string().describe('The name of the company related to the appointment.'),
-  channel: z.enum(['email', 'whatsapp']).describe('The communication channel (email or whatsapp).'),
+    .describe('O tipo de notificação: confirmação, lembrete ou atualização.'),
+  userName: z.string().describe('O nome do usuário que recebe a notificação.'),
+  appointmentDetails: z.string().describe('Detalhes do agendamento, como data, hora e serviço.'),
+  companyName: z.string().describe('O nome da empresa relacionada ao agendamento.'),
+  channel: z.enum(['email', 'whatsapp']).describe('O canal de comunicação (email ou whatsapp).'),
 });
 
 export type NotificationMessageInput = z.infer<typeof NotificationMessageInputSchema>;
 
 const NotificationMessageOutputSchema = z.object({
-  message: z.string().describe('The personalized notification message.'),
+  message: z.string().describe('A mensagem de notificação personalizada.'),
 });
 
 export type NotificationMessageOutput = z.infer<typeof NotificationMessageOutputSchema>;
@@ -40,25 +40,25 @@ const prompt = ai.definePrompt({
   name: 'notificationMessagePrompt',
   input: {schema: NotificationMessageInputSchema},
   output: {schema: NotificationMessageOutputSchema},
-  prompt: `You are an AI assistant specializing in generating personalized notification messages for appointments.
+  prompt: `Você é um assistente de IA especializado em gerar mensagens de notificação personalizadas para agendamentos.
 
-  Based on the notification type ({{{notificationType}}}), user name ({{{userName}}}), appointment details ({{{appointmentDetails}}}), company name ({{{companyName}}}), and communication channel ({{{channel}}}), create a concise and engaging notification message.
+  Com base no tipo de notificação ({{{notificationType}}}), nome do usuário ({{{userName}}}), detalhes do agendamento ({{{appointmentDetails}}}), nome da empresa ({{{companyName}}}) e canal de comunicação ({{{channel}}}), crie uma mensagem de notificação concisa e envolvente.
 
-  Ensure the message is appropriate for the channel (email or WhatsApp) and is tailored to the user and the context of the appointment.
-  The message should be friendly and professional.
+  Certifique-se de que a mensagem seja apropriada para o canal (e-mail ou WhatsApp) e seja adaptada ao usuário e ao contexto do agendamento.
+  A mensagem deve ser amigável e profissional.
 
-  Generate ONLY the message. Do not include a subject or title.
+  Gere APENAS a mensagem. Não inclua assunto ou título.
 
-  Here are some examples:
+  Aqui estão alguns exemplos:
 
-  Confirmation:
-  "Hi [User Name], your appointment with [Company Name] on [Date] at [Time] for [Service] has been confirmed."
+  Confirmação:
+  "Olá [Nome do Usuário], seu agendamento com [Nome da Empresa] em [Data] às [Hora] para [Serviço] foi confirmado."
 
-  Reminder:
-  "[User Name], friendly reminder of your upcoming appointment with [Company Name] on [Date] at [Time]."
+  Lembrete:
+  "[Nome do Usuário], lembrete amigável do seu próximo agendamento com [Nome da Empresa] em [Data] às [Hora]."
 
-  Update:
-  "[User Name], there's an update regarding your appointment with [Company Name]. [Details of the update]."
+  Atualização:
+  "[Nome do Usuário], há uma atualização sobre seu agendamento com [Nome da Empresa]. [Detalhes da atualização]."
   `,
 });
 

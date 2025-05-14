@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Register Your Company - ${APP_NAME}`,
-  description: `Join ${APP_NAME} by registering your company. Create your public scheduling page and manage appointments efficiently.`,
+  title: `Cadastre Sua Empresa - ${APP_NAME}`,
+  description: `Junte-se ao ${APP_NAME} cadastrando sua empresa. Crie sua página pública de agendamento e gerencie agendamentos eficientemente.`,
 };
 
 export default function RegisterCompanyPage() {

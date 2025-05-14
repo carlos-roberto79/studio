@@ -24,8 +24,8 @@ import type { UserRole } from "@/lib/constants";
 import { USER_ROLES } from "@/lib/constants";
 
 const formSchemaBase = {
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  email: z.string().email({ message: "Endereço de e-mail inválido." }),
+  password: z.string().min(6, { message: "A senha deve ter pelo menos 6 caracteres." }),
 };
 
 const loginSchema = z.object(formSchemaBase);
@@ -34,10 +34,10 @@ const signupSchema = z.object({
   ...formSchemaBase,
   confirmPassword: z.string(),
   role: z.enum([USER_ROLES.CLIENT, USER_ROLES.PROFESSIONAL, USER_ROLES.COMPANY_ADMIN], {
-    required_error: "You need to select a role.",
+    required_error: "Você precisa selecionar um papel.",
   }),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match.",
+  message: "As senhas não coincidem.",
   path: ["confirmPassword"],
 });
 
@@ -67,19 +67,19 @@ export function AuthForm({ mode }: AuthFormProps) {
     try {
       if (isLogin) {
         await login(values.email, values.password);
-        toast({ title: "Login Successful", description: "Welcome back!" });
+        toast({ title: "Login Bem-sucedido", description: "Bem-vindo(a) de volta!" });
         router.push("/dashboard");
       } else {
         // Ensure values has role for signup
         const signupValues = values as z.infer<typeof signupSchema>;
         await authSignup(signupValues.email, signupValues.password, signupValues.role);
-        toast({ title: "Signup Successful", description: "Welcome to EasyAgenda! Please log in." });
+        toast({ title: "Cadastro Bem-sucedido", description: "Bem-vindo(a) ao EasyAgenda! Por favor, faça login." });
         router.push("/login"); // Redirect to login after signup
       }
     } catch (error: any) {
       toast({
-        title: "Authentication Error",
-        description: error.message || "An unexpected error occurred.",
+        title: "Erro de Autenticação",
+        description: error.message || "Ocorreu um erro inesperado.",
         variant: "destructive",
       });
     }
@@ -90,10 +90,10 @@ export function AuthForm({ mode }: AuthFormProps) {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-center">
-            {isLogin ? "Welcome Back!" : "Create an Account"}
+            {isLogin ? "Bem-vindo(a) de Volta!" : "Crie uma Conta"}
           </CardTitle>
           <CardDescription className="text-center">
-            {isLogin ? "Log in to manage your appointments." : "Sign up to start scheduling with EasyAgenda."}
+            {isLogin ? "Faça login para gerenciar seus agendamentos." : "Cadastre-se para começar a agendar com o EasyAgenda."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,9 +104,9 @@ export function AuthForm({ mode }: AuthFormProps) {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>E-mail</FormLabel>
                     <FormControl>
-                      <Input placeholder="you@example.com" {...field} />
+                      <Input placeholder="voce@exemplo.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -117,7 +117,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Senha</FormLabel>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
@@ -132,7 +132,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                     name="confirmPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
+                        <FormLabel>Confirmar Senha</FormLabel>
                         <FormControl>
                           <Input type="password" placeholder="••••••••" {...field} />
                         </FormControl>
@@ -145,7 +145,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                     name="role"
                     render={({ field }) => (
                        <FormItem>
-                        <FormLabel>I am a...</FormLabel>
+                        <FormLabel>Eu sou um(a)...</FormLabel>
                         <UserRoleSelector 
                           onValueChange={field.onChange} 
                           defaultValue={field.value as UserRole} // Cast as UserRole
@@ -157,23 +157,23 @@ export function AuthForm({ mode }: AuthFormProps) {
                 </>
               )}
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Processing..." : (isLogin ? "Login" : "Sign Up")}
+                {loading ? "Processando..." : (isLogin ? "Login" : "Cadastrar")}
               </Button>
             </form>
           </Form>
           <div className="mt-6 text-center text-sm">
             {isLogin ? (
               <>
-                Don&apos;t have an account?{" "}
+                Não tem uma conta?{" "}
                 <Link href="/signup" className="font-medium text-primary hover:underline">
-                  Sign up
+                  Cadastre-se
                 </Link>
               </>
             ) : (
               <>
-                Already have an account?{" "}
+                Já tem uma conta?{" "}
                 <Link href="/login" className="font-medium text-primary hover:underline">
-                  Log in
+                  Faça login
                 </Link>
               </>
             )}

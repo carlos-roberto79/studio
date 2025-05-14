@@ -23,12 +23,12 @@ import { APP_NAME } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const navItems = [
-  { href: "/dashboard", label: "Overview", icon: <LayoutDashboard />, roles: ['client', 'professional', 'company_admin'] },
-  { href: "/dashboard/company", label: "Company Settings", icon: <Briefcase />, roles: ['company_admin'] },
-  { href: "/dashboard/professional", label: "My Schedule", icon: <CalendarPlus />, roles: ['professional'] },
-  { href: "/dashboard/client", label: "My Appointments", icon: <Users />, roles: ['client'] },
-  { href: "/notifications-tester", label: "Notification AI", icon: <BellDot />, roles: ['company_admin', 'professional'] }, // For testing AI
-  { href: "/dashboard/settings", label: "Settings", icon: <Settings />, roles: ['client', 'professional', 'company_admin'] },
+  { href: "/dashboard", label: "Visão Geral", icon: <LayoutDashboard />, roles: ['client', 'professional', 'company_admin'] },
+  { href: "/dashboard/company", label: "Config. Empresa", icon: <Briefcase />, roles: ['company_admin'] },
+  { href: "/dashboard/professional", label: "Minha Agenda", icon: <CalendarPlus />, roles: ['professional'] },
+  { href: "/dashboard/client", label: "Meus Agendamentos", icon: <Users />, roles: ['client'] },
+  { href: "/notifications-tester", label: "IA de Notificações", icon: <BellDot />, roles: ['company_admin', 'professional'] }, 
+  { href: "/dashboard/settings", label: "Configurações", icon: <Settings />, roles: ['client', 'professional', 'company_admin'] },
 ];
 
 export default function DashboardLayout({
@@ -85,7 +85,7 @@ export default function DashboardLayout({
         <SidebarFooter className="p-2">
            <Separator className="my-2" />
            <Button variant="ghost" className="w-full justify-start" onClick={logout}>
-             <LogOut className="mr-2 h-4 w-4" /> Logout
+             <LogOut className="mr-2 h-4 w-4" /> Sair
            </Button>
         </SidebarFooter>
       </Sidebar>

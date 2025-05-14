@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -21,28 +20,29 @@ import { AvailabilityCalendar } from "./AvailabilityCalendar";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarCheck, User, Briefcase } from "lucide-react";
 import Image from "next/image";
+import React from 'react'; // Added React import
 
 // Mock data
 const mockCompany = {
-  name: "Glamour Salon",
-  logo: "https://placehold.co/80x80.png?text=GS",
-  description: "Your one-stop destination for beauty and wellness. Book your appointment with our expert professionals today!",
+  name: "Salão Glamour",
+  logo: "https://placehold.co/80x80.png?text=SG",
+  description: "Seu destino único para beleza e bem-estar. Agende seu horário com nossos profissionais especialistas hoje mesmo!",
   services: [
-    { id: "1", name: "Haircut & Style", duration: "60 min", price: "$50" },
-    { id: "2", name: "Manicure", duration: "45 min", price: "$30" },
-    { id: "3", name: "Facial Treatment", duration: "75 min", price: "$80" },
-    { id: "4", name: "Massage Therapy", duration: "60 min", price: "$70" },
+    { id: "1", name: "Corte de Cabelo & Estilo", duration: "60 min", price: "R$50" },
+    { id: "2", name: "Manicure", duration: "45 min", price: "R$30" },
+    { id: "3", name: "Tratamento Facial", duration: "75 min", price: "R$80" },
+    { id: "4", name: "Massoterapia", duration: "60 min", price: "R$70" },
   ],
   professionals: [
-    { id: "prof1", name: "Jane Doe (Stylist)" },
-    { id: "prof2", name: "John Smith (Masseuse)" },
-    { id: "prof3", name: "Alice Brown (Esthetician)" },
+    { id: "prof1", name: "Joana Silva (Estilista)" },
+    { id: "prof2", name: "João Santos (Massoterapeuta)" },
+    { id: "prof3", name: "Alice Costa (Esteticista)" },
   ],
 };
 
 const appointmentSchema = z.object({
-  service: z.string().min(1, { message: "Please select a service." }),
-  professional: z.string().optional(), // Assuming professional might be auto-assigned or optional
+  service: z.string().min(1, { message: "Por favor, selecione um serviço." }),
+  professional: z.string().optional(), // Assumindo que o profissional pode ser auto-atribuído ou opcional
   notes: z.string().optional(),
 });
 
@@ -60,29 +60,29 @@ export function AppointmentScheduler({ companySlug }: { companySlug: string }) {
   const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
 
-  // In a real app, fetch company data based on companySlug
+  // Em um app real, buscar dados da empresa com base no companySlug
   const company = mockCompany;
 
   async function onSubmit(values: AppointmentFormData) {
     setLoading(true);
-    // Here, you would also get the selected date and time from AvailabilityCalendar state
-    // For now, just logging the form values
-    console.log("Appointment Data:", values);
-    console.log("Company Slug:", companySlug);
+    // Aqui, você também pegaria a data e hora selecionadas do estado do AvailabilityCalendar
+    // Por enquanto, apenas registrando os valores do formulário
+    console.log("Dados do Agendamento:", values);
+    console.log("Slug da Empresa:", companySlug);
 
     try {
-      // Simulate API call
+      // Simula chamada de API
       await new Promise(resolve => setTimeout(resolve, 1500));
       toast({
-        title: "Appointment Booked!",
-        description: `Your appointment for ${values.service} has been successfully scheduled.`,
+        title: "Agendamento Confirmado!",
+        description: `Seu horário para ${values.service} foi agendado com sucesso.`,
       });
       form.reset();
-      // Potentially reset calendar state here too
+      // Potencialmente resetar o estado do calendário aqui também
     } catch (error: any) {
        toast({
-        title: "Booking Failed",
-        description: error.message || "Could not book appointment. Please try again.",
+        title: "Falha no Agendamento",
+        description: error.message || "Não foi possível agendar o horário. Por favor, tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -96,24 +96,24 @@ export function AppointmentScheduler({ companySlug }: { companySlug: string }) {
         <CardHeader className="text-center">
           <Image 
             src={company.logo} 
-            alt={`${company.name} logo`} 
+            alt={`Logo de ${company.name}`} 
             width={80} 
             height={80} 
             className="mx-auto mb-4 rounded-md"
-            data-ai-hint="company logo building"
+            data-ai-hint="logotipo empresa prédio"
           />
           <CardTitle className="text-3xl font-bold flex items-center justify-center">
-            <Briefcase className="mr-3 h-8 w-8 text-primary" /> Book an Appointment with {company.name}
+            <Briefcase className="mr-3 h-8 w-8 text-primary" /> Agende um Horário com {company.name}
           </CardTitle>
           <CardDescription className="text-lg mt-2">{company.description}</CardDescription>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-8 items-start">
           <div>
-            <h3 className="text-xl font-semibold mb-4">1. Select Date & Time</h3>
+            <h3 className="text-xl font-semibold mb-4">1. Selecione Data e Hora</h3>
             <AvailabilityCalendar />
           </div>
           <div>
-            <h3 className="text-xl font-semibold mb-4">2. Your Details & Service</h3>
+            <h3 className="text-xl font-semibold mb-4">2. Seus Detalhes e Serviço</h3>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
@@ -121,11 +121,11 @@ export function AppointmentScheduler({ companySlug }: { companySlug: string }) {
                   name="service"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Service</FormLabel>
+                      <FormLabel>Serviço</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a service" />
+                            <SelectValue placeholder="Selecione um serviço" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -145,15 +145,15 @@ export function AppointmentScheduler({ companySlug }: { companySlug: string }) {
                   name="professional"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preferred Professional (Optional)</FormLabel>
+                      <FormLabel>Profissional de Preferência (Opcional)</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Any available professional" />
+                            <SelectValue placeholder="Qualquer profissional disponível" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="any">Any available professional</SelectItem>
+                          <SelectItem value="any">Qualquer profissional disponível</SelectItem>
                           {company.professionals.map(prof => (
                             <SelectItem key={prof.id} value={prof.id}>
                               {prof.name}
@@ -170,10 +170,10 @@ export function AppointmentScheduler({ companySlug }: { companySlug: string }) {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Additional Notes (Optional)</FormLabel>
+                      <FormLabel>Observações Adicionais (Opcional)</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Any specific requests or information..."
+                          placeholder="Alguma solicitação ou informação específica..."
                           className="resize-none"
                           {...field}
                         />
@@ -183,7 +183,7 @@ export function AppointmentScheduler({ companySlug }: { companySlug: string }) {
                   )}
                 />
                 <Button type="submit" className="w-full text-lg py-6" disabled={loading}>
-                  {loading ? "Booking..." : <> <CalendarCheck className="mr-2 h-5 w-5" /> Confirm Appointment</>}
+                  {loading ? "Agendando..." : <> <CalendarCheck className="mr-2 h-5 w-5" /> Confirmar Agendamento</>}
                 </Button>
               </form>
             </Form>
@@ -193,6 +193,3 @@ export function AppointmentScheduler({ companySlug }: { companySlug: string }) {
     </div>
   );
 }
-
-// Added React to imports
-import React from 'react';

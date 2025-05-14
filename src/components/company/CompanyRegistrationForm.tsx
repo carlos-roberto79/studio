@@ -18,17 +18,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building } from "lucide-react";
+import React from "react";
 
 const companySchema = z.object({
-  companyName: z.string().min(2, { message: "Company name must be at least 2 characters." }),
+  companyName: z.string().min(2, { message: "O nome da empresa deve ter pelo menos 2 caracteres." }),
   cnpj: z.string().refine((value) => /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(value), {
-    message: "Invalid CNPJ format. Use XX.XXX.XXX/XXXX-XX.",
+    message: "Formato de CNPJ inválido. Use XX.XXX.XXX/XXXX-XX.",
   }),
-  address: z.string().min(5, { message: "Address is too short." }),
-  phone: z.string().min(10, { message: "Phone number seems too short." }),
-  email: z.string().email({ message: "Invalid email address for the company." }),
-  publicLinkSlug: z.string().min(3, { message: "Link slug must be at least 3 characters." })
-    .regex(/^[a-z0-9-]+$/, { message: "Slug can only contain lowercase letters, numbers, and hyphens." }),
+  address: z.string().min(5, { message: "Endereço muito curto." }),
+  phone: z.string().min(10, { message: "Número de telefone parece muito curto." }),
+  email: z.string().email({ message: "Endereço de e-mail inválido para a empresa." }),
+  publicLinkSlug: z.string().min(3, { message: "O slug do link deve ter pelo menos 3 caracteres." })
+    .regex(/^[a-z0-9-]+$/, { message: "O slug pode conter apenas letras minúsculas, números e hífens." }),
 });
 
 type CompanyFormData = z.infer<typeof companySchema>;
@@ -51,20 +52,20 @@ export function CompanyRegistrationForm() {
 
   async function onSubmit(values: CompanyFormData) {
     setLoading(true);
-    console.log("Company Registration Data:", values);
-    // Here you would typically send data to your backend/Firebase
+    console.log("Dados de Cadastro da Empresa:", values);
+    // Aqui você normalmente enviaria os dados para seu backend/Firebase
     try {
-      // Simulate API call
+      // Simula chamada de API
       await new Promise(resolve => setTimeout(resolve, 1500));
       toast({
-        title: "Registration Submitted!",
-        description: `Company ${values.companyName} registration is processing. Your public link will be /agendar/${values.publicLinkSlug}`,
+        title: "Cadastro Enviado!",
+        description: `O cadastro da empresa ${values.companyName} está em processamento. Seu link público será /agendar/${values.publicLinkSlug}`,
       });
       form.reset();
     } catch (error: any) {
       toast({
-        title: "Registration Failed",
-        description: error.message || "Could not register company. Please try again.",
+        title: "Falha no Cadastro",
+        description: error.message || "Não foi possível cadastrar a empresa. Por favor, tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -77,10 +78,10 @@ export function CompanyRegistrationForm() {
       <CardHeader>
         <div className="flex items-center space-x-2 mb-2">
             <Building className="h-8 w-8 text-primary" />
-            <CardTitle className="text-2xl">Register Your Company</CardTitle>
+            <CardTitle className="text-2xl">Cadastre Sua Empresa</CardTitle>
         </div>
         <CardDescription>
-          Provide your company details to get started with EasyAgenda and create your public scheduling page.
+          Forneça os detalhes da sua empresa para começar com o EasyAgenda e criar sua página pública de agendamento.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -91,9 +92,9 @@ export function CompanyRegistrationForm() {
               name="companyName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Company Name</FormLabel>
+                  <FormLabel>Nome da Empresa</FormLabel>
                   <FormControl>
-                    <Input placeholder="Your Company LLC" {...field} />
+                    <Input placeholder="Sua Empresa LTDA" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -117,9 +118,9 @@ export function CompanyRegistrationForm() {
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Address</FormLabel>
+                  <FormLabel>Endereço</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="123 Main St, Anytown, USA" {...field} />
+                    <Textarea placeholder="Rua Principal, 123, Cidade, Estado" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -131,9 +132,9 @@ export function CompanyRegistrationForm() {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
+                    <FormLabel>Telefone</FormLabel>
                     <FormControl>
-                      <Input placeholder="(555) 123-4567" {...field} />
+                      <Input placeholder="(XX) XXXXX-XXXX" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -144,9 +145,9 @@ export function CompanyRegistrationForm() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Company Email</FormLabel>
+                    <FormLabel>E-mail da Empresa</FormLabel>
                     <FormControl>
-                      <Input placeholder="contact@yourcompany.com" {...field} />
+                      <Input placeholder="contato@suaempresa.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -158,24 +159,25 @@ export function CompanyRegistrationForm() {
               name="publicLinkSlug"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Public Scheduling Link Slug</FormLabel>
+                  <FormLabel>Slug do Link Público de Agendamento</FormLabel>
                   <FormControl>
                     <div className="flex items-center">
                       <span className="px-3 py-2 bg-muted rounded-l-md border border-r-0 text-sm text-muted-foreground">
                         /agendar/
                       </span>
-                      <Input placeholder="your-company-name" {...field} className="rounded-l-none"/>
+                      <Input placeholder="sua-empresa" {...field} className="rounded-l-none"/>
                     </div>
                   </FormControl>
                   <FormDescription>
-                    This will be part of your public link (e.g., easyagenda.com/agendar/{field.value || "your-company-name"}).
+                    Isso fará parte do seu link público (ex: easyagenda.com/agendar/{field.value || "sua-empresa"}).
+                    Use letras minúsculas, números e hífens.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Registering..." : "Register Company"}
+              {loading ? "Cadastrando..." : "Cadastrar Empresa"}
             </Button>
           </form>
         </Form>

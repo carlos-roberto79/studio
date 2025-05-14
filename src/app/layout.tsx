@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: APP_NAME,
     template: `%s | ${APP_NAME}`,
   },
-  description: 'Simplify your appointments with EasyAgenda. Schedule, manage, and get smart notifications.',
+  description: 'Simplifique seus agendamentos com o EasyAgenda. Agende, gerencie e receba notificações inteligentes.',
   icons: {
     icon: '/favicon.ico', // Placeholder, no actual favicon generated
   }
@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased flex flex-col min-h-screen`}>
         <AuthProvider>
           <Navbar />

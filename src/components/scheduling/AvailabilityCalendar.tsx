@@ -9,8 +9,8 @@ import type { DateRange } from "react-day-picker";
 
 // Mock available time slots for a selected day
 const mockTimeSlots = {
-  "2024-07-15": ["09:00 AM", "10:00 AM", "02:00 PM", "03:00 PM"],
-  "2024-07-16": ["09:30 AM", "11:00 AM", "01:00 PM"],
+  "2024-07-15": ["09:00", "10:00", "14:00", "15:00"],
+  "2024-07-16": ["09:30", "11:00", "13:00"],
   // Add more dates and slots as needed
 };
 
@@ -39,7 +39,7 @@ export function AvailabilityCalendar() {
   return (
     <Card className="w-full max-w-xl shadow-lg">
       <CardHeader>
-        <CardTitle className="text-xl">Select Date and Time</CardTitle>
+        <CardTitle className="text-xl">Selecione Data e Hora</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col md:flex-row gap-6">
         <div className="flex-shrink-0">
@@ -49,11 +49,18 @@ export function AvailabilityCalendar() {
             onSelect={setDate}
             className="rounded-md border p-0"
             disabled={disabledDays}
+            locale={{
+              localize: {
+                month: n => ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][n],
+                day: n => ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][n]
+              },
+              formatLong: {}
+            } as any} // Using 'as any' to bypass strict type checking for simplified locale
           />
         </div>
         <div className="flex-grow space-y-4">
           <h3 className="font-semibold text-lg">
-            Available Slots for {date ? date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : "selected date"}
+            Horários disponíveis para {date ? date.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : "data selecionada"}
           </h3>
           {availableSlotsForDay.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -69,12 +76,12 @@ export function AvailabilityCalendar() {
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">No available slots for this day. Please select another date.</p>
+            <p className="text-muted-foreground">Nenhum horário disponível para este dia. Por favor, selecione outra data.</p>
           )}
           {selectedTime && date && (
             <div className="mt-4 p-3 bg-secondary rounded-md">
-              <p className="font-semibold">You selected:</p>
-              <p>{date.toLocaleDateString()} at <Badge>{selectedTime}</Badge></p>
+              <p className="font-semibold">Você selecionou:</p>
+              <p>{date.toLocaleDateString('pt-BR')} às <Badge>{selectedTime}</Badge></p>
             </div>
           )}
         </div>

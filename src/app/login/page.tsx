@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Login to ${APP_NAME}`,
-  description: `Log in to your ${APP_NAME} account to manage your appointments.`,
+  title: `Login no ${APP_NAME}`,
+  description: `Faça login na sua conta ${APP_NAME} para gerenciar seus agendamentos.`,
 };
 
 export default function LoginPage() {

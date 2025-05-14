@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Sign Up for ${APP_NAME}`,
-  description: `Create an account with ${APP_NAME} to start scheduling appointments effortlessly.`,
+  title: `Cadastre-se no ${APP_NAME}`,
+  description: `Crie uma conta no ${APP_NAME} para começar a agendar consultas sem esforço.`,
 };
 
 export default function SignupPage() {

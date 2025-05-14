@@ -10,35 +10,35 @@ export function Footer() {
           <div>
             <h3 className="text-lg font-semibold text-foreground">{APP_NAME}</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Simplifying your appointments, effortlessly.
+              Simplificando seus agendamentos, sem esforço.
             </p>
           </div>
           <div>
-            <h4 className="text-md font-semibold text-foreground">Quick Links</h4>
+            <h4 className="text-md font-semibold text-foreground">Links Rápidos</h4>
             <ul className="mt-2 space-y-1">
-              <li><Link href="/#features" className="text-sm text-muted-foreground hover:text-primary">Features</Link></li>
-              <li><Link href="/#pricing" className="text-sm text-muted-foreground hover:text-primary">Pricing</Link></li>
-              <li><Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">Contact Us</Link></li>
-              <li><Link href="/terms" className="text-sm text-muted-foreground hover:text-primary">Terms of Service</Link></li>
-              <li><Link href="/privacy" className="text-sm text-muted-foreground hover:text-primary">Privacy Policy</Link></li>
+              <li><Link href="/#features" className="text-sm text-muted-foreground hover:text-primary">Recursos</Link></li>
+              <li><Link href="/#pricing" className="text-sm text-muted-foreground hover:text-primary">Preços</Link></li>
+              <li><Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">Fale Conosco</Link></li>
+              <li><Link href="/terms" className="text-sm text-muted-foreground hover:text-primary">Termos de Serviço</Link></li>
+              <li><Link href="/privacy" className="text-sm text-muted-foreground hover:text-primary">Política de Privacidade</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="text-md font-semibold text-foreground">Contact</h4>
+            <h4 className="text-md font-semibold text-foreground">Contato</h4>
             <p className="mt-2 text-sm text-muted-foreground">
-              123 Easy Street, Schedule City, CA 90210
+              Rua da Facilidade, 123, Cidade Agendada, CA 90210
             </p>
             <p className="text-sm text-muted-foreground">
-              Email: support@easyagenda.com
+              Email: suporte@easyagenda.com
             </p>
             <p className="text-sm text-muted-foreground">
-              Phone: (123) 456-7890
+              Telefone: (123) 456-7890
             </p>
           </div>
         </div>
         <div className="mt-8 border-t pt-8 text-center">
           <p className="flex items-center justify-center text-sm text-muted-foreground">
-            <Copyright className="mr-1 h-4 w-4" /> {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+            <Copyright className="mr-1 h-4 w-4" /> {new Date().getFullYear()} {APP_NAME}. Todos os direitos reservados.
           </p>
         </div>
       </div>

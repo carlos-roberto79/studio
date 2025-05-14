@@ -14,8 +14,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const companyName = companySlug.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()); // Basic slug to title
   
   return {
-    title: `Schedule with ${companyName} - ${APP_NAME}`,
-    description: `Book your appointment with ${companyName} through ${APP_NAME}. Easy and convenient online scheduling.`,
+    title: `Agende com ${companyName} - ${APP_NAME}`,
+    description: `Marque seu horário com ${companyName} através do ${APP_NAME}. Agendamento online fácil e conveniente.`,
   };
 }
 

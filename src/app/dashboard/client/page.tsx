@@ -9,26 +9,26 @@ import React, { useEffect } from 'react';
 
 // Mock data
 const upcomingClientAppointments = [
-  { id: "1", date: "Tomorrow, June 25th", time: "02:00 PM", service: "Dental Check-up", professional: "Dr. Alice Smith", company: "Bright Smiles Dental", companyLogo: "https://placehold.co/40x40.png?text=BS" },
-  { id: "2", date: "July 1st", time: "04:30 PM", service: "Haircut & Style", professional: "John Doe", company: "Trendy Cuts Salon", companyLogo: "https://placehold.co/40x40.png?text=TC" },
+  { id: "1", date: "Amanhã, 25 de Junho", time: "14:00", service: "Check-up Odontológico", professional: "Dr. Alice Silva", company: "Sorrisos Brilhantes Dental", companyLogo: "https://placehold.co/40x40.png?text=SB" },
+  { id: "2", date: "1 de Julho", time: "16:30", service: "Corte & Estilo", professional: "João Dantas", company: "Salão Cortes Modernos", companyLogo: "https://placehold.co/40x40.png?text=CM" },
 ];
 
 const clientStats = [
-    { title: "Upcoming Appointments", value: "2", icon: <CalendarPlus className="h-6 w-6 text-primary" /> },
-    { title: "Past Appointments", value: "15", icon: <History className="h-6 w-6 text-primary" /> },
-    { title: "Favorite Professionals", value: "3", icon: <Star className="h-6 w-6 text-primary" /> },
+    { title: "Próximos Agendamentos", value: "2", icon: <CalendarPlus className="h-6 w-6 text-primary" /> },
+    { title: "Agendamentos Passados", value: "15", icon: <History className="h-6 w-6 text-primary" /> },
+    { title: "Profissionais Favoritos", value: "3", icon: <Star className="h-6 w-6 text-primary" /> },
 ];
 
 export default function ClientPage() {
   useEffect(() => {
-    document.title = `Client Dashboard - ${APP_NAME}`;
+    document.title = `Painel do Cliente - ${APP_NAME}`;
   }, []);
 
   return (
     <div className="space-y-8">
       <CardHeader className="px-0">
-        <CardTitle className="text-3xl font-bold">Client Dashboard</CardTitle>
-        <CardDescription>View your upcoming appointments and manage your bookings.</CardDescription>
+        <CardTitle className="text-3xl font-bold">Painel do Cliente</CardTitle>
+        <CardDescription>Veja seus próximos agendamentos e gerencie suas reservas.</CardDescription>
       </CardHeader>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -40,7 +40,7 @@ export default function ClientPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-               {/* Optional: <p className="text-xs text-muted-foreground">View all</p> */}
+               {/* Optional: <p className="text-xs text-muted-foreground">Ver todos</p> */}
             </CardContent>
           </Card>
         ))}
@@ -48,7 +48,7 @@ export default function ClientPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>Your Upcoming Appointments</CardTitle>
+          <CardTitle>Seus Próximos Agendamentos</CardTitle>
         </CardHeader>
         <CardContent>
           {upcomingClientAppointments.length > 0 ? (
@@ -57,24 +57,24 @@ export default function ClientPage() {
                 <li key={appt.id} className="p-4 border rounded-lg hover:bg-secondary/50">
                     <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-3">
-                            <Image src={appt.companyLogo} alt={appt.company} width={40} height={40} className="rounded-md" data-ai-hint="company logo building" />
+                            <Image src={appt.companyLogo} alt={appt.company} width={40} height={40} className="rounded-md" data-ai-hint="logotipo empresa prédio" />
                             <div>
                                 <p className="font-semibold text-lg">{appt.service}</p>
-                                <p className="text-sm text-muted-foreground">with {appt.professional} at {appt.company}</p>
+                                <p className="text-sm text-muted-foreground">com {appt.professional} em {appt.company}</p>
                                 <p className="text-sm text-muted-foreground">{appt.date} - {appt.time}</p>
                             </div>
                         </div>
-                         <Button variant="outline" size="sm">Manage</Button>
+                         <Button variant="outline" size="sm">Gerenciar</Button>
                     </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-muted-foreground">You have no upcoming appointments. Ready to book one?</p>
+            <p className="text-muted-foreground">Você não tem próximos agendamentos. Pronto para marcar um?</p>
           )}
            <Button className="mt-6" asChild>
             <Link href="/schedule/example-company"> {/* Placeholder link */}
-              <CalendarPlus className="mr-2 h-4 w-4" /> Book a New Appointment
+              <CalendarPlus className="mr-2 h-4 w-4" /> Marcar Novo Agendamento
             </Link>
           </Button>
         </CardContent>
@@ -82,17 +82,17 @@ export default function ClientPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>Account Actions</CardTitle>
+          <CardTitle>Ações da Conta</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <Button size="lg" variant="outline" asChild>
             <Link href="/dashboard/client/history">
-              <History className="mr-2 h-5 w-5" /> View Appointment History
+              <History className="mr-2 h-5 w-5" /> Ver Histórico de Agendamentos
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
             <Link href="/dashboard/settings">
-              <Settings className="mr-2 h-5 w-5" /> Account Settings
+              <Settings className="mr-2 h-5 w-5" /> Configurações da Conta
             </Link>
           </Button>
         </CardContent>

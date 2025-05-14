@@ -3,34 +3,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, UserCheck, Settings, Edit3 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image"; // Import Image
+import Image from "next/image"; 
 import { APP_NAME } from "@/lib/constants";
 import React, { useEffect } from 'react';
 
 // Mock data
 const upcomingAppointments = [
-  { id: "1", time: "10:00 AM", clientName: "Alice Johnson", service: "Haircut", avatar: "https://placehold.co/40x40.png?text=AJ" },
-  { id: "2", time: "11:30 AM", clientName: "Bob Williams", service: "Consultation", avatar: "https://placehold.co/40x40.png?text=BW" },
-  { id: "3", time: "02:00 PM", clientName: "Carol Davis", service: "Check-up", avatar: "https://placehold.co/40x40.png?text=CD" },
+  { id: "1", time: "10:00", clientName: "Alice Johnson", service: "Corte de Cabelo", avatar: "https://placehold.co/40x40.png?text=AJ" },
+  { id: "2", time: "11:30", clientName: "Bob Williams", service: "Consulta", avatar: "https://placehold.co/40x40.png?text=BW" },
+  { id: "3", time: "14:00", clientName: "Carol Davis", service: "Check-up", avatar: "https://placehold.co/40x40.png?text=CD" },
 ];
 
 const professionalStats = [
-    { title: "Appointments Today", value: "7", icon: <Calendar className="h-6 w-6 text-primary" /> },
-    { title: "Available Slots", value: "3", icon: <Clock className="h-6 w-6 text-primary" /> },
-    { title: "Total Clients", value: "48", icon: <UserCheck className="h-6 w-6 text-primary" /> },
+    { title: "Agendamentos Hoje", value: "7", icon: <Calendar className="h-6 w-6 text-primary" /> },
+    { title: "Horários Disponíveis", value: "3", icon: <Clock className="h-6 w-6 text-primary" /> },
+    { title: "Total de Clientes", value: "48", icon: <UserCheck className="h-6 w-6 text-primary" /> },
 ];
 
 
 export default function ProfessionalPage() {
   useEffect(() => {
-    document.title = `Professional Dashboard - ${APP_NAME}`;
+    document.title = `Painel do Profissional - ${APP_NAME}`;
   }, []);
 
   return (
     <div className="space-y-8">
       <CardHeader className="px-0">
-        <CardTitle className="text-3xl font-bold">Professional Dashboard</CardTitle>
-        <CardDescription>Manage your schedule, appointments, and availability.</CardDescription>
+        <CardTitle className="text-3xl font-bold">Painel do Profissional</CardTitle>
+        <CardDescription>Gerencie sua agenda, agendamentos e disponibilidade.</CardDescription>
       </CardHeader>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -42,7 +42,7 @@ export default function ProfessionalPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              {/* Optional: <p className="text-xs text-muted-foreground">+2 from yesterday</p> */}
+              {/* Optional: <p className="text-xs text-muted-foreground">+2 de ontem</p> */}
             </CardContent>
           </Card>
         ))}
@@ -50,7 +50,7 @@ export default function ProfessionalPage() {
       
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>Today&apos;s Upcoming Appointments</CardTitle>
+          <CardTitle>Próximos Agendamentos de Hoje</CardTitle>
         </CardHeader>
         <CardContent>
           {upcomingAppointments.length > 0 ? (
@@ -58,7 +58,7 @@ export default function ProfessionalPage() {
               {upcomingAppointments.map((appt) => (
                 <li key={appt.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-secondary/50">
                   <div className="flex items-center space-x-3">
-                    <Image src={appt.avatar} alt={appt.clientName} width={40} height={40} className="rounded-full" data-ai-hint="person avatar" />
+                    <Image src={appt.avatar} alt={appt.clientName} width={40} height={40} className="rounded-full" data-ai-hint="avatar pessoa" />
                     <div>
                       <p className="font-semibold">{appt.clientName}</p>
                       <p className="text-sm text-muted-foreground">{appt.service}</p>
@@ -66,40 +66,40 @@ export default function ProfessionalPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-medium">{appt.time}</p>
-                    <Button variant="link" size="sm" className="p-0 h-auto text-primary">View Details</Button>
+                    <Button variant="link" size="sm" className="p-0 h-auto text-primary">Ver Detalhes</Button>
                   </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-muted-foreground">No upcoming appointments for today.</p>
+            <p className="text-muted-foreground">Nenhum agendamento próximo para hoje.</p>
           )}
         </CardContent>
       </Card>
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>Manage Your Schedule</CardTitle>
+          <CardTitle>Gerencie Sua Agenda</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <Button size="lg" variant="outline" asChild>
             <Link href="/dashboard/professional/availability">
-              <Clock className="mr-2 h-5 w-5" /> Set/Update Availability
+              <Clock className="mr-2 h-5 w-5" /> Definir/Atualizar Disponibilidade
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
             <Link href="/dashboard/professional/calendar">
-              <Calendar className="mr-2 h-5 w-5" /> View Full Calendar
+              <Calendar className="mr-2 h-5 w-5" /> Ver Calendário Completo
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
             <Link href="/dashboard/professional/profile">
-              <Edit3 className="mr-2 h-5 w-5" /> Edit My Profile
+              <Edit3 className="mr-2 h-5 w-5" /> Editar Meu Perfil
             </Link>
           </Button>
            <Button size="lg" variant="outline" asChild>
             <Link href="/dashboard/settings">
-              <Settings className="mr-2 h-5 w-5" /> Account Settings
+              <Settings className="mr-2 h-5 w-5" /> Configurações da Conta
             </Link>
           </Button>
         </CardContent>

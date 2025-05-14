@@ -6,81 +6,74 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowRight, Briefcase, CalendarCheck, UserCircle } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
-import type { Metadata } from "next"; // This is not how Metadata is used in client components
-
-// export const metadata: Metadata = { // Metadata can't be used in client components directly
-//   title: `Dashboard - ${APP_NAME}`,
-// };
-
+import React, { useEffect } from 'react'; // Added React to imports for useEffect
 
 export default function DashboardPage() {
   const { user, role, loading } = useAuth();
 
+  useEffect(() => {
+    document.title = `Painel - ${APP_NAME}`;
+  }, []);
+
   if (loading) {
-    return <div className="text-center p-10">Loading dashboard...</div>;
+    return <div className="text-center p-10">Carregando painel...</div>;
   }
 
   if (!user) {
-    return <div className="text-center p-10">Redirecting to login...</div>; // Should be handled by layout
+    return <div className="text-center p-10">Redirecionando para o login...</div>; // Deve ser tratado pelo layout
   }
   
-  // Set document title using useEffect for client components
-  useEffect(() => {
-    document.title = `Dashboard - ${APP_NAME}`;
-  }, []);
-
-
   const getRoleSpecificInfo = () => {
     switch (role) {
       case "company_admin":
         return {
-          title: "Company Dashboard",
-          description: "Manage your business, professionals, and view analytics.",
+          title: "Painel da Empresa",
+          description: "Gerencie seu negócio, profissionais e veja análises.",
           cta: {
-            text: "Manage Company",
+            text: "Gerenciar Empresa",
             href: "/dashboard/company",
             icon: <Briefcase className="mr-2 h-4 w-4" />
           },
           stats: [
-            { label: "Total Appointments", value: "150" },
-            { label: "Active Professionals", value: "5" },
-            { label: "Revenue This Month", value: "$5,200" },
+            { label: "Total de Agendamentos", value: "150" },
+            { label: "Profissionais Ativos", value: "5" },
+            { label: "Receita Este Mês", value: "R$5.200" },
           ]
         };
       case "professional":
         return {
-          title: "Professional Dashboard",
-          description: "View your schedule, manage appointments, and update your availability.",
+          title: "Painel do Profissional",
+          description: "Veja sua agenda, gerencie agendamentos e atualize sua disponibilidade.",
            cta: {
-            text: "View My Schedule",
+            text: "Ver Minha Agenda",
             href: "/dashboard/professional",
             icon: <CalendarCheck className="mr-2 h-4 w-4" />
           },
            stats: [
-            { label: "Upcoming Appointments", value: "12" },
-            { label: "Available Slots Today", value: "3" },
-            { label: "Completed This Week", value: "25" },
+            { label: "Próximos Agendamentos", value: "12" },
+            { label: "Horários Disponíveis Hoje", value: "3" },
+            { label: "Concluídos Esta Semana", value: "25" },
           ]
         };
       case "client":
         return {
-          title: "Client Dashboard",
-          description: "View your upcoming appointments and manage your bookings.",
+          title: "Painel do Cliente",
+          description: "Veja seus próximos agendamentos e gerencie suas reservas.",
           cta: {
-            text: "My Appointments",
+            text: "Meus Agendamentos",
             href: "/dashboard/client",
             icon: <UserCircle className="mr-2 h-4 w-4" />
           },
           stats: [
-            { label: "Upcoming Appointments", value: "2" },
-            { label: "Past Appointments", value: "8" },
-            { label: "Favorite Professionals", value: "1" },
+            { label: "Próximos Agendamentos", value: "2" },
+            { label: "Agendamentos Passados", value: "8" },
+            { label: "Profissionais Favoritos", value: "1" },
           ]
         };
       default:
         return {
-          title: "Welcome to your Dashboard!",
-          description: "Manage your activities and settings here.",
+          title: "Bem-vindo(a) ao seu Painel!",
+          description: "Gerencie suas atividades e configurações aqui.",
           cta: null,
           stats: []
         };
@@ -98,7 +91,7 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <p className="mb-6">
-            Welcome, {user.email}! You are logged in as a {role}.
+            Bem-vindo(a), {user.email}! Você está logado como {role}.
           </p>
           {roleInfo.cta && (
             <Button asChild size="lg">
@@ -125,24 +118,21 @@ export default function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle>Ações Rápidas</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {role === 'client' && (
-            <Button variant="outline" asChild><Link href="/schedule/example-company">Book New Appointment</Link></Button>
+            <Button variant="outline" asChild><Link href="/schedule/example-company">Agendar Novo Horário</Link></Button>
           )}
           {role === 'professional' && (
-            <Button variant="outline" asChild><Link href="/dashboard/professional/availability">Set Availability</Link></Button>
+            <Button variant="outline" asChild><Link href="/dashboard/professional/availability">Definir Disponibilidade</Link></Button>
           )}
           {role === 'company_admin' && (
-            <Button variant="outline"asChild><Link href="/dashboard/company/professionals">Manage Professionals</Link></Button>
+            <Button variant="outline"asChild><Link href="/dashboard/company/professionals">Gerenciar Profissionais</Link></Button>
           )}
-          <Button variant="outline" asChild><Link href="/dashboard/settings">Account Settings</Link></Button>
+          <Button variant="outline" asChild><Link href="/dashboard/settings">Configurações da Conta</Link></Button>
         </CardContent>
       </Card>
     </div>
   );
 }
-
-// Added React to imports for useEffect
-import React, { useEffect } from 'react';
