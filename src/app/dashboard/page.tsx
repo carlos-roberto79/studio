@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -128,7 +129,8 @@ export default function DashboardPage() {
             <Button variant="outline" asChild><Link href="/dashboard/professional/availability">Definir Disponibilidade</Link></Button>
           )}
           {role === 'company_admin' && (
-            <Button variant="outline"asChild><Link href="/dashboard/company/professionals">Gerenciar Profissionais</Link></Button>
+            // Corrigido o link para /dashboard/company onde os profissionais são gerenciados
+            <Button variant="outline"asChild><Link href="/dashboard/company">Gerenciar Profissionais</Link></Button> 
           )}
           <Button variant="outline" asChild><Link href="/dashboard/settings">Configurações da Conta</Link></Button>
         </CardContent>
