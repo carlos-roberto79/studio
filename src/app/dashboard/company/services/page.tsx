@@ -9,7 +9,7 @@ import { APP_NAME } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, PlusCircle, Edit, Trash2, ShoppingBag, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, PlusCircle, Edit, Trash2, ShoppingBag, Eye, EyeOff, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -24,29 +24,40 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // Mock data for services
-const mockServices = [
-  { id: "1", name: "Corte de Cabelo Masculino", category: "Beleza e Estética", duration: 45, active: true, image: "https://placehold.co/64x64.png?text=CM", price: "R$ 50,00" },
-  { id: "2", name: "Consulta Psicológica Online", category: "Saúde e Bem-estar", duration: 50, active: true, image: "https://placehold.co/64x64.png?text=CP", price: "R$ 120,00" },
-  { id: "3", name: "Manicure e Pedicure", category: "Beleza e Estética", duration: 90, active: false, image: "https://placehold.co/64x64.png?text=MP", price: "R$ 75,00" },
-  { id: "4", name: "Consultoria de Marketing Digital", category: "Consultoria", duration: 60, active: true, image: "https://placehold.co/64x64.png?text=MD", price: "R$ 250,00/hora" },
+const mockServicesData = [
+  { id: "1", name: "Corte de Cabelo Masculino", category: "Beleza e Estética", duration: 45, active: true, image: "https://placehold.co/64x64.png?text=CM", price: "R$ 50,00", uniqueSchedulingLink: "corte-masculino" },
+  { id: "2", name: "Consulta Psicológica Online", category: "Saúde e Bem-estar", duration: 50, active: true, image: "https://placehold.co/64x64.png?text=CP", price: "R$ 120,00", uniqueSchedulingLink: "consulta-psico" },
+  { id: "3", name: "Manicure e Pedicure", category: "Beleza e Estética", duration: 90, active: false, image: "https://placehold.co/64x64.png?text=MP", price: "R$ 75,00", uniqueSchedulingLink: "manicure-pedicure" },
+  { id: "4", name: "Consultoria de Marketing Digital", category: "Consultoria", duration: 60, active: true, image: "https://placehold.co/64x64.png?text=MD", price: "R$ 250,00/hora", uniqueSchedulingLink: "consultoria-mkt" },
 ];
 
 export default function CompanyServicesPage() {
   const { toast } = useToast();
-  const [services, setServices] = useState(mockServices);
+  const [services, setServices] = useState(mockServicesData);
 
   useEffect(() => {
     document.title = `Gerenciar Serviços - ${APP_NAME}`;
   }, []);
 
   const handleDeleteService = (serviceId: string) => {
-    // Simulate API call then update state
     console.log("Excluindo serviço:", serviceId);
     setServices(prevServices => prevServices.filter(service => service.id !== serviceId));
     toast({
       title: "Serviço Excluído",
       description: "O serviço foi removido da sua lista.",
     });
+  };
+
+  const handleDuplicateService = (serviceId: string) => {
+    const serviceToDuplicate = services.find(s => s.id === serviceId);
+    if (serviceToDuplicate) {
+      // Mock duplication - in a real app, this would redirect to an add page with pre-filled data
+      console.log("Duplicando serviço:", serviceToDuplicate.name);
+      toast({
+        title: "Serviço Duplicado (Mock)",
+        description: `O serviço "${serviceToDuplicate.name}" seria duplicado. Implementação real necessária.`,
+      });
+    }
   };
 
   const toggleServiceStatus = (serviceId: string) => {
@@ -91,10 +102,9 @@ export default function CompanyServicesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px]">Imagem</TableHead>
+                  <TableHead className="w-[64px]">Imagem</TableHead>
                   <TableHead>Nome do Serviço</TableHead>
                   <TableHead>Categoria</TableHead>
-                  <TableHead>Duração</TableHead>
                   <TableHead>Preço</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -104,11 +114,10 @@ export default function CompanyServicesPage() {
                 {services.map((service) => (
                   <TableRow key={service.id}>
                     <TableCell>
-                      <Image src={service.image} alt={service.name} width={48} height={48} className="rounded-md object-cover" data-ai-hint="ilustração serviço" />
+                      <Image src={service.image} alt={service.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint="ilustração serviço" />
                     </TableCell>
                     <TableCell className="font-medium">{service.name}</TableCell>
                     <TableCell>{service.category}</TableCell>
-                    <TableCell>{service.duration} min</TableCell>
                     <TableCell>{service.price}</TableCell>
                     <TableCell>
                       <Badge variant={service.active ? "default" : "outline"} className={service.active ? "bg-green-500 hover:bg-green-600" : "bg-red-100 text-red-700 hover:bg-red-200"}>
@@ -118,6 +127,9 @@ export default function CompanyServicesPage() {
                     <TableCell className="text-right space-x-1">
                       <Button variant="ghost" size="icon" onClick={() => toggleServiceStatus(service.id)} title={service.active ? "Desativar serviço" : "Ativar serviço"}>
                         {service.active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                       <Button variant="ghost" size="icon" onClick={() => handleDuplicateService(service.id)} title="Duplicar serviço">
+                        <Copy className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" asChild title="Editar serviço">
                         <Link href={`/dashboard/company/services/edit/${service.id}`}>
@@ -168,5 +180,3 @@ export default function CompanyServicesPage() {
     </div>
   );
 }
-
-    

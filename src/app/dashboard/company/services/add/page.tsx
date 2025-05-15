@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { APP_NAME } from "@/lib/constants";
-import { ArrowLeft, Save, Trash2, ImagePlus, XCircle } from "lucide-react";
+import { ArrowLeft, Save, Trash2, ImagePlus, XCircle, DollarSign, Percent, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Form,
@@ -28,6 +28,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+
+const MOCK_PROFESSIONALS = [
+  { id: "prof1", name: "Dr. João Silva" },
+  { id: "prof2", name: "Dra. Maria Oliveira" },
+  { id: "prof3", name: "Carlos Souza (Esteticista)" },
+];
 
 const serviceCategories = [
   "Beleza e Estética",
@@ -42,12 +48,41 @@ const serviceCategories = [
 const serviceSchema = z.object({
   name: z.string().min(3, "O nome do serviço deve ter pelo menos 3 caracteres."),
   description: z.string().optional(),
-  category: z.string().min(1, "Selecione uma categoria."),
+  professionals: z.array(z.string()).optional().default([]).describe("Profissionais que realizam este serviço"),
+  category: z.string().min(1, "A categoria é obrigatória."),
+  image: z.string().optional(),
   duration: z.coerce.number().int().positive("A duração deve ser um número positivo.").min(5, "Duração mínima de 5 minutos."),
   displayDuration: z.boolean().default(true),
+  uniqueSchedulingLink: z.string().min(3, "O link deve ter pelo menos 3 caracteres.").regex(/^[a-z0-9-]+$/, { message: "O link pode conter apenas letras minúsculas, números e hífens." }),
   price: z.string().min(1, "O preço é obrigatório.").regex(/^\d+(,\d{2})?$/, "Formato de preço inválido (ex: 50 ou 50,00)"),
+  commissionType: z.enum(["fixed", "percentage"]).optional(),
+  commissionValue: z.coerce.number().nonnegative("A comissão não pode ser negativa.").optional(),
+  hasBookingFee: z.boolean().default(false),
+  bookingFeeValue: z.coerce.number().nonnegative("A taxa não pode ser negativa.").optional(),
+  simultaneousAppointmentsPerUser: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por usuário.").default(1),
+  simultaneousAppointmentsPerSlot: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por horário.").default(1),
+  simultaneousAppointmentsPerSlotAutomatic: z.boolean().default(false),
+  blockAfter24Hours: z.boolean().default(false),
+  intervalBetweenSlots: z.coerce.number().int().min(0, "O intervalo não pode ser negativo.").default(0),
+  confirmationType: z.enum(["manual", "automatic"]).default("automatic"),
+  specificAvailability: z.string().optional().describe("Regras de disponibilidade específica para este serviço."),
   active: z.boolean().default(true),
-  image: z.string().optional(),
+}).refine(data => {
+  if (data.hasBookingFee && (data.bookingFeeValue === undefined || data.bookingFeeValue < 0)) {
+    return false;
+  }
+  return true;
+}, {
+  message: "O valor da taxa de agendamento é obrigatório e deve ser positivo se a taxa estiver habilitada.",
+  path: ["bookingFeeValue"],
+}).refine(data => {
+    if (data.commissionType && (data.commissionValue === undefined || data.commissionValue < 0)) {
+        return false;
+    }
+    return true;
+}, {
+    message: "O valor da comissão é obrigatório e deve ser positivo se um tipo de comissão for selecionado.",
+    path: ["commissionValue"],
 });
 
 type ServiceFormData = z.infer<typeof serviceSchema>;
@@ -63,10 +98,23 @@ export default function AddServicePage() {
     defaultValues: {
       name: "",
       description: "",
+      professionals: [],
       category: "",
       duration: 60,
       displayDuration: true,
+      uniqueSchedulingLink: "",
       price: "",
+      commissionType: "percentage",
+      commissionValue: 0,
+      hasBookingFee: false,
+      bookingFeeValue: 0,
+      simultaneousAppointmentsPerUser: 1,
+      simultaneousAppointmentsPerSlot: 1,
+      simultaneousAppointmentsPerSlotAutomatic: false,
+      blockAfter24Hours: false,
+      intervalBetweenSlots: 10,
+      confirmationType: "automatic",
+      specificAvailability: "",
       active: true,
       image: "https://placehold.co/300x200.png?text=Serviço",
     },
@@ -84,7 +132,7 @@ export default function AddServicePage() {
       reader.onloadend = () => {
         const result = reader.result as string;
         setImagePreview(result);
-        form.setValue("image", result);
+        form.setValue("image", result, { shouldValidate: true });
       };
       reader.readAsDataURL(file);
     }
@@ -93,7 +141,7 @@ export default function AddServicePage() {
   const removeImage = () => {
     const placeholder = "https://placehold.co/300x200.png?text=Serviço";
     setImagePreview(placeholder);
-    form.setValue("image", placeholder);
+    form.setValue("image", placeholder, { shouldValidate: true });
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; 
     }
@@ -102,20 +150,23 @@ export default function AddServicePage() {
   const onSubmit = async (data: ServiceFormData) => {
     setIsSaving(true);
     console.log("Salvando serviço:", data);
+    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     toast({
       title: "Serviço Adicionado!",
       description: `O serviço "${data.name}" foi cadastrado com sucesso.`,
     });
-    form.reset();
+    form.reset(); // Reset form to default values
     removeImage(); 
     setIsSaving(false);
   };
 
+  const watchHasBookingFee = form.watch("hasBookingFee");
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button variant="outline" size="icon" asChild>
               <Link href="/dashboard/company/services">
@@ -127,11 +178,11 @@ export default function AddServicePage() {
             </CardHeader>
           </div>
           <div className="flex items-center gap-2">
-             <Controller
-                name="active"
+             <FormField
                 control={form.control}
+                name="active"
                 render={({ field }) => (
-                  <FormItem className="flex items-center space-x-2">
+                  <FormItem className="flex items-center space-x-2 mb-0">
                     <FormControl>
                       <Switch
                         id="service-active-add"
@@ -139,11 +190,10 @@ export default function AddServicePage() {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <Label htmlFor="service-active-add" className="text-sm mb-0">Ativo</Label>
+                    <Label htmlFor="service-active-add" className="text-sm mb-0 pt-0">Ativo</Label>
                   </FormItem>
                 )}
               />
-            <Button type="button" variant="destructive" disabled> <Trash2 className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Excluir</span></Button>
             <Button type="submit" disabled={isSaving}>
               <Save className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{isSaving ? "Salvando..." : "Salvar"}</span>
             </Button>
@@ -153,9 +203,9 @@ export default function AddServicePage() {
         <Tabs defaultValue="configurations" className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
             <TabsTrigger value="configurations">Configurações</TabsTrigger>
-            <TabsTrigger value="availability" disabled>Disponibilidade</TabsTrigger>
-            <TabsTrigger value="users" disabled>Profissionais</TabsTrigger>
-            <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger>
+            <TabsTrigger value="availability" disabled>Disponibilidade</TabsTrigger> {/* Placeholder */}
+            <TabsTrigger value="professionalsTab" disabled>Profissionais</TabsTrigger> {/* Placeholder */}
+            <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger> {/* Placeholder */}
           </TabsList>
 
           <TabsContent value="configurations">
@@ -168,7 +218,7 @@ export default function AddServicePage() {
                         <FormItem>
                           <FormLabel>Nome do Serviço</FormLabel>
                           <FormControl>
-                            <Input placeholder="Ex: Psicoterapia Breve (Patrus)" {...field} />
+                            <Input placeholder="Ex: Psicoterapia Breve" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -179,32 +229,74 @@ export default function AddServicePage() {
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Descrição</FormLabel>
+                          <FormLabel>Descrição Detalhada</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="Transforme sua vida com..." rows={4} {...field} />
+                            <Textarea placeholder="Descreva o serviço, seus benefícios, para quem é indicado, etc." rows={4} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                     <FormField
+                        control={form.control}
+                        name="professionals"
+                        render={() => (
+                            <FormItem>
+                            <div className="mb-2">
+                                <FormLabel className="text-base">Profissionais Responsáveis</FormLabel>
+                                <FormDescription>Selecione os profissionais que podem realizar este serviço.</FormDescription>
+                            </div>
+                            <div className="space-y-2">
+                                {MOCK_PROFESSIONALS.map((prof) => (
+                                <FormField
+                                    key={prof.id}
+                                    control={form.control}
+                                    name="professionals"
+                                    render={({ field }) => {
+                                    return (
+                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-2 border rounded-md hover:bg-secondary/50">
+                                        <FormControl>
+                                            <Checkbox
+                                            checked={field.value?.includes(prof.id)}
+                                            onCheckedChange={(checked) => {
+                                                const currentValue = field.value || [];
+                                                return checked
+                                                ? field.onChange([...currentValue, prof.id])
+                                                : field.onChange(
+                                                    currentValue.filter(
+                                                    (value) => value !== prof.id
+                                                    )
+                                                );
+                                            }}
+                                            />
+                                        </FormControl>
+                                        <FormLabel className="font-normal text-sm">
+                                            {prof.name}
+                                        </FormLabel>
+                                        </FormItem>
+                                    );
+                                    }}
+                                />
+                                ))}
+                            </div>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
                       control={form.control}
                       name="category"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Categoria</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione uma categoria" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {serviceCategories.map(cat => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Categoria do Serviço</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Beleza, Saúde, Consultoria" {...field} list="service-categories-datalist-add" />
+                          </FormControl>
+                          <datalist id="service-categories-datalist-add">
+                            {serviceCategories.map(cat => <option key={cat} value={cat} />)}
+                          </datalist>
+                          <FormDescription>Digite uma categoria existente ou crie uma nova.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -212,15 +304,15 @@ export default function AddServicePage() {
                     <FormField
                       control={form.control}
                       name="image"
-                      render={({ field }) => ( // field é passado, mas não usado diretamente para input file. setValue é usado no onChange.
+                      render={({ fieldState }) => (
                         <FormItem>
-                          <FormLabel>Imagem do Serviço</FormLabel>
+                          <FormLabel>Imagem Ilustrativa do Serviço</FormLabel>
                           <FormControl>
                             <>
                               <div className="flex items-center gap-4">
                                 {imagePreview && (
                                   <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px]">
-                                    <Image src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço" />
+                                    <Image src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
                                     {form.getValues("image") !== "https://placehold.co/300x200.png?text=Serviço" && (
                                       <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
                                         <XCircle className="h-4 w-4"/>
@@ -228,7 +320,7 @@ export default function AddServicePage() {
                                     )}
                                   </div>
                                 )}
-                                <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload" />
+                                <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload-add" />
                                 <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
                                   <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
                                 </Button>
@@ -268,7 +360,208 @@ export default function AddServicePage() {
                           )}
                       />
                    </div>
+                    <FormField
+                      control={form.control}
+                      name="uniqueSchedulingLink"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Link Único de Agendamento para o Serviço</FormLabel>
+                          <FormControl>
+                             <div className="flex items-center">
+                                <span className="px-3 py-2 bg-muted rounded-l-md border border-r-0 text-xs text-muted-foreground">
+                                /agendar/empresa/servico/
+                                </span>
+                                <Input placeholder="meu-servico-incrivel" {...field} onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/\s+/g, '-'))} className="rounded-l-none"/>
+                            </div>
+                          </FormControl>
+                           <FormDescription>Será usado para: {`easyagenda.com/agendar/nome-empresa/servico/${field.value || "meu-servico"}`}</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="space-y-2 p-4 border rounded-md">
+                        <h4 className="font-medium text-md">Comissão do Profissional</h4>
+                        <div className="grid md:grid-cols-2 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="commissionType"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Tipo de Comissão</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
+                                    <SelectItem value="percentage">Porcentagem (%)</SelectItem>
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="commissionValue"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Valor da Comissão</FormLabel>
+                                <FormControl>
+                                <Input type="number" placeholder="Ex: 10 ou 25" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        </div>
+                    </div>
 
+                    <div className="space-y-3 p-4 border rounded-md">
+                        <FormField
+                        control={form.control}
+                        name="hasBookingFee"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                            <FormControl>
+                                <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                id="has-booking-fee-add"
+                                />
+                            </FormControl>
+                            <FormLabel htmlFor="has-booking-fee-add" className="font-medium mb-0">Cobrar Taxa de Agendamento</FormLabel>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        {watchHasBookingFee && (
+                             <FormField
+                                control={form.control}
+                                name="bookingFeeValue"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Valor da Taxa de Agendamento (R$)</FormLabel>
+                                    <FormControl>
+                                    <Input type="number" placeholder="Ex: 10,00" {...field} />
+                                    </FormControl>
+                                    <FormDescription>Cliente pagará este valor para confirmar.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                        )}
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="simultaneousAppointmentsPerUser"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Agend. Simultâneos por Usuário</FormLabel>
+                                <FormControl>
+                                <Input type="number" {...field} />
+                                </FormControl>
+                                <FormDescription>Quantos agendamentos deste serviço um único cliente pode ter ativos.</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <div className="space-y-1">
+                         <FormField
+                            control={form.control}
+                            name="simultaneousAppointmentsPerSlot"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Agend. Simultâneos por Horário</FormLabel>
+                                <FormControl>
+                                <Input type="number" {...field} disabled={form.watch("simultaneousAppointmentsPerSlotAutomatic")} />
+                                </FormControl>
+                                <FormDescription>Quantos clientes podem agendar no mesmo horário. (Se automático, ajusta pelos profissionais)</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="simultaneousAppointmentsPerSlotAutomatic"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center space-x-3 space-y-0 mt-2">
+                                <FormControl>
+                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} id="simultaneous-auto-add" />
+                                </FormControl>
+                                <FormLabel htmlFor="simultaneous-auto-add" className="text-xs font-normal">Modo Automático (baseado nos profissionais)</FormLabel>
+                                </FormItem>
+                            )}
+                            />
+                        </div>
+                    </div>
+                     <FormField
+                      control={form.control}
+                      name="blockAfter24Hours"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              id="block-24h-add"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel htmlFor="block-24h-add">Bloquear novo agendamento por 24h</FormLabel>
+                             <FormDescription className="text-xs">Cliente só poderá reagendar este serviço após 24h do último agendamento feito.</FormDescription>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="intervalBetweenSlots"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Intervalo entre Slots de Horários (minutos)</FormLabel>
+                            <FormControl>
+                            <Input type="number" placeholder="Ex: 10" {...field} />
+                            </FormControl>
+                             <FormDescription>Define um intervalo em minutos após a conclusão de um horário antes que o próximo possa ser agendado.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="confirmationType"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Tipo de Confirmação</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                <SelectItem value="manual">Manual (Empresa/Profissional aprova)</SelectItem>
+                                <SelectItem value="automatic">Automática</SelectItem>
+                            </SelectContent>
+                            </Select>
+                            <FormDescription>Se "Taxa de Agendamento" estiver marcada, a confirmação pode se tornar automática após pagamento.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="specificAvailability"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Disponibilidade Específica do Serviço (Avançado)</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Ex: seg 14:00-18:00; qua 09:00-12:00. (Deixe em branco para usar disponibilidade padrão do profissional/empresa)." rows={3} {...field} />
+                          </FormControl>
+                          <FormDescription>Defina regras de horários específicos para este serviço. Uma interface mais detalhada para isso será adicionada futuramente.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="displayDuration"
@@ -278,11 +571,11 @@ export default function AddServicePage() {
                             <Checkbox
                               checked={field.value}
                               onCheckedChange={field.onChange}
-                              id="display-duration"
+                              id="display-duration-add"
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel htmlFor="display-duration">Exibir duração na página de agendamento</FormLabel>
+                            <FormLabel htmlFor="display-duration-add">Exibir duração na página de agendamento</FormLabel>
                           </div>
                           <FormMessage />
                         </FormItem>
@@ -291,16 +584,17 @@ export default function AddServicePage() {
               </CardContent>
             </Card>
           </TabsContent>
+          {/* Placeholder Tabs */}
           <TabsContent value="availability">
             <Card>
               <CardHeader><CardTitle>Disponibilidade do Serviço</CardTitle><CardDescription>Defina quando este serviço está disponível (em breve).</CardDescription></CardHeader>
               <CardContent><p className="text-muted-foreground">Configurações de disponibilidade específica para este serviço estarão disponíveis aqui.</p></CardContent>
             </Card>
           </TabsContent>
-           <TabsContent value="users">
+           <TabsContent value="professionalsTab">
             <Card>
-              <CardHeader><CardTitle>Profissionais</CardTitle><CardDescription>Associe profissionais a este serviço (em breve).</CardDescription></CardHeader>
-              <CardContent><p className="text-muted-foreground">Selecione quaisissionais podem realizar este serviço.</p></CardContent>
+              <CardHeader><CardTitle>Profissionais (Avançado)</CardTitle><CardDescription>Gerencie detalhes da atribuição de profissionais a este serviço (em breve).</CardDescription></CardHeader>
+              <CardContent><p className="text-muted-foreground">Configurações avançadas de profissionais.</p></CardContent>
             </Card>
           </TabsContent>
            <TabsContent value="bling">
@@ -314,5 +608,3 @@ export default function AddServicePage() {
     </Form>
   );
 }
-
-    
