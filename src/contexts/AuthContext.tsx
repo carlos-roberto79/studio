@@ -38,8 +38,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const storedRoleString = localStorage.getItem('easyagenda_role');
     if (storedUserString && storedRoleString) {
       try {
-        const storedUser = JSON.parse(storedUserString);
-        setUser(storedUser); // O e-mail aqui pode ter a capitalização original da primeira vez
+        const storedUser: MockUser = JSON.parse(storedUserString);
+        // Garantir que o email no estado seja normalizado ao carregar
+        if (storedUser.email) {
+          storedUser.email = storedUser.email.toLowerCase();
+        }
+        setUser(storedUser);
         setRole(storedRoleString as UserRole);
       } catch (e) {
         console.error("Falha ao parsear dados de autenticação do localStorage", e);
@@ -53,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, _pass: string, loginRole?: UserRole) => {
     setLoading(true);
     const normalizedEmail = email.toLowerCase(); // Normalizar e-mail
-    const mockUser = { uid: 'mock-uid-' + normalizedEmail, email: normalizedEmail };
+    const mockUser: MockUser = { uid: 'mock-uid-' + normalizedEmail, email: normalizedEmail };
     setUser(mockUser);
 
     const allUsersRoles = JSON.parse(localStorage.getItem(MOCK_USERS_ROLES_STORAGE_KEY) || '{}');
@@ -69,7 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (email: string, _pass: string, signupRole: UserRole) => {
     setLoading(true);
     const normalizedEmail = email.toLowerCase(); // Normalizar e-mail
-    const mockUser = { uid: 'mock-uid-' + normalizedEmail, email: normalizedEmail };
+    const mockUser: MockUser = { uid: 'mock-uid-' + normalizedEmail, email: normalizedEmail };
     setUser(mockUser);
     setRole(signupRole);
 
@@ -95,9 +99,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRole(newRole);
     if (user && newRole) { 
         const allUsersRoles = JSON.parse(localStorage.getItem(MOCK_USERS_ROLES_STORAGE_KEY) || '{}');
-        if (user.email) {
-             const normalizedEmail = user.email.toLowerCase(); // Normalizar e-mail do usuário atual
-             allUsersRoles[normalizedEmail] = newRole; // Usar e-mail normalizado como chave
+        if (user.email) { // user.email já deve estar normalizado aqui devido ao login/signup/useEffect
+             allUsersRoles[user.email] = newRole; // Não precisa de .toLowerCase() aqui se user.email já está normalizado
              localStorage.setItem(MOCK_USERS_ROLES_STORAGE_KEY, JSON.stringify(allUsersRoles));
         }
     }
