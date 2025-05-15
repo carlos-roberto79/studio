@@ -17,8 +17,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { APP_NAME } from "@/lib/constants";
-import { ArrowLeft, Save, Trash2, ImagePlus, XCircle, DollarSign, Percent, Copy } from "lucide-react";
+import { ArrowLeft, Save, ImagePlus, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 import {
   Form,
   FormControl,
@@ -89,6 +90,7 @@ type ServiceFormData = z.infer<typeof serviceSchema>;
 
 export default function AddServicePage() {
   const { toast } = useToast();
+  const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -122,8 +124,26 @@ export default function AddServicePage() {
 
   useEffect(() => {
     document.title = `Adicionar Novo Serviço - ${APP_NAME}`;
-    setImagePreview(form.getValues("image") || "https://placehold.co/300x200.png?text=Serviço");
-  }, [form]);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('fromDuplicate') === 'true') {
+        const duplicatedDataString = localStorage.getItem('duplicate_service_data');
+        if (duplicatedDataString) {
+            try {
+                const duplicatedData = JSON.parse(duplicatedDataString) as ServiceFormData;
+                form.reset(duplicatedData); 
+                setImagePreview(duplicatedData.image || "https://placehold.co/300x200.png?text=Serviço");
+                toast({ title: "Duplicando Serviço", description: "Dados do serviço anterior carregados. Ajuste e salve." });
+            } catch (e) {
+                console.error("Erro ao parsear dados duplicados:", e);
+                toast({ title: "Erro ao Duplicar", description: "Não foi possível carregar os dados do serviço para duplicação.", variant: "destructive"});
+            } finally {
+                localStorage.removeItem('duplicate_service_data');
+            }
+        }
+    } else {
+        setImagePreview(form.getValues("image") || "https://placehold.co/300x200.png?text=Serviço");
+    }
+  }, [form, toast]);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -149,16 +169,31 @@ export default function AddServicePage() {
 
   const onSubmit = async (data: ServiceFormData) => {
     setIsSaving(true);
-    console.log("Salvando serviço:", data);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    console.log("BACKEND_SIM: Dados do novo serviço a serem enviados:", data);
+    // SIMULAÇÃO DE CHAMADA DE API PARA CRIAR SERVIÇO
+    // Em um app real, aqui você faria uma chamada para seu backend:
+    // try {
+    //   await api.createService(data); // Substitua 'api.createService' pela sua chamada de API real
+    //   toast({ title: "Sucesso!", description: `Serviço "${data.name}" salvo com sucesso no servidor.` });
+    //   form.reset(); 
+    //   removeImage();
+    //   router.push('/dashboard/company/services'); 
+    // } catch (error) {
+    //   console.error("BACKEND_SIM: Erro ao criar serviço", error);
+    //   toast({ title: "Erro no Servidor", description: "Não foi possível salvar o serviço. Verifique o console para detalhes.", variant: "destructive" });
+    // } finally {
+    //   setIsSaving(false);
+    // }
+
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulação de delay
     toast({
-      title: "Serviço Adicionado!",
-      description: `O serviço "${data.name}" foi cadastrado com sucesso.`,
+      title: "Serviço Adicionado! (Simulação)",
+      description: `O serviço "${data.name}" foi cadastrado com sucesso (simulação frontend).`,
     });
-    form.reset(); // Reset form to default values
+    form.reset(); 
     removeImage(); 
     setIsSaving(false);
+    // router.push('/dashboard/company/services'); // Opcional: redirecionar após adicionar
   };
 
   const watchHasBookingFee = form.watch("hasBookingFee");
@@ -203,9 +238,9 @@ export default function AddServicePage() {
         <Tabs defaultValue="configurations" className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
             <TabsTrigger value="configurations">Configurações</TabsTrigger>
-            <TabsTrigger value="availability" disabled>Disponibilidade</TabsTrigger> {/* Placeholder */}
-            <TabsTrigger value="professionalsTab" disabled>Profissionais</TabsTrigger> {/* Placeholder */}
-            <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger> {/* Placeholder */}
+            <TabsTrigger value="availability" disabled>Disponibilidade</TabsTrigger> 
+            <TabsTrigger value="professionalsTab" disabled>Profissionais</TabsTrigger> 
+            <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger> 
           </TabsList>
 
           <TabsContent value="configurations">
@@ -458,11 +493,11 @@ export default function AddServicePage() {
                             name="simultaneousAppointmentsPerUser"
                             render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Agend. Simultâneos por Usuário</FormLabel>
+                                <FormLabel>Agend. Ativos por Usuário</FormLabel>
                                 <FormControl>
                                 <Input type="number" {...field} />
                                 </FormControl>
-                                <FormDescription>Quantos agendamentos deste serviço um único cliente pode ter ativos.</FormDescription>
+                                <FormDescription>Quantos agendamentos deste serviço um cliente pode ter ativos ao mesmo tempo.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -473,7 +508,7 @@ export default function AddServicePage() {
                             name="simultaneousAppointmentsPerSlot"
                             render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Agend. Simultâneos por Horário</FormLabel>
+                                <FormLabel>Agend. por Horário</FormLabel>
                                 <FormControl>
                                 <Input type="number" {...field} disabled={form.watch("simultaneousAppointmentsPerSlotAutomatic")} />
                                 </FormControl>
@@ -490,7 +525,7 @@ export default function AddServicePage() {
                                 <FormControl>
                                     <Checkbox checked={field.value} onCheckedChange={field.onChange} id="simultaneous-auto-add" />
                                 </FormControl>
-                                <FormLabel htmlFor="simultaneous-auto-add" className="text-xs font-normal">Modo Automático (baseado nos profissionais)</FormLabel>
+                                <FormLabel htmlFor="simultaneous-auto-add" className="text-xs font-normal">Automático (profissionais)</FormLabel>
                                 </FormItem>
                             )}
                             />
@@ -557,7 +592,7 @@ export default function AddServicePage() {
                           <FormControl>
                             <Textarea placeholder="Ex: seg 14:00-18:00; qua 09:00-12:00. (Deixe em branco para usar disponibilidade padrão do profissional/empresa)." rows={3} {...field} />
                           </FormControl>
-                          <FormDescription>Defina regras de horários específicos para este serviço. Uma interface mais detalhada para isso será adicionada futuramente.</FormDescription>
+                          <FormDescription>Defina regras de horários específicos para este serviço. Uma interface mais detalhada para isso será adicionada futuramente. Backend aplicaria estas regras.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -587,7 +622,7 @@ export default function AddServicePage() {
           {/* Placeholder Tabs */}
           <TabsContent value="availability">
             <Card>
-              <CardHeader><CardTitle>Disponibilidade do Serviço</CardTitle><CardDescription>Defina quando este serviço está disponível (em breve).</CardDescription></CardHeader>
+              <CardHeader><CardTitle>Disponibilidade do Serviço</CardTitle><CardDescription>Defina quando este serviço está disponível (em breve). Regras de disponibilidade geral e específica seriam aplicadas pelo backend.</CardDescription></CardHeader>
               <CardContent><p className="text-muted-foreground">Configurações de disponibilidade específica para este serviço estarão disponíveis aqui.</p></CardContent>
             </Card>
           </TabsContent>
@@ -608,3 +643,5 @@ export default function AddServicePage() {
     </Form>
   );
 }
+
+    

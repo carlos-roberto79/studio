@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Link from "next/link";
 import Image from "next/image";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,9 +99,54 @@ const serviceSchema = z.object({
 
 type ServiceFormData = z.infer<typeof serviceSchema>;
 
+// Mock data now includes all fields for services
 const mockExistingServices: { [key: string]: ServiceFormData } = {
-  "1": { name: "Corte de Cabelo Masculino", description: "Corte moderno e estiloso para homens.", professionals: ["prof1"], category: "Beleza e Estética", duration: 45, displayDuration: true, active: true, image: "https://placehold.co/300x200.png?text=Corte+Masc", price: "50,00", uniqueSchedulingLink: "corte-masculino", commissionType: "percentage", commissionValue: 10, hasBookingFee: false, bookingFeeValue: 0, simultaneousAppointmentsPerUser: 1, simultaneousAppointmentsPerSlot: 1, simultaneousAppointmentsPerSlotAutomatic: false, blockAfter24Hours: false, intervalBetweenSlots: 15, confirmationType: "automatic", specificAvailability: "seg 09:00-12:00" },
-  "2": { name: "Consulta Psicológica Online", description: "Sessão de terapia online com psicólogo.", professionals: ["prof2"], category: "Saúde e Bem-estar", duration: 50, displayDuration: true, active: true, image: "https://placehold.co/300x200.png?text=Psico+Online", price: "120,00", uniqueSchedulingLink: "consulta-psico-online", commissionType: "fixed", commissionValue: 20, hasBookingFee: true, bookingFeeValue: 10, simultaneousAppointmentsPerUser: 1, simultaneousAppointmentsPerSlot: 1, simultaneousAppointmentsPerSlotAutomatic: true, blockAfter24Hours: true, intervalBetweenSlots: 0, confirmationType: "manual", specificAvailability: "" },
+  "1": { 
+    name: "Corte de Cabelo Masculino", 
+    description: "Corte moderno e estiloso para homens. Inclui lavagem e finalização.", 
+    professionals: ["prof1", "prof3"], 
+    category: "Beleza e Estética", 
+    duration: 45, 
+    displayDuration: true, 
+    active: true, 
+    image: "https://placehold.co/300x200.png?text=Corte+Masc", 
+    price: "50,00", 
+    uniqueSchedulingLink: "corte-masculino", 
+    commissionType: "percentage", 
+    commissionValue: 10, 
+    hasBookingFee: false, 
+    bookingFeeValue: 0, 
+    simultaneousAppointmentsPerUser: 1, 
+    simultaneousAppointmentsPerSlot: 1, 
+    simultaneousAppointmentsPerSlotAutomatic: false, 
+    blockAfter24Hours: false, 
+    intervalBetweenSlots: 15, 
+    confirmationType: "automatic", 
+    specificAvailability: "seg 09:00-12:00; ter 14:00-18:00" 
+  },
+  "2": { 
+    name: "Consulta Psicológica Online", 
+    description: "Sessão de terapia online com psicólogo qualificado. Atendimento focado em suas necessidades.", 
+    professionals: ["prof2"], 
+    category: "Saúde e Bem-estar", 
+    duration: 50, 
+    displayDuration: true, 
+    active: true, 
+    image: "https://placehold.co/300x200.png?text=Psico+Online", 
+    price: "120,00", 
+    uniqueSchedulingLink: "consulta-psico-online", 
+    commissionType: "fixed", 
+    commissionValue: 20, 
+    hasBookingFee: true, 
+    bookingFeeValue: 10, 
+    simultaneousAppointmentsPerUser: 1, 
+    simultaneousAppointmentsPerSlot: 1, 
+    simultaneousAppointmentsPerSlotAutomatic: true, 
+    blockAfter24Hours: true, 
+    intervalBetweenSlots: 0, 
+    confirmationType: "manual", 
+    specificAvailability: "" 
+  },
 };
 
 
@@ -118,20 +163,7 @@ export default function EditServicePage() {
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
-    defaultValues: async () => { // Use async function for defaultValues if fetching
-      if (serviceId && mockExistingServices[serviceId]) {
-        return mockExistingServices[serviceId];
-      }
-      return { // Fallback default values (should ideally match add page)
-        name: "", description: "", professionals: [], category: "", duration: 60,
-        displayDuration: true, active: true, image: "https://placehold.co/300x200.png?text=Serviço",
-        price: "", uniqueSchedulingLink: "", commissionType: "percentage", commissionValue: 0,
-        hasBookingFee: false, bookingFeeValue: 0, simultaneousAppointmentsPerUser: 1,
-        simultaneousAppointmentsPerSlot: 1, simultaneousAppointmentsPerSlotAutomatic: false,
-        blockAfter24Hours: false, intervalBetweenSlots: 10, confirmationType: "automatic",
-        specificAvailability: ""
-      };
-    }
+    // Default values will be set by useEffect after fetching/checking mock data
   });
   
   const serviceName = form.watch("name");
@@ -139,18 +171,19 @@ export default function EditServicePage() {
 
   useEffect(() => {
     if (serviceId) {
+      console.log(`BACKEND_SIM: Buscando dados do serviço com ID: ${serviceId}`);
       const existingService = mockExistingServices[serviceId];
       if (existingService) {
-        form.reset(existingService); // reset form with existing data
+        form.reset(existingService); 
         setImagePreview(existingService.image || "https://placehold.co/300x200.png?text=Serviço");
         setIsLoading(false);
       } else {
         toast({ title: "Erro", description: "Serviço não encontrado.", variant: "destructive" });
-        // router.push('/dashboard/company/services'); // Optionally redirect
-        setIsLoading(false); // Stop loading even if not found
+        setIsLoading(false); 
+         router.push('/dashboard/company/services'); // Redirect if service not found
       }
     } else {
-        setIsLoading(false); // No serviceId, stop loading
+        setIsLoading(false); 
     }
   }, [serviceId, form, toast, router]);
   
@@ -187,38 +220,68 @@ export default function EditServicePage() {
 
   const onSubmit = async (data: ServiceFormData) => {
     setIsSaving(true);
-    console.log("Atualizando serviço:", serviceId, data);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    console.log("BACKEND_SIM: Dados do serviço a serem atualizados:", { serviceId, data });
+    // SIMULAÇÃO DE CHAMADA DE API PARA ATUALIZAR SERVIÇO
+    // Em um app real, aqui você faria uma chamada para seu backend:
+    // try {
+    //   await api.updateService(serviceId, data); // Substitua pela sua chamada de API real
+    //   toast({ title: "Sucesso!", description: `Serviço "${data.name}" atualizado com sucesso no servidor.` });
+    //   router.push('/dashboard/company/services'); 
+    // } catch (error) {
+    //   console.error("BACKEND_SIM: Erro ao atualizar serviço", error);
+    //   toast({ title: "Erro no Servidor", description: "Não foi possível atualizar o serviço. Verifique o console para detalhes.", variant: "destructive" });
+    // } finally {
+    //   setIsSaving(false);
+    // }
+
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulação de delay
     toast({
-      title: "Serviço Atualizado!",
-      description: `O serviço "${data.name}" foi atualizado com sucesso.`,
+      title: "Serviço Atualizado! (Simulação)",
+      description: `O serviço "${data.name}" foi atualizado com sucesso (simulação frontend).`,
     });
     setIsSaving(false);
+    router.push('/dashboard/company/services');
   };
 
   const handleDelete = async () => {
-    setIsSaving(true); // Disable buttons during delete
-    console.log("Excluindo serviço:", serviceId);
-    // Simulate API call
+    setIsSaving(true); 
+    console.log("BACKEND_SIM: Solicitação de exclusão para o serviço ID:", serviceId);
+    // SIMULAÇÃO DE CHAMADA DE API PARA EXCLUIR SERVIÇO
+    // Em um app real:
+    // try {
+    //   await api.deleteService(serviceId);
+    //   toast({ title: "Serviço Excluído", description: `O serviço "${form.getValues("name")}" foi excluído do servidor.` });
+    //   router.push('/dashboard/company/services');
+    // } catch (error) {
+    //   console.error("BACKEND_SIM: Erro ao excluir serviço", error);
+    //   toast({ title: "Erro no Servidor", description: "Não foi possível excluir o serviço.", variant: "destructive" });
+    //   setIsSaving(false); // Re-enable buttons if delete failed
+    // }
+
     await new Promise(resolve => setTimeout(resolve, 1000));
     toast({
-      title: "Serviço Excluído",
-      description: `O serviço "${form.getValues("name")}" foi excluído.`,
-      variant: "default" // or "success" if you have one
+      title: "Serviço Excluído (Simulação)",
+      description: `O serviço "${form.getValues("name")}" foi excluído (simulação frontend).`,
     });
     router.push('/dashboard/company/services');
-    // No need to setIsSaving(false) as we are redirecting
   };
 
   const handleDuplicate = () => {
-    // In a real app, you'd likely navigate to the "add service" page
-    // and pre-fill the form with the current service's data (excluding ID).
+    const currentValues = form.getValues();
+    const duplicatedValues = { 
+      ...currentValues, 
+      name: `${currentValues.name} (Cópia)`, 
+      uniqueSchedulingLink: `${currentValues.uniqueSchedulingLink}-copia`  // Ensure uniqueness for the copy
+    };
+    
+    console.log("BACKEND_SIM: Dados do serviço duplicado (frontend) para pré-preencher formulário de adição:", duplicatedValues);
+    localStorage.setItem('duplicate_service_data', JSON.stringify(duplicatedValues));
+    
     toast({
-      title: "Duplicar Serviço (Mock)",
-      description: `Funcionalidade para duplicar "${form.getValues("name")}" a ser implementada. Redirecionaria para Adicionar Serviço com dados preenchidos.`,
+      title: "Serviço Pronto para Duplicação",
+      description: `Os dados de "${form.getValues("name")}" foram copiados. Você será redirecionado para a página de adicionar serviço. Ajuste e salve como um novo serviço.`,
     });
-     // router.push(`/dashboard/company/services/add?duplicateId=${serviceId}`); // Example redirect
+    router.push('/dashboard/company/services/add?fromDuplicate=true');
   };
   
   if (isLoading) {
@@ -298,9 +361,9 @@ export default function EditServicePage() {
         <Tabs defaultValue="configurations" className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
             <TabsTrigger value="configurations">Configurações</TabsTrigger>
-            <TabsTrigger value="availability" disabled>Disponibilidade</TabsTrigger> {/* Placeholder */}
-            <TabsTrigger value="professionalsTab" disabled>Profissionais</TabsTrigger> {/* Placeholder */}
-            <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger> {/* Placeholder */}
+            <TabsTrigger value="availability" disabled>Disponibilidade</TabsTrigger> 
+            <TabsTrigger value="professionalsTab" disabled>Profissionais</TabsTrigger> 
+            <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger> 
           </TabsList>
 
           <TabsContent value="configurations">
@@ -552,11 +615,11 @@ export default function EditServicePage() {
                             name="simultaneousAppointmentsPerUser"
                             render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Agend. Simultâneos por Usuário</FormLabel>
+                                <FormLabel>Agend. Ativos por Usuário</FormLabel>
                                 <FormControl>
                                 <Input type="number" {...field} />
                                 </FormControl>
-                                <FormDescription>Quantos agendamentos deste serviço um único cliente pode ter ativos.</FormDescription>
+                                <FormDescription>Quantos agendamentos deste serviço um cliente pode ter ativos ao mesmo tempo.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -567,7 +630,7 @@ export default function EditServicePage() {
                             name="simultaneousAppointmentsPerSlot"
                             render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Agend. Simultâneos por Horário</FormLabel>
+                                <FormLabel>Agend. por Horário</FormLabel>
                                 <FormControl>
                                 <Input type="number" {...field} disabled={form.watch("simultaneousAppointmentsPerSlotAutomatic")} />
                                 </FormControl>
@@ -584,7 +647,7 @@ export default function EditServicePage() {
                                 <FormControl>
                                     <Checkbox checked={field.value} onCheckedChange={field.onChange} id="simultaneous-auto-edit" />
                                 </FormControl>
-                                <FormLabel htmlFor="simultaneous-auto-edit" className="text-xs font-normal">Modo Automático (baseado nos profissionais)</FormLabel>
+                                <FormLabel htmlFor="simultaneous-auto-edit" className="text-xs font-normal">Automático (profissionais)</FormLabel>
                                 </FormItem>
                             )}
                             />
@@ -651,7 +714,7 @@ export default function EditServicePage() {
                           <FormControl>
                             <Textarea placeholder="Ex: seg 14:00-18:00; qua 09:00-12:00. (Deixe em branco para usar disponibilidade padrão do profissional/empresa)." rows={3} {...field} />
                           </FormControl>
-                          <FormDescription>Defina regras de horários específicos para este serviço. Uma interface mais detalhada para isso será adicionada futuramente.</FormDescription>
+                          <FormDescription>Defina regras de horários específicos para este serviço. Uma interface mais detalhada para isso será adicionada futuramente. Backend aplicaria estas regras.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -681,7 +744,7 @@ export default function EditServicePage() {
            {/* Placeholder Tabs */}
            <TabsContent value="availability">
             <Card>
-              <CardHeader><CardTitle>Disponibilidade do Serviço</CardTitle><CardDescription>Defina quando este serviço está disponível (em breve).</CardDescription></CardHeader>
+              <CardHeader><CardTitle>Disponibilidade do Serviço</CardTitle><CardDescription>Defina quando este serviço está disponível (em breve). Regras de disponibilidade geral e específica seriam aplicadas pelo backend.</CardDescription></CardHeader>
               <CardContent><p className="text-muted-foreground">Configurações de disponibilidade específica para este serviço estarão disponíveis aqui.</p></CardContent>
             </Card>
           </TabsContent>
@@ -702,3 +765,5 @@ export default function EditServicePage() {
     </Form>
   );
 }
+
+    

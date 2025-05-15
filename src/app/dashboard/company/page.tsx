@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag } from "lucide-react"; // Added Settings2 for services
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings } from "lucide-react"; // Added Settings
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -215,13 +215,18 @@ export default function CompanyAdminPage() {
       
       <Card className="shadow-lg">
         <CardHeader>
-            <CardTitle>Perfil e Configurações da Empresa</CardTitle>
-            <CardDescription>Atualize as informações da sua empresa e o slug do link público.</CardDescription>
+            <CardTitle>Configurações da Empresa</CardTitle>
+            <CardDescription>Defina as configurações gerais e de perfil da sua empresa.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="grid sm:grid-cols-2 gap-4">
             <Button asChild>
               <Link href="/dashboard/company/edit-profile">
                 <Edit className="mr-2 h-4 w-4" /> Editar Perfil da Empresa
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/general-settings/availability">
+                <Clock className="mr-2 h-4 w-4" /> Disponibilidade Padrão
               </Link>
             </Button>
         </CardContent>
@@ -229,3 +234,5 @@ export default function CompanyAdminPage() {
     </div>
   );
 }
+
+    
