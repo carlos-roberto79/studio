@@ -1,11 +1,15 @@
+
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CalendarPlus, History, Star, Settings } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect } from 'react';
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Mock data
 const upcomingClientAppointments = [
@@ -20,9 +24,55 @@ const clientStats = [
 ];
 
 export default function ClientPage() {
+  const { user, role, loading } = useAuth();
+  const router = useRouter();
+
   useEffect(() => {
     document.title = `Painel do Cliente - ${APP_NAME}`;
   }, []);
+
+  useEffect(() => {
+    if (!loading && user) {
+      if (role !== USER_ROLES.CLIENT) {
+        router.push('/dashboard');
+      }
+    } else if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, role, loading, router]);
+
+  if (loading || !user || (user && role !== USER_ROLES.CLIENT)) {
+    return (
+      <div className="space-y-8">
+        <CardHeader className="px-0">
+          <Skeleton className="h-8 w-3/4 mb-2" />
+          <Skeleton className="h-6 w-1/2" />
+        </CardHeader>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1,2,3].map(i => (
+            <Card key={i} className="shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-6 w-6 rounded-full" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-7 w-1/4" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card className="shadow-lg">
+          <CardHeader>
+            <Skeleton className="h-7 w-1/3" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-10 w-full mb-4" />
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

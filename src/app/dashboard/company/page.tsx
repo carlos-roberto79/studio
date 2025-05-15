@@ -7,9 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag } from "lucide-react"; // Added Settings2 for services
 import Link from "next/link";
 import Image from "next/image";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 // Mock data
@@ -28,14 +31,28 @@ const companyStats = [
 const companyPublicSlug = "sua-empresa-incrivel"; 
 
 export default function CompanyAdminPage() {
+  const { user, role, loading } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [publicLink, setPublicLink] = useState("");
 
   useEffect(() => {
     document.title = `Painel da Empresa - ${APP_NAME}`;
-    const constructedLink = `${window.location.origin}/schedule/${companyPublicSlug}`;
-    setPublicLink(constructedLink);
+    if (typeof window !== "undefined") {
+      const constructedLink = `${window.location.origin}/schedule/${companyPublicSlug}`;
+      setPublicLink(constructedLink);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!loading && user) {
+      if (role !== USER_ROLES.COMPANY_ADMIN) {
+        router.push('/dashboard');
+      }
+    } else if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, role, loading, router]);
 
   const copyPublicLink = () => {
     navigator.clipboard.writeText(publicLink)
@@ -47,6 +64,43 @@ export default function CompanyAdminPage() {
         console.error('Erro ao copiar link: ', err);
       });
   };
+
+  if (loading || !user || (user && role !== USER_ROLES.COMPANY_ADMIN)) {
+     return (
+      <div className="space-y-8">
+        <CardHeader className="px-0">
+          <Skeleton className="h-8 w-3/4 mb-2" />
+          <Skeleton className="h-6 w-1/2" />
+        </CardHeader>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1,2,3].map(i => (
+            <Card key={i} className="shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-6 w-6 rounded-full" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-7 w-1/4" />
+                <Skeleton className="h-4 w-3/4 mt-1" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card className="shadow-lg">
+          <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <Skeleton className="h-6 w-1/2 mb-1" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+            <Skeleton className="h-10 w-48" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-32 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -175,5 +229,3 @@ export default function CompanyAdminPage() {
     </div>
   );
 }
-
-    
