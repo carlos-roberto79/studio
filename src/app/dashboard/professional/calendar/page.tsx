@@ -10,25 +10,27 @@ import Link from "next/link";
 import { ArrowLeft, CalendarDays, PlusCircle, ExternalLink, Bell, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label"; // Adicionado Label
 
 
-// Mock data for appointments - in a real app, this would come from a backend
-const mockAppointments = [
-    { id: "1", date: new Date(2024, 6, 25, 10, 0), duration: 60, title: "Consulta - Ana P.", service: "Aconselhamento", status: "Confirmado" },
-    { id: "2", date: new Date(2024, 6, 25, 14, 0), duration: 90, title: "Sessão - Carlos M.", service: "Terapia Intensiva", status: "Confirmado" },
-    { id: "3", date: new Date(2024, 6, 26, 11, 30), duration: 45, title: "Check-up - Sofia L.", service: "Avaliação", status: "Pendente" },
-    // Use a date in the future for mock data to be visible in calendar
-];
-// Adjust mock data date to be in the future for better visualization
+// Mock data for appointments - adjusted for relative dates
 const today = new Date();
-mockAppointments[0].date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 10, 0);
-mockAppointments[1].date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 14, 0);
-mockAppointments[2].date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 11, 30);
+const tomorrow = new Date(today);
+tomorrow.setDate(today.getDate() + 1);
+const dayAfterTomorrow = new Date(today);
+dayAfterTomorrow.setDate(today.getDate() + 2);
+
+const mockAppointments = [
+    { id: "1", date: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 10, 0), duration: 60, title: "Consulta - Ana P.", service: "Aconselhamento", status: "Confirmado" },
+    { id: "2", date: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 14, 0), duration: 90, title: "Sessão - Carlos M.", service: "Terapia Intensiva", status: "Confirmado" },
+    { id: "3", date: new Date(dayAfterTomorrow.getFullYear(), dayAfterTomorrow.getMonth(), dayAfterTomorrow.getDate(), 11, 30), duration: 45, title: "Check-up - Sofia L.", service: "Avaliação", status: "Pendente" },
+    { id: "4", date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 0), duration: 60, title: "Reunião - Equipe Alpha", service: "Interno", status: "Bloqueio" },
+];
 
 
 export default function ProfessionalCalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day"); // Placeholder for view mode logic
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day"); 
   
   useEffect(() => {
     document.title = `Meu Calendário - ${APP_NAME}`;
@@ -132,7 +134,11 @@ export default function ProfessionalCalendarPage() {
                                     </div>
                                     <div className="text-right">
                                         <Badge variant={appt.status === "Confirmado" ? "default" : "outline"} 
-                                               className={appt.status === "Confirmado" ? "bg-green-500 hover:bg-green-600" : appt.status === "Pendente" ? "bg-yellow-400 hover:bg-yellow-500 text-black" : ""} >{appt.status}</Badge>
+                                               className={
+                                                appt.status === "Confirmado" ? "bg-green-500 hover:bg-green-600 text-white" : 
+                                                appt.status === "Pendente" ? "bg-yellow-400 hover:bg-yellow-500 text-black" : 
+                                                appt.status === "Bloqueio" ? "bg-slate-500 hover:bg-slate-600 text-white" : ""
+                                               } >{appt.status}</Badge>
                                         <Button variant="link" size="sm" className="p-0 h-auto text-primary mt-1">
                                             Ver Detalhes <ExternalLink className="ml-1 h-3 w-3" />
                                         </Button>

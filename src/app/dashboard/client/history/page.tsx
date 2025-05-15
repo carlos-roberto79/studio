@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { APP_NAME } from "@/lib/constants";
 import React, { useEffect } from 'react';
 import Link from "next/link";
-import { ArrowLeft, HistoryIcon, Repeat, XCircle, CreditCard } from "lucide-react";
+import { ArrowLeft, HistoryIcon, Repeat, XCircle, CreditCard, CalendarX2 } from "lucide-react"; // Adicionado CalendarX2
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 
@@ -128,7 +128,16 @@ export default function ClientHistoryPage() {
               </TableBody>
             </Table>
           ) : (
-            <p className="text-muted-foreground text-center py-8">Você ainda não possui histórico de agendamentos.</p>
+            <div className="text-center py-12">
+              <CalendarX2 className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+              <p className="text-xl font-semibold text-muted-foreground">Você ainda não possui histórico de agendamentos.</p>
+              <p className="text-sm text-muted-foreground mt-2">Que tal marcar seu primeiro horário?</p>
+              <Button className="mt-6" asChild>
+                <Link href="/schedule/example-company"> {/* Placeholder link */}
+                   Marcar Novo Agendamento
+                </Link>
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>

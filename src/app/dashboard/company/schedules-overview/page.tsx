@@ -19,6 +19,10 @@ import {
   ChartLegendContent
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Label } from "@/components/ui/label"; // Adicionado Label
 
 // Mock data for professionals and services
 const mockProfessionals = [
@@ -38,6 +42,8 @@ const mockSchedules = [
   { id: "2", professional: "Dra. Maria Oliveira", service: "Limpeza Dental", client: "Beatriz C.", date: "2024-08-01", time: "11:00", status: "Pendente" },
   { id: "3", professional: "Carlos Souza", service: "Corte de Cabelo", client: "Carlos M.", date: "2024-08-01", time: "14:00", status: "Cancelado Cliente" },
   { id: "4", professional: "Dr. João Silva", service: "Consulta Geral", client: "Daniel F.", date: "2024-08-02", time: "15:00", status: "Confirmado" },
+  { id: "5", professional: "Dra. Maria Oliveira", service: "Limpeza Dental", client: "Eduarda G.", date: "2024-08-03", time: "09:00", status: "Pendente Pagamento" },
+  { id: "6", professional: "Carlos Souza", service: "Corte de Cabelo", client: "Fernanda L.", date: "2024-08-03", time: "16:00", status: "Cancelado Profissional" },
 ];
 
 const mockChartData = [
@@ -207,8 +213,10 @@ export default function CompanySchedulesOverviewPage() {
                             <TableCell>{format(new Date(schedule.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                             <TableCell>{schedule.time}</TableCell>
                             <TableCell>
-                                <span className={`px-2 py-1 text-xs rounded-full ${
-                                    schedule.status.includes("Pendente") ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
+                                <span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${
+                                    schedule.status.includes("Pendente") ? "bg-yellow-100 text-yellow-700" : 
+                                    schedule.status.includes("Cancelado") ? "bg-red-100 text-red-700" :
+                                    "bg-gray-100 text-gray-700"
                                 }`}>
                                     {schedule.status}
                                 </span>
@@ -235,6 +243,5 @@ export default function CompanySchedulesOverviewPage() {
     </div>
   );
 }
-
 
     
