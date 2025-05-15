@@ -13,7 +13,7 @@ import Link from "next/link";
 import { ArrowLeft, CreditCard, DollarSign, FileDown, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { DateRange } from "react-day-picker";
-import { Calendar } from "@/components/ui/calendar"; // Assuming a date picker component
+import { Calendar } from "@/components/ui/calendar"; 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -61,6 +61,32 @@ export default function CompanyFinancialsPage() {
     // Aqui, em uma aplicação real, você faria uma nova busca de dados com os filtros
   }
 
+  const displayDateRange = () => {
+    if (!dateRange?.from) {
+      return <span>Selecione um período</span>;
+    }
+    // Ensure 'from' and 'to' are Date objects before formatting
+    const fromDate = dateRange.from instanceof Date ? dateRange.from : new Date(dateRange.from);
+    
+    if (dateRange.to) {
+      const toDate = dateRange.to instanceof Date ? dateRange.to : new Date(dateRange.to);
+      // Validate dates before formatting
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        return <span className="text-destructive">Data inválida</span>;
+      }
+      return (
+        <>
+          {format(fromDate, "dd/MM/yy", { locale: ptBR })} - {format(toDate, "dd/MM/yy", { locale: ptBR })}
+        </>
+      );
+    }
+    
+    if (isNaN(fromDate.getTime())) {
+      return <span className="text-destructive">Data inválida</span>;
+    }
+    return format(fromDate, "dd/MM/yy", { locale: ptBR });
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -92,17 +118,7 @@ export default function CompanyFinancialsPage() {
                     variant={"outline"}
                     className="w-full justify-start text-left font-normal mt-1"
                   >
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "dd/MM/yy", { locale: ptBR })} - {format(dateRange.to, "dd/MM/yy", { locale: ptBR })}
-                        </>
-                      ) : (
-                        format(dateRange.from, "dd/MM/yy", { locale: ptBR })
-                      )
-                    ) : (
-                      <span>Selecione um período</span>
-                    )}
+                    {displayDateRange()}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
