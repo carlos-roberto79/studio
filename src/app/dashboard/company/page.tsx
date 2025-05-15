@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings } from "lucide-react"; // Added Settings
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye } from "lucide-react"; // Added DollarSign, Eye
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -29,6 +29,12 @@ const companyStats = [
 ];
 
 const companyPublicSlug = "sua-empresa-incrivel"; 
+
+const mockCompanyAlerts = [
+    "Lembrete: 5 pagamentos pendentes esta semana.",
+    "Pico de agendamentos previsto para Sexta-feira.",
+    "Atualize os horários de feriado para o próximo mês."
+];
 
 export default function CompanyAdminPage() {
   const { user, role, loading } = useAuth();
@@ -125,6 +131,21 @@ export default function CompanyAdminPage() {
       </div>
 
       <Card className="shadow-lg">
+        <CardHeader>
+            <CardTitle>Alertas e Notificações da Empresa</CardTitle>
+        </CardHeader>
+        <CardContent>
+            {mockCompanyAlerts.length > 0 ? (
+                <ul className="space-y-2">
+                    {mockCompanyAlerts.map((alert, index) => (
+                        <li key={index} className="text-sm text-muted-foreground p-2 bg-secondary rounded-md">{alert}</li>
+                    ))}
+                </ul>
+            ) : <p className="text-muted-foreground">Nenhum alerta no momento.</p>}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-lg">
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <CardTitle>Gerenciar Profissionais</CardTitle>
@@ -173,13 +194,30 @@ export default function CompanyAdminPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-            <CardTitle>Gerenciar Serviços</CardTitle>
-            <CardDescription>Configure os serviços oferecidos pela sua empresa.</CardDescription>
+            <CardTitle>Gestão de Serviços e Agendas</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid sm:grid-cols-2 gap-4">
              <Button asChild>
               <Link href="/dashboard/company/services">
                 <ShoppingBag className="mr-2 h-4 w-4" /> Configurar Serviços
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/schedules-overview">
+                <Eye className="mr-2 h-4 w-4" /> Visão Geral das Agendas
+              </Link>
+            </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-lg">
+        <CardHeader>
+            <CardTitle>Financeiro da Empresa</CardTitle>
+        </CardHeader>
+        <CardContent>
+             <Button asChild>
+              <Link href="/dashboard/company/financials">
+                <DollarSign className="mr-2 h-4 w-4" /> Acessar Painel Financeiro
               </Link>
             </Button>
         </CardContent>

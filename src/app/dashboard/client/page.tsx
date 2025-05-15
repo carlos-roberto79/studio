@@ -2,7 +2,7 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarPlus, History, Star, Settings } from "lucide-react";
+import { CalendarPlus, History, Star, Settings, Bell } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -21,6 +21,11 @@ const clientStats = [
     { title: "Próximos Agendamentos", value: "2", icon: <CalendarPlus className="h-6 w-6 text-primary" /> },
     { title: "Agendamentos Passados", value: "15", icon: <History className="h-6 w-6 text-primary" /> },
     { title: "Profissionais Favoritos", value: "3", icon: <Star className="h-6 w-6 text-primary" /> },
+];
+
+const mockClientAlerts = [
+    "Seu agendamento de 'Check-up Odontológico' é amanhã às 14:00.",
+    "Pagamento pendente para 'Sessão de Terapia'.",
 ];
 
 export default function ClientPage() {
@@ -70,6 +75,15 @@ export default function ClientPage() {
             <Skeleton className="h-10 w-full" />
           </CardContent>
         </Card>
+         <Card className="shadow-lg">
+          <CardHeader>
+            <Skeleton className="h-7 w-1/3" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-6 w-full mb-2" />
+            <Skeleton className="h-6 w-full" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -80,6 +94,21 @@ export default function ClientPage() {
         <CardTitle className="text-3xl font-bold">Painel do Cliente</CardTitle>
         <CardDescription>Veja seus próximos agendamentos e gerencie suas reservas.</CardDescription>
       </CardHeader>
+
+      <Card className="shadow-lg">
+        <CardHeader>
+            <CardTitle className="text-xl flex items-center"><Bell className="mr-2 h-5 w-5 text-primary"/> Alertas e Lembretes</CardTitle>
+        </CardHeader>
+        <CardContent>
+            {mockClientAlerts.length > 0 ? (
+                <ul className="space-y-2">
+                    {mockClientAlerts.map((alert, index) => (
+                        <li key={index} className="text-sm text-muted-foreground p-2 bg-secondary rounded-md">{alert}</li>
+                    ))}
+                </ul>
+            ) : <p className="text-muted-foreground">Nenhum alerta no momento.</p>}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {clientStats.map(stat => (
@@ -150,3 +179,5 @@ export default function ClientPage() {
     </div>
   );
 }
+
+    

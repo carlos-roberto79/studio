@@ -2,7 +2,7 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, UserCheck, Settings, Edit3 } from "lucide-react";
+import { Calendar, Clock, UserCheck, Settings, Edit3, Bell } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -22,6 +22,12 @@ const professionalStats = [
     { title: "Agendamentos Hoje", value: "7", icon: <Calendar className="h-6 w-6 text-primary" /> },
     { title: "Horários Disponíveis", value: "3", icon: <Clock className="h-6 w-6 text-primary" /> },
     { title: "Total de Clientes", value: "48", icon: <UserCheck className="h-6 w-6 text-primary" /> },
+];
+
+const mockProfessionalAlerts = [
+    "Novo agendamento: Carol Davis às 14:00 para Check-up.",
+    "Lembrete: Alice Johnson às 10:00 para Corte de Cabelo.",
+    "Sua disponibilidade para próxima semana não foi configurada."
 ];
 
 
@@ -72,6 +78,15 @@ export default function ProfessionalPage() {
             <Skeleton className="h-10 w-full" />
           </CardContent>
         </Card>
+        <Card className="shadow-lg">
+          <CardHeader>
+            <Skeleton className="h-7 w-1/3" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-6 w-full mb-2" />
+            <Skeleton className="h-6 w-full" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -82,6 +97,21 @@ export default function ProfessionalPage() {
         <CardTitle className="text-3xl font-bold">Painel do Profissional</CardTitle>
         <CardDescription>Gerencie sua agenda, agendamentos e disponibilidade.</CardDescription>
       </CardHeader>
+
+      <Card className="shadow-lg">
+        <CardHeader>
+            <CardTitle className="text-xl flex items-center"><Bell className="mr-2 h-5 w-5 text-primary"/> Alertas e Lembretes</CardTitle>
+        </CardHeader>
+        <CardContent>
+            {mockProfessionalAlerts.length > 0 ? (
+                <ul className="space-y-2">
+                    {mockProfessionalAlerts.map((alert, index) => (
+                        <li key={index} className="text-sm text-muted-foreground p-2 bg-secondary rounded-md">{alert}</li>
+                    ))}
+                </ul>
+            ) : <p className="text-muted-foreground">Nenhum alerta no momento.</p>}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {professionalStats.map(stat => (
@@ -157,3 +187,5 @@ export default function ProfessionalPage() {
     </div>
   );
 }
+
+    

@@ -7,8 +7,10 @@ import { Calendar as ShadCalendar } from "@/components/ui/calendar"; // Full pag
 import { APP_NAME } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, PlusCircle, ExternalLink } from "lucide-react";
+import { ArrowLeft, CalendarDays, PlusCircle, ExternalLink, Bell, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 // Mock data for appointments - in a real app, this would come from a backend
 const mockAppointments = [
@@ -26,6 +28,7 @@ mockAppointments[2].date = new Date(today.getFullYear(), today.getMonth(), today
 
 export default function ProfessionalCalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day"); // Placeholder for view mode logic
   
   useEffect(() => {
     document.title = `Meu Calendário - ${APP_NAME}`;
@@ -48,7 +51,11 @@ export default function ProfessionalCalendarPage() {
           </CardTitle>
           <CardDescription>Visualize e gerencie todos os seus agendamentos.</CardDescription>
         </CardHeader>
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 items-center">
+            <div className="relative">
+                <Bell className="h-6 w-6 text-muted-foreground hover:text-primary cursor-pointer" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span> {/* Mocked notification count */}
+            </div>
             <Button variant="outline" asChild>
                 <Link href="/dashboard/professional/availability">
                     <Clock className="mr-2 h-4 w-4" /> Definir Disponibilidade
@@ -61,6 +68,21 @@ export default function ProfessionalCalendarPage() {
             </Button>
         </div>
       </div>
+
+      <div className="mb-6 flex items-center space-x-2">
+            <Label className="text-sm font-medium">Visualizar por:</Label>
+            <Select value={viewMode} onValueChange={(value) => setViewMode(value as "day" | "week" | "month")}>
+                <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Dia"/>
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="day">Dia</SelectItem>
+                    <SelectItem value="week">Semana</SelectItem>
+                    <SelectItem value="month">Mês</SelectItem>
+                </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">(Funcionalidade de visualização por semana/mês é um placeholder)</span>
+        </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-1">
@@ -131,3 +153,5 @@ export default function ProfessionalCalendarPage() {
     </div>
   );
 }
+
+    
