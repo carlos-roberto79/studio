@@ -41,7 +41,7 @@ export default function EditCompanyProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
-    document.title = \`Editar Perfil da Empresa - \${APP_NAME}\`;
+    document.title = `Editar Perfil da Empresa - ${APP_NAME}`;
     // In a real app, fetch company data here
   }, []);
 
@@ -176,4 +176,3 @@ export default function EditCompanyProfilePage() {
     </div>
   );
 }
-
