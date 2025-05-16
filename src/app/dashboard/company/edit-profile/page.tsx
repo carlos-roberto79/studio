@@ -28,7 +28,7 @@ const mockCompanyData = {
 
 export default function EditCompanyProfilePage() {
   const { toast } = useToast();
-  const router = useRouter(); // Inicializar useRouter
+  const router = useRouter(); 
   const [companyName, setCompanyName] = useState(mockCompanyData.companyName);
   const [cnpj, setCnpj] = useState(mockCompanyData.cnpj);
   const [address, setAddress] = useState(mockCompanyData.address);
@@ -43,26 +43,37 @@ export default function EditCompanyProfilePage() {
   useEffect(() => {
     document.title = `Editar Perfil da Empresa - ${APP_NAME}`;
     // In a real app, fetch company data here
+    // Potentially pre-fill from localStorage if editing an existing mock profile
+    const storedCompanyName = localStorage.getItem('easyagenda_companyName_mock');
+    const storedCompanyEmail = localStorage.getItem('easyagenda_companyEmail_mock');
+    // Add other fields if necessary
+    if (storedCompanyName) setCompanyName(storedCompanyName);
+    if (storedCompanyEmail) setEmail(storedCompanyEmail);
+    // ... etc. for other fields you want to persist in mock
   }, []);
 
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    // Basic validation
+    
     if (!companyName || !email || !publicLinkSlug) {
       toast({ title: "Erro", description: "Nome da empresa, e-mail e slug do link são obrigatórios.", variant: "destructive" });
       setIsSaving(false);
       return;
     }
     
-    // Simulate API call
     console.log("Updating company profile:", { companyName, cnpj, address, phone, email, publicLinkSlug, description, logoUrl });
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     toast({ title: "Perfil Atualizado", description: "As informações da sua empresa foram salvas com sucesso." });
-    localStorage.setItem('easyagenda_companyProfileComplete_mock', 'true'); // Marcar perfil como completo
+    localStorage.setItem('easyagenda_companyProfileComplete_mock', 'true'); 
+    localStorage.setItem('easyagenda_companyName_mock', companyName);
+    localStorage.setItem('easyagenda_companyEmail_mock', email);
+    // Você pode querer salvar mais dados aqui para o rodapé se necessário
+    // ex: localStorage.setItem('easyagenda_companyPhone_mock', phone);
+    
     setIsSaving(false);
-    router.push('/dashboard/company'); // Redirecionar para o painel da empresa
+    router.push('/dashboard/company'); 
   };
 
   const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
