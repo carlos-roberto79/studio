@@ -50,22 +50,22 @@ const timeIntervalSchema = z.object({
   start: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
   end: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
 }).refine(data => {
-  if (data.start && !data.end) return false; // Se tem início, precisa de fim
-  if (!data.start && data.end) return false; // Se tem fim, precisa de início
+  if (data.start && !data.end) return false;
+  if (!data.start && data.end) return false;
   if (data.start && data.end) {
     return data.start < data.end;
   }
   return true;
 }, {
   message: "Início deve ser antes do Fim e ambos devem ser preenchidos se um deles estiver.",
-  path: ["end"], // Ou path: ["start"]
+  path: ["end"],
 });
 
 const dayScheduleSchema = z.object({
   active: z.boolean().default(false),
   intervals: z.array(timeIntervalSchema)
     .min(1, "Deve haver pelo menos um bloco de horário (pode estar vazio).")
-    .default([{start: "", end: ""}]), // Garante que sempre haja um item, mesmo que vazio
+    .default([{start: "", end: ""}]),
 });
 
 const availabilityTypeSchema = z.object({
@@ -81,16 +81,11 @@ const availabilityTypeSchema = z.object({
     dom: dayScheduleSchema,
   }),
 }).refine(data => {
-  // Validação global para dias ativos:
   for (const dayKey in data.schedule) {
     const day = data.schedule[dayKey as keyof typeof data.schedule];
     if (day.active) {
       const hasValidInterval = day.intervals.some(interval => interval.start && interval.end);
       if (!hasValidInterval) {
-        // Se o dia está ativo, pelo menos um intervalo deve ser completamente preenchido.
-        // Este erro será mais difícil de associar a um campo específico no Zod.
-        // A validação individual do timeIntervalSchema já cuida de start/end juntos.
-        // Poderia adicionar um `path` aqui, mas seria genérico.
         return false;
       }
     }
@@ -110,7 +105,7 @@ const createInitialSchedule = (): AvailabilityTypeFormData['schedule'] => daysOf
 }, {} as AvailabilityTypeFormData['schedule']);
 
 
-const mockExistingAvailabilityTypes: { [key: string]: AvailabilityTypeFormData } = {
+const mockExistingAvailabilityTypes: { [key: string]: Partial<AvailabilityTypeFormData> } = {
   "type1": {
     name: "Horário Comercial Padrão",
     description: "Segunda a Sexta, das 9h às 18h, com pausa para almoço.",
@@ -128,7 +123,6 @@ const mockExistingAvailabilityTypes: { [key: string]: AvailabilityTypeFormData }
     name: "Plantão Final de Semana",
     description: "Sábados e Domingos, horários específicos sob demanda. Contatar para agendar.",
     schedule: {
-      ...(createInitialSchedule()), // Start with a full base
       seg: { active: false, intervals: [{start: "", end: ""}] },
       ter: { active: false, intervals: [{start: "", end: ""}] },
       qua: { active: false, intervals: [{start: "", end: ""}] },
@@ -142,7 +136,6 @@ const mockExistingAvailabilityTypes: { [key: string]: AvailabilityTypeFormData }
     name: "Horário Noturno Reduzido",
     description: "Segunda a Quinta, das 18h às 21h.",
     schedule: {
-      ...(createInitialSchedule()), // Start with a full base
       seg: { active: true, intervals: [{start: "18:00", end: "21:00"}]},
       ter: { active: true, intervals: [{start: "18:00", end: "21:00"}]},
       qua: { active: true, intervals: [{start: "18:00", end: "21:00"}]},
@@ -162,44 +155,52 @@ export default function EditAvailabilityTypePage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDataProcessed, setIsDataProcessed] = useState(false);
   const [pageTitle, setPageTitle] = useState("Editar Tipo de Disponibilidade");
 
 
   const form = useForm<AvailabilityTypeFormData>({
     resolver: zodResolver(availabilityTypeSchema),
-    defaultValues: { // Default values must match the schema structure
+    defaultValues: {
       name: "",
       description: "",
       schedule: createInitialSchedule(),
     }
   });
+  const formReset = form.reset; // Store stable reference to reset
 
   useEffect(() => {
     setIsLoading(true);
+    setIsDataProcessed(false);
     if (typeId) {
       const dataFromMock = mockExistingAvailabilityTypes[typeId];
       if (dataFromMock) {
         setPageTitle(dataFromMock.name || "Editar Tipo de Disponibilidade");
-        // Prepare the schedule data for form.reset, ensuring it matches Zod schema requirements
-        const scheduleForForm: AvailabilityTypeFormData['schedule'] = { ...createInitialSchedule() };
+        
+        const scheduleForForm: AvailabilityTypeFormData['schedule'] = createInitialSchedule();
 
         (Object.keys(scheduleForForm) as Array<keyof AvailabilityTypeFormData['schedule']>).forEach(dayKey => {
-          if (dataFromMock.schedule && dataFromMock.schedule[dayKey]) {
-            const mockDay = dataFromMock.schedule[dayKey];
-            scheduleForForm[dayKey].active = mockDay.active;
-            // Ensure 'intervals' is always an array with at least one item
-            scheduleForForm[dayKey].intervals = (mockDay.intervals && mockDay.intervals.length > 0)
-              ? mockDay.intervals
+          const mockDaySchedule = dataFromMock.schedule?.[dayKey];
+          if (mockDaySchedule) {
+            scheduleForForm[dayKey].active = mockDaySchedule.active;
+            scheduleForForm[dayKey].intervals = (mockDaySchedule.intervals && mockDaySchedule.intervals.length > 0)
+              ? mockDaySchedule.intervals.map(interval => ({ 
+                  start: interval.start || "", 
+                  end: interval.end || "" 
+                }))
               : [{ start: "", end: "" }];
+          } else {
+             // If a day is missing in mock, ensure it still adheres to schema (1 interval)
+             scheduleForForm[dayKey].intervals = [{ start: "", end: "" }];
           }
         });
         
-        form.reset({
-          name: dataFromMock.name,
-          description: dataFromMock.description,
+        formReset({
+          name: dataFromMock.name || "",
+          description: dataFromMock.description || "",
           schedule: scheduleForForm,
         });
-
+        setIsDataProcessed(true);
       } else {
         toast({ title: "Erro", description: `Tipo de disponibilidade com ID '${typeId}' não encontrado.`, variant: "destructive" });
         router.push('/dashboard/company/availability-types');
@@ -209,7 +210,7 @@ export default function EditAvailabilityTypePage() {
        router.push('/dashboard/company/availability-types');
     }
     setIsLoading(false);
-  }, [typeId, form, router, toast]);
+  }, [typeId, router, toast, formReset]);
 
   useEffect(() => {
     if (pageTitle) {
@@ -225,11 +226,7 @@ export default function EditAvailabilityTypePage() {
       if (day.active) {
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
         if (day.intervals.length === 0) {
-          // This case should be prevented by the global refine or individual interval validation
-          // For safety, if a day is active and somehow all intervals are invalid/empty, set it inactive.
-          // day.active = false;
-          // day.intervals = [{ start: "", end: "" }];
-          // Or, rely on Zod validation to catch this (as it should with the global refine).
+          // Zod refine should catch this
         }
       } else {
         day.intervals = [{ start: "", end: "" }];
@@ -258,7 +255,7 @@ export default function EditAvailabilityTypePage() {
     router.push('/dashboard/company/availability-types');
   };
 
-  if (isLoading) {
+  if (isLoading || !isDataProcessed) {
     return <div className="flex justify-center items-center h-64"><p>Carregando dados...</p></div>;
   }
 
@@ -340,7 +337,7 @@ export default function EditAvailabilityTypePage() {
                 <CardDescription>Defina os horários para cada dia da semana para este tipo de disponibilidade.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {daysOfWeek.map((day, dayIndex) => {
+                {daysOfWeek.map((day) => {
                   const dayKey = day.id as keyof AvailabilityTypeFormData['schedule'];
                   const { fields, append, remove } = useFieldArray({
                     control: form.control,
@@ -403,7 +400,7 @@ export default function EditAvailabilityTypePage() {
                                 onClick={() => remove(index)}
                                 className="text-destructive hover:text-destructive"
                                 title="Remover horário"
-                                disabled={fields.length <= 1}
+                                disabled={fields.length <= 1 && (!fields[0]?.start && !fields[0]?.end)}
                               >
                                 <XCircle className="h-5 w-5" />
                               </Button>
@@ -427,7 +424,7 @@ export default function EditAvailabilityTypePage() {
                           <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.root?.message}</FormMessage>
                         </React.Fragment>
                        ))}
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.message}</FormMessage>
+                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage> {/* Corrected path for day-level errors */}
                        <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage>
                     </div>
                   );

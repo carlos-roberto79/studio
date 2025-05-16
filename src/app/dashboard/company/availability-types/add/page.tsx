@@ -87,8 +87,8 @@ type AvailabilityTypeFormData = z.infer<typeof availabilityTypeSchema>;
 
 const createInitialSchedule = (): AvailabilityTypeFormData['schedule'] => daysOfWeek.reduce((acc, day) => {
   acc[day.id as keyof AvailabilityTypeFormData['schedule']] = {
-    active: day.id !== 'sab' && day.id !== 'dom', // Seg a Sex ativos por padrão
-    intervals: [{ start: "09:00", end: "18:00" }] // Um intervalo padrão
+    active: day.id !== 'sab' && day.id !== 'dom', 
+    intervals: [{ start: "09:00", end: "18:00" }] 
   };
   return acc;
 }, {} as AvailabilityTypeFormData['schedule']);
@@ -121,11 +121,9 @@ export default function AddAvailabilityTypePage() {
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
         if (day.intervals.length === 0) {
           // This case should be caught by the global refine or individual interval validation.
-          // If not, the day should probably be marked as inactive or a default valid interval provided.
-          // For now, rely on Zod to catch this. If Zod allows it, then day.active should be false.
         }
       } else {
-        day.intervals = [{ start: "", end: "" }]; // Keep structure for inactive days
+        day.intervals = [{ start: "", end: "" }]; 
       }
     }
     const finalData = { ...data, schedule: scheduleWithFilteredIntervals };
@@ -138,7 +136,7 @@ export default function AddAvailabilityTypePage() {
       title: "Tipo de Disponibilidade Adicionado (Simulação)",
       description: `O tipo "${data.name}" foi cadastrado.`,
     });
-    form.reset({ // Reset to initial state after submission
+    form.reset({ 
       name: "",
       description: "",
       schedule: createInitialSchedule(),
@@ -267,7 +265,7 @@ export default function AddAvailabilityTypePage() {
                                 onClick={() => remove(index)}
                                 className="text-destructive hover:text-destructive"
                                 title="Remover horário"
-                                disabled={fields.length <= 1}
+                                disabled={fields.length <= 1 && (!fields[0]?.start && !fields[0]?.end)}
                               >
                                 <XCircle className="h-5 w-5" />
                               </Button>
@@ -284,15 +282,15 @@ export default function AddAvailabilityTypePage() {
                         </div>
                       )}
                        <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.root?.message}</FormMessage>
-                       {fields.map((_, index) => ( // Show errors for each interval
+                       {fields.map((_, index) => ( 
                         <React.Fragment key={`${dayKey}-intervals-errors-${index}`}>
                           <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.start?.message}</FormMessage>
                           <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.end?.message}</FormMessage>
                           <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.root?.message}</FormMessage>
                         </React.Fragment>
                        ))}
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.message}</FormMessage>
-                       <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage> {/* Global refine error */}
+                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage> {/* Corrected path */}
+                       <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage> 
                     </div>
                   );
                 })}
@@ -304,6 +302,5 @@ export default function AddAvailabilityTypePage() {
     </Form>
   );
 }
-
 
     
