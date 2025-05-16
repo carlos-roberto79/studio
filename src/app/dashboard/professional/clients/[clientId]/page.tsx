@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link'; // Adicionada importação
 import { useAuth } from '@/contexts/AuthContext';
 import { APP_NAME, USER_ROLES } from '@/lib/constants';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -50,6 +51,7 @@ interface ClientImage {
   imageUrl: string; // Placeholder or Data URL
   visibleToClient: boolean;
   fileData?: File; // Store actual file object for temporary use
+  dataAiHint?: string; // Adicionado para data-ai-hint
 }
 
 interface ClientData {
@@ -306,7 +308,8 @@ export default function ClientProfilePage() {
                 <User className="h-8 w-8 text-primary mr-3" />
                 <CardTitle className="text-3xl font-bold">{clientData.name}</CardTitle>
             </div>
-            <Button variant="outline" size="sm" asChild><Link href="/dashboard/professional"><Edit2 className="mr-2 h-4 w-4"/>Editar Cliente (mock)</Link></Button>
+            {/* O link de edição foi removido temporariamente pois não há uma página de edição de cliente */}
+            {/* <Button variant="outline" size="sm" asChild><Link href={`/dashboard/professional/clients/edit/${clientData.id}`}><Edit2 className="mr-2 h-4 w-4"/>Editar Cliente (mock)</Link></Button> */}
           </div>
           <CardDescription>Painel de acompanhamento completo do cliente.</CardDescription>
         </CardHeader>
@@ -515,7 +518,7 @@ export default function ClientProfilePage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {clientData.images.map(img => (
                                     <Card key={img.id} className="overflow-hidden">
-                                        <Image src={img.imageUrl} alt={img.title} width={300} height={200} className="w-full h-40 object-cover" data-ai-hint={img.imageUrl.includes("placehold.co") ? "placeholder imagem" : "foto cliente"}/>
+                                        <Image src={img.imageUrl} alt={img.title} width={300} height={200} className="w-full h-40 object-cover" data-ai-hint={img.dataAiHint || "foto cliente"}/>
                                         <CardContent className="p-3 text-sm">
                                             <p className="font-semibold truncate">{img.title}</p>
                                             {img.observation && <p className="text-xs text-muted-foreground truncate">{img.observation}</p>}
