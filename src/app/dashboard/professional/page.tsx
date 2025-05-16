@@ -2,7 +2,7 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, UserCheck, Settings, Edit3, Bell } from "lucide-react";
+import { Calendar, Clock, UserCheck, Settings, Edit3, Bell, Users } from "lucide-react"; // Adicionado Users
 import Link from "next/link";
 import Image from "next/image"; 
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -21,7 +21,7 @@ const upcomingAppointments = [
 const professionalStats = [
     { title: "Agendamentos Hoje", value: "7", icon: <Calendar className="h-6 w-6 text-primary" /> },
     { title: "Horários Disponíveis", value: "3", icon: <Clock className="h-6 w-6 text-primary" /> },
-    { title: "Total de Clientes", value: "48", icon: <UserCheck className="h-6 w-6 text-primary" /> },
+    { title: "Total de Clientes Atendidos", value: "48", icon: <UserCheck className="h-6 w-6 text-primary" /> },
 ];
 
 const mockProfessionalAlerts = [
@@ -159,17 +159,22 @@ export default function ProfessionalPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>Gerencie Sua Agenda</CardTitle>
+          <CardTitle>Gerencie Sua Agenda e Clientes</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Button size="lg" variant="outline" asChild>
             <Link href="/dashboard/professional/availability">
-              <Clock className="mr-2 h-5 w-5" /> Definir/Atualizar Disponibilidade
+              <Clock className="mr-2 h-5 w-5" /> Definir Disponibilidade
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
             <Link href="/dashboard/professional/calendar">
               <Calendar className="mr-2 h-5 w-5" /> Ver Calendário Completo
+            </Link>
+          </Button>
+           <Button size="lg" variant="outline" asChild>
+            <Link href="/dashboard/professional/clients/client123"> {/* Placeholder Link */}
+              <Users className="mr-2 h-5 w-5" /> Ver Perfil de Cliente (Teste)
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
@@ -187,5 +192,4 @@ export default function ProfessionalPage() {
     </div>
   );
 }
-
     
