@@ -14,16 +14,7 @@ export function Footer() {
               Simplificando seus agendamentos, sem esforço.
             </p>
           </div>
-          <div>
-            <h4 className="text-md font-semibold text-foreground">Links Rápidos</h4>
-            <ul className="mt-2 space-y-1">
-              <li><Link href="/#features" className="text-sm text-muted-foreground hover:text-primary">Recursos</Link></li>
-              <li><Link href="/#pricing" className="text-sm text-muted-foreground hover:text-primary">Preços</Link></li>
-              <li><Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">Fale Conosco</Link></li>
-              <li><Link href="/terms" className="text-sm text-muted-foreground hover:text-primary">Termos de Serviço</Link></li>
-              <li><Link href="/privacy" className="text-sm text-muted-foreground hover:text-primary">Política de Privacidade</Link></li>
-            </ul>
-          </div>
+          {/* Seção de Links Rápidos removida */}
         </div>
         <div className="mt-8 border-t pt-8 text-center">
           <p className="flex items-center justify-center text-sm text-muted-foreground">
@@ -34,3 +25,4 @@ export function Footer() {
     </footer>
   );
 }
+

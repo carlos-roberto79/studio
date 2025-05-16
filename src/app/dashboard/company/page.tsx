@@ -53,10 +53,12 @@ export default function CompanyAdminPage() {
       const storedProfileStatus = localStorage.getItem('easyagenda_companyProfileComplete_mock');
       if (storedProfileStatus === 'true') {
         setIsProfileComplete(true);
+      } else {
+        setIsProfileComplete(false); // Explicitamente define como false se não for 'true'
       }
       setCheckingProfile(false);
     }
-  }, []);
+  }, []); // Array de dependências vazio, executa na montagem
 
   useEffect(() => {
     if (!loading && user) {
