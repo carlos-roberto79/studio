@@ -50,18 +50,22 @@ const timeIntervalSchema = z.object({
   start: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
   end: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
 }).refine(data => {
+  if (data.start && !data.end) return false; // Se tem início, precisa de fim
+  if (!data.start && data.end) return false; // Se tem fim, precisa de início
   if (data.start && data.end) {
     return data.start < data.end;
   }
   return true;
 }, {
-  message: "Início deve ser antes do Fim.",
-  path: ["end"],
+  message: "Início deve ser antes do Fim e ambos devem ser preenchidos se um deles estiver.",
+  path: ["end"], // Ou path: ["start"]
 });
 
 const dayScheduleSchema = z.object({
   active: z.boolean().default(false),
-  intervals: z.array(timeIntervalSchema).min(1, "Deve haver pelo menos um intervalo se o dia estiver ativo, ou desmarque o dia.").default([{start: "09:00", end: "18:00"}]),
+  intervals: z.array(timeIntervalSchema)
+    .min(1, "Deve haver pelo menos um bloco de horário (pode estar vazio).")
+    .default([{start: "", end: ""}]), // Garante que sempre haja um item, mesmo que vazio
 });
 
 const availabilityTypeSchema = z.object({
@@ -76,52 +80,69 @@ const availabilityTypeSchema = z.object({
     sab: dayScheduleSchema,
     dom: dayScheduleSchema,
   }),
-});
+}).refine(data => {
+  // Validação global para dias ativos:
+  for (const dayKey in data.schedule) {
+    const day = data.schedule[dayKey as keyof typeof data.schedule];
+    if (day.active) {
+      const hasValidInterval = day.intervals.some(interval => interval.start && interval.end);
+      if (!hasValidInterval) {
+        // Se o dia está ativo, pelo menos um intervalo deve ser completamente preenchido.
+        // Este erro será mais difícil de associar a um campo específico no Zod.
+        // A validação individual do timeIntervalSchema já cuida de start/end juntos.
+        // Poderia adicionar um `path` aqui, mas seria genérico.
+        return false;
+      }
+    }
+  }
+  return true;
+}, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido (início e fim)." });
+
 
 type AvailabilityTypeFormData = z.infer<typeof availabilityTypeSchema>;
 
-const createInitialSchedule = () => daysOfWeek.reduce((acc, day) => {
-  acc[day.id as keyof AvailabilityTypeFormData['schedule']] = { 
-    active: day.id !== 'sab' && day.id !== 'dom', 
-    intervals: [{ start: "09:00", end: "18:00" }] 
+const createInitialSchedule = (): AvailabilityTypeFormData['schedule'] => daysOfWeek.reduce((acc, day) => {
+  acc[day.id as keyof AvailabilityTypeFormData['schedule']] = {
+    active: day.id !== 'sab' && day.id !== 'dom',
+    intervals: [{ start: "09:00", end: "18:00" }]
   };
   return acc;
 }, {} as AvailabilityTypeFormData['schedule']);
 
 
-// Mock para simular a busca de um tipo existente
 const mockExistingAvailabilityTypes: { [key: string]: AvailabilityTypeFormData } = {
-  "type1": { 
-    name: "Horário Comercial Padrão", 
-    description: "Segunda a Sexta, das 9h às 18h, com pausa para almoço.", 
+  "type1": {
+    name: "Horário Comercial Padrão",
+    description: "Segunda a Sexta, das 9h às 18h, com pausa para almoço.",
     schedule: {
       seg: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
       ter: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
       qua: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
       qui: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
       sex: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
-      sab: { active: false, intervals: [{start: "", end: ""}]}, 
-      dom: { active: false, intervals: [{start: "", end: ""}]}, 
+      sab: { active: false, intervals: [{start: "", end: ""}]},
+      dom: { active: false, intervals: [{start: "", end: ""}]},
     }
   },
-  "type2": { 
-    name: "Plantão Final de Semana", 
-    description: "Sábados e Domingos, horários específicos sob demanda. Contatar para agendar.", 
+  "type2": {
+    name: "Plantão Final de Semana",
+    description: "Sábados e Domingos, horários específicos sob demanda. Contatar para agendar.",
     schedule: {
-      ...(createInitialSchedule()), 
-      seg: { active: false, intervals: [{start: "", end: ""}] }, // Example override
+      ...(createInitialSchedule()), // Start with a full base
+      seg: { active: false, intervals: [{start: "", end: ""}] },
       ter: { active: false, intervals: [{start: "", end: ""}] },
       qua: { active: false, intervals: [{start: "", end: ""}] },
       qui: { active: false, intervals: [{start: "", end: ""}] },
       sex: { active: false, intervals: [{start: "", end: ""}] },
-      sab: { active: true, intervals: [{start: "10:00", end: "14:00"}]}, 
-      dom: { active: false, intervals: [{start: "", end: ""}]}, 
-    } 
+      sab: { active: true, intervals: [{start: "10:00", end: "14:00"}]},
+      dom: { active: false, intervals: [{start: "", end: ""}]},
+    }
   },
-   "type3": { 
-    name: "Horário Noturno Reduzido", 
-    description: "Segunda a Quinta, das 18h às 21h.", 
+   "type3": {
+    name: "Horário Noturno Reduzido",
+    description: "Segunda a Quinta, das 18h às 21h.",
     schedule: {
+      ...(createInitialSchedule()), // Start with a full base
       seg: { active: true, intervals: [{start: "18:00", end: "21:00"}]},
       ter: { active: true, intervals: [{start: "18:00", end: "21:00"}]},
       qua: { active: true, intervals: [{start: "18:00", end: "21:00"}]},
@@ -138,60 +159,63 @@ export default function EditAvailabilityTypePage() {
   const params = useParams();
   const router = useRouter();
   const typeId = params.typeId as string;
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [pageTitle, setPageTitle] = useState("Editar Tipo de Disponibilidade");
+
 
   const form = useForm<AvailabilityTypeFormData>({
     resolver: zodResolver(availabilityTypeSchema),
-    defaultValues: { 
+    defaultValues: { // Default values must match the schema structure
       name: "",
       description: "",
-      schedule: createInitialSchedule(), // Initialize with a full default schedule structure
+      schedule: createInitialSchedule(),
     }
   });
-  
-  const typeName = form.watch("name");
 
   useEffect(() => {
+    setIsLoading(true);
     if (typeId) {
-      console.log(`BACKEND_SIM: Buscando tipo de disponibilidade com ID: ${typeId}`);
-      const existingTypeData = mockExistingAvailabilityTypes[typeId];
-      if (existingTypeData) {
-        // Ensure the schedule from mock data also adheres to the "at least one interval" rule for each day
-        const processedSchedule = { ...createInitialSchedule() }; // Start with a base
-        for (const dayKey of Object.keys(processedSchedule) as Array<keyof AvailabilityTypeFormData['schedule']>) {
-          if (existingTypeData.schedule && existingTypeData.schedule[dayKey]) {
-            const dayData = existingTypeData.schedule[dayKey];
-            processedSchedule[dayKey] = {
-              active: dayData.active,
-              intervals: (dayData.active && dayData.intervals && dayData.intervals.length > 0)
-                           ? dayData.intervals
-                           : [{ start: "", end: "" }] // Ensure at least one interval object
-            };
+      const dataFromMock = mockExistingAvailabilityTypes[typeId];
+      if (dataFromMock) {
+        setPageTitle(dataFromMock.name || "Editar Tipo de Disponibilidade");
+        // Prepare the schedule data for form.reset, ensuring it matches Zod schema requirements
+        const scheduleForForm: AvailabilityTypeFormData['schedule'] = { ...createInitialSchedule() };
+
+        (Object.keys(scheduleForForm) as Array<keyof AvailabilityTypeFormData['schedule']>).forEach(dayKey => {
+          if (dataFromMock.schedule && dataFromMock.schedule[dayKey]) {
+            const mockDay = dataFromMock.schedule[dayKey];
+            scheduleForForm[dayKey].active = mockDay.active;
+            // Ensure 'intervals' is always an array with at least one item
+            scheduleForForm[dayKey].intervals = (mockDay.intervals && mockDay.intervals.length > 0)
+              ? mockDay.intervals
+              : [{ start: "", end: "" }];
           }
-        }
-        
-        form.reset({ 
-          name: existingTypeData.name,
-          description: existingTypeData.description,
-          schedule: processedSchedule 
         });
+        
+        form.reset({
+          name: dataFromMock.name,
+          description: dataFromMock.description,
+          schedule: scheduleForForm,
+        });
+
       } else {
-        toast({ title: "Erro", description: "Tipo de disponibilidade não encontrado.", variant: "destructive" });
+        toast({ title: "Erro", description: `Tipo de disponibilidade com ID '${typeId}' não encontrado.`, variant: "destructive" });
         router.push('/dashboard/company/availability-types');
       }
+    } else {
+       toast({ title: "Erro", description: "ID do tipo de disponibilidade não fornecido.", variant: "destructive" });
+       router.push('/dashboard/company/availability-types');
     }
     setIsLoading(false);
-  }, [typeId, toast, router, form.reset]); // form.reset is stable
-  
+  }, [typeId, form, router, toast]);
+
   useEffect(() => {
-    if (typeName) {
-      document.title = `Editar: ${typeName} - ${APP_NAME}`;
-    } else {
-      document.title = `Editar Tipo de Disponibilidade - ${APP_NAME}`;
+    if (pageTitle) {
+      document.title = `Editar: ${pageTitle} - ${APP_NAME}`;
     }
-  }, [typeName]);
+  }, [pageTitle]);
 
   const onSubmit = async (data: AvailabilityTypeFormData) => {
     setIsSaving(true);
@@ -201,12 +225,14 @@ export default function EditAvailabilityTypePage() {
       if (day.active) {
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
         if (day.intervals.length === 0) {
-          // If active but no valid intervals, add a default empty one for consistency with schema or consider validation
-          // For now, schema has .min(1) on intervals, so this case should ideally be prevented by validation
-          // Or, if day.intervals became empty, set day.active = false (depends on desired UX)
+          // This case should be prevented by the global refine or individual interval validation
+          // For safety, if a day is active and somehow all intervals are invalid/empty, set it inactive.
+          // day.active = false;
+          // day.intervals = [{ start: "", end: "" }];
+          // Or, rely on Zod validation to catch this (as it should with the global refine).
         }
       } else {
-        day.intervals = [{ start: "", end: "" }]; // Keep one empty interval if inactive for schema consistency
+        day.intervals = [{ start: "", end: "" }];
       }
     }
     const finalData = { ...data, schedule: scheduleWithFilteredIntervals };
@@ -222,7 +248,7 @@ export default function EditAvailabilityTypePage() {
   };
 
   const handleDelete = async () => {
-    setIsSaving(true); 
+    setIsSaving(true);
     console.log("BACKEND_SIM: Solicitação de exclusão para o tipo de disponibilidade ID:", typeId);
     await new Promise(resolve => setTimeout(resolve, 1000));
     toast({
@@ -231,21 +257,9 @@ export default function EditAvailabilityTypePage() {
     });
     router.push('/dashboard/company/availability-types');
   };
-  
+
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><p>Carregando dados...</p></div>;
-  }
-   if (!isLoading && !mockExistingAvailabilityTypes[typeId] && typeId) {
-     return (
-      <div className="flex flex-col justify-center items-center h-64 space-y-4">
-        <p className="text-xl text-destructive">Tipo de disponibilidade com ID '{typeId}' não encontrado.</p>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/company/availability-types">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para Tipos
-          </Link>
-        </Button>
-      </div>
-    );
   }
 
   return (
@@ -253,14 +267,14 @@ export default function EditAvailabilityTypePage() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
            <div className="flex items-center gap-3">
-             <Button variant="outline" size="icon" asChild>
+             <Button variant="outline" size="icon" asChild type="button">
                 <Link href="/dashboard/company/availability-types">
                     <ArrowLeft className="h-5 w-5" />
                 </Link>
             </Button>
             <CardHeader className="p-0">
               <CardTitle className="text-2xl md:text-3xl font-bold flex items-center">
-                <ListChecks className="mr-3 h-7 w-7 text-primary" /> Editar: {typeName || "Tipo de Disponibilidade"}
+                <ListChecks className="mr-3 h-7 w-7 text-primary" /> Editar: {form.watch("name") || "Tipo de Disponibilidade"}
               </CardTitle>
             </CardHeader>
           </div>
@@ -319,14 +333,14 @@ export default function EditAvailabilityTypePage() {
                 </FormItem>
               )}
             />
-            
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Horário Semanal Padrão</CardTitle>
                 <CardDescription>Defina os horários para cada dia da semana para este tipo de disponibilidade.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {daysOfWeek.map((day) => {
+                {daysOfWeek.map((day, dayIndex) => {
                   const dayKey = day.id as keyof AvailabilityTypeFormData['schedule'];
                   const { fields, append, remove } = useFieldArray({
                     control: form.control,
@@ -346,9 +360,7 @@ export default function EditAvailabilityTypePage() {
                                 onCheckedChange={(checked) => {
                                   field.onChange(checked);
                                   if (checked && fields.length === 0) {
-                                    // If re-activating and no intervals, add one.
-                                    // Schema default of min(1) should handle this if it was empty
-                                    append({ start: "09:00", end: "18:00" }); 
+                                    append({ start: "09:00", end: "18:00" });
                                   }
                                 }}
                               />
@@ -391,7 +403,7 @@ export default function EditAvailabilityTypePage() {
                                 onClick={() => remove(index)}
                                 className="text-destructive hover:text-destructive"
                                 title="Remover horário"
-                                disabled={fields.length <= 1} // Prevent removing the last interval
+                                disabled={fields.length <= 1}
                               >
                                 <XCircle className="h-5 w-5" />
                               </Button>
@@ -408,15 +420,15 @@ export default function EditAvailabilityTypePage() {
                         </div>
                       )}
                        <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.root?.message}</FormMessage>
-                       {fields.map((_, index) => ( // Iterate over current fields for displaying errors
+                       {fields.map((_, index) => (
                         <React.Fragment key={`${dayKey}-intervals-errors-${index}`}>
                           <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.start?.message}</FormMessage>
                           <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.end?.message}</FormMessage>
                           <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.root?.message}</FormMessage>
                         </React.Fragment>
                        ))}
-                       {/* Display general message for the dayScheduleSchema if 'intervals' itself is an issue, e.g., not enough items */}
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.message}</FormMessage> 
+                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.message}</FormMessage>
+                       <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage>
                     </div>
                   );
                 })}
@@ -429,3 +441,4 @@ export default function EditAvailabilityTypePage() {
   );
 }
 
+    
