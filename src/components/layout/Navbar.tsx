@@ -78,9 +78,7 @@ export function Navbar() {
               <Button size="sm" asChild>
                 <Link href="/signup"><UserPlus className="mr-2 h-4 w-4" /> Cadastrar</Link>
               </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/login"><ShieldAlert className="mr-2 h-4 w-4" /> Restrito</Link>
-              </Button>
+              {/* O botão "Restrito" foi completamente removido daqui */}
             </>
           )}
           <div className="md:hidden">
