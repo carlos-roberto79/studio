@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye } from "lucide-react"; // Added DollarSign, Eye
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -41,12 +41,20 @@ export default function CompanyAdminPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [publicLink, setPublicLink] = useState("");
+  const [isProfileComplete, setIsProfileComplete] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
 
   useEffect(() => {
     document.title = `Painel da Empresa - ${APP_NAME}`;
     if (typeof window !== "undefined") {
       const constructedLink = `${window.location.origin}/schedule/${companyPublicSlug}`;
       setPublicLink(constructedLink);
+
+      const storedProfileStatus = localStorage.getItem('easyagenda_companyProfileComplete_mock');
+      if (storedProfileStatus === 'true') {
+        setIsProfileComplete(true);
+      }
+      setCheckingProfile(false);
     }
   }, []);
 
@@ -71,7 +79,7 @@ export default function CompanyAdminPage() {
       });
   };
 
-  if (loading || !user || (user && role !== USER_ROLES.COMPANY_ADMIN)) {
+  if (loading || !user || (user && role !== USER_ROLES.COMPANY_ADMIN) || checkingProfile) {
      return (
       <div className="space-y-8">
         <CardHeader className="px-0">
@@ -114,6 +122,36 @@ export default function CompanyAdminPage() {
         <CardTitle className="text-3xl font-bold">Gerenciamento da Empresa</CardTitle>
         <CardDescription>Supervisione as operações, profissionais, serviços e desempenho da sua empresa.</CardDescription>
       </CardHeader>
+
+      {!isProfileComplete && (
+        <Card className="mb-8 shadow-lg border-primary bg-primary/5">
+         <CardHeader className="flex flex-row items-center space-x-3">
+            <Info className="h-8 w-8 text-primary flex-shrink-0" />
+            <div>
+              <CardTitle className="text-xl text-primary">Complete o Perfil da Sua Empresa!</CardTitle>
+              <CardDescription className="text-primary/90">
+                Para aproveitar ao máximo o EasyAgenda e publicar sua agenda, é essencial configurar os dados da sua empresa.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-3 text-sm text-foreground">
+              Clique no botão abaixo para adicionar ou editar informações importantes como:
+            </p>
+            <ul className="list-disc list-inside mb-5 space-y-1 text-sm text-muted-foreground">
+              <li>Nome da Empresa, CNPJ, Endereço Completo</li>
+              <li>Telefone e E-mail de contato para seus clientes</li>
+              <li>O link público personalizado para sua página de agendamentos</li>
+              <li>O logo da sua empresa para identificação visual</li>
+            </ul>
+            <Button asChild size="lg" variant="default">
+              <Link href="/dashboard/company/edit-profile">
+                <Edit className="mr-2 h-5 w-5" /> Completar/Editar Perfil da Empresa
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {companyStats.map(stat => (
@@ -240,8 +278,8 @@ export default function CompanyAdminPage() {
                 <p className="text-xs text-muted-foreground mt-1">Compartilhe este link com seus clientes para que eles possam agendar horários online.</p>
             </div>
             <div className="border-t pt-6">
-                <h4 className="font-medium mb-2">Cadastro de Clientes</h4>
-                <p className="text-sm text-muted-foreground mb-3">Adicione clientes que não se cadastraram pelo link público ou que precisam de assistência para o primeiro agendamento.</p>
+                 <h4 className="font-medium mb-2">Cadastro de Clientes</h4>
+                 <p className="text-sm text-muted-foreground mb-3">Adicione clientes que não se cadastraram pelo link público ou que precisam de assistência para o primeiro agendamento.</p>
                  <Button asChild>
                   <Link href="/dashboard/company/add-client">
                     <UserPlus className="mr-2 h-4 w-4" /> Adicionar Cliente Manualmente

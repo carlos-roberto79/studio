@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { APP_NAME } from '@/lib/constants';
 import { Copyright } from 'lucide-react';
@@ -6,7 +7,7 @@ export function Footer() {
   return (
     <footer className="border-t bg-background">
       <div className="container mx-auto px-4 py-8 md:px-6">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
             <h3 className="text-lg font-semibold text-foreground">{APP_NAME}</h3>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -22,18 +23,6 @@ export function Footer() {
               <li><Link href="/terms" className="text-sm text-muted-foreground hover:text-primary">Termos de Serviço</Link></li>
               <li><Link href="/privacy" className="text-sm text-muted-foreground hover:text-primary">Política de Privacidade</Link></li>
             </ul>
-          </div>
-          <div>
-            <h4 className="text-md font-semibold text-foreground">Contato</h4>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Rua da Facilidade, 123, Cidade Agendada, CA 90210
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Email: suporte@easyagenda.com
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Telefone: (123) 456-7890
-            </p>
           </div>
         </div>
         <div className="mt-8 border-t pt-8 text-center">

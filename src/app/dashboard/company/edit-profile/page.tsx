@@ -12,6 +12,7 @@ import Link from "next/link";
 import { ArrowLeft, Edit, Save, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NextImage from "next/image"; // Renomeado para NextImage para evitar conflito com o ícone
+import { useRouter } from "next/navigation"; // Importar useRouter
 
 // Mock existing company data
 const mockCompanyData = {
@@ -27,6 +28,7 @@ const mockCompanyData = {
 
 export default function EditCompanyProfilePage() {
   const { toast } = useToast();
+  const router = useRouter(); // Inicializar useRouter
   const [companyName, setCompanyName] = useState(mockCompanyData.companyName);
   const [cnpj, setCnpj] = useState(mockCompanyData.cnpj);
   const [address, setAddress] = useState(mockCompanyData.address);
@@ -39,7 +41,7 @@ export default function EditCompanyProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
-    document.title = `Editar Perfil da Empresa - ${APP_NAME}`;
+    document.title = \`Editar Perfil da Empresa - \${APP_NAME}\`;
     // In a real app, fetch company data here
   }, []);
 
@@ -58,7 +60,9 @@ export default function EditCompanyProfilePage() {
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     toast({ title: "Perfil Atualizado", description: "As informações da sua empresa foram salvas com sucesso." });
+    localStorage.setItem('easyagenda_companyProfileComplete_mock', 'true'); // Marcar perfil como completo
     setIsSaving(false);
+    router.push('/dashboard/company'); // Redirecionar para o painel da empresa
   };
 
   const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,7 +161,7 @@ export default function EditCompanyProfilePage() {
                     <Input id="public-link-slug" value={publicLinkSlug} onChange={(e) => setPublicLinkSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))} placeholder="sua-empresa" className="rounded-l-none"/>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                    Seu link público será: {`${APP_NAME}.com/agendar/${publicLinkSlug || "sua-empresa"}`}. Use letras minúsculas, números e hífens.
+                    Seu link público será: {typeof window !== 'undefined' ? window.location.origin : 'https://easyagenda.com'}/agendar/{publicLinkSlug || "sua-empresa"}. Use letras minúsculas, números e hífens.
                 </p>
             </div>
 
