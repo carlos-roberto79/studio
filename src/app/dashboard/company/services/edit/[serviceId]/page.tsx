@@ -47,6 +47,12 @@ const MOCK_PROFESSIONALS = [
   { id: "prof3", name: "Carlos Souza (Esteticista)" },
 ];
 
+const MOCK_AVAILABILITY_TYPES = [
+  { id: "type1", name: "Horário Comercial Padrão" },
+  { id: "type2", name: "Plantão Final de Semana" },
+  { id: "type3", name: "Horário Noturno Reduzido" },
+];
+
 const serviceCategories = [
   "Beleza e Estética",
   "Saúde e Bem-estar",
@@ -77,7 +83,7 @@ const serviceSchema = z.object({
   blockAfter24Hours: z.boolean().default(false),
   intervalBetweenSlots: z.coerce.number().int().min(0, "O intervalo não pode ser negativo.").default(0),
   confirmationType: z.enum(["manual", "automatic"]).default("automatic"),
-  specificAvailability: z.string().optional().describe("Regras de disponibilidade específica para este serviço."),
+  availabilityTypeId: z.string().optional().describe("Tipo de disponibilidade vinculado a este serviço."),
   active: z.boolean().default(true),
 }).refine(data => {
   if (data.hasBookingFee && (data.bookingFeeValue === undefined || data.bookingFeeValue < 0)) {
@@ -122,7 +128,7 @@ const mockExistingServices: { [key: string]: ServiceFormData } = {
     blockAfter24Hours: false, 
     intervalBetweenSlots: 15, 
     confirmationType: "automatic", 
-    specificAvailability: "seg 09:00-12:00; ter 14:00-18:00" 
+    availabilityTypeId: "type1" 
   },
   "2": { 
     name: "Consulta Psicológica Online", 
@@ -145,7 +151,7 @@ const mockExistingServices: { [key: string]: ServiceFormData } = {
     blockAfter24Hours: true, 
     intervalBetweenSlots: 0, 
     confirmationType: "manual", 
-    specificAvailability: "" 
+    availabilityTypeId: "" 
   },
 };
 
@@ -163,7 +169,6 @@ export default function EditServicePage() {
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
-    // Default values will be set by useEffect after fetching/checking mock data
   });
   
   const serviceName = form.watch("name");
@@ -180,7 +185,7 @@ export default function EditServicePage() {
       } else {
         toast({ title: "Erro", description: "Serviço não encontrado.", variant: "destructive" });
         setIsLoading(false); 
-         router.push('/dashboard/company/services'); // Redirect if service not found
+         router.push('/dashboard/company/services'); 
       }
     } else {
         setIsLoading(false); 
@@ -221,20 +226,7 @@ export default function EditServicePage() {
   const onSubmit = async (data: ServiceFormData) => {
     setIsSaving(true);
     console.log("BACKEND_SIM: Dados do serviço a serem atualizados:", { serviceId, data });
-    // SIMULAÇÃO DE CHAMADA DE API PARA ATUALIZAR SERVIÇO
-    // Em um app real, aqui você faria uma chamada para seu backend:
-    // try {
-    //   await api.updateService(serviceId, data); // Substitua pela sua chamada de API real
-    //   toast({ title: "Sucesso!", description: `Serviço "${data.name}" atualizado com sucesso no servidor.` });
-    //   router.push('/dashboard/company/services'); 
-    // } catch (error) {
-    //   console.error("BACKEND_SIM: Erro ao atualizar serviço", error);
-    //   toast({ title: "Erro no Servidor", description: "Não foi possível atualizar o serviço. Verifique o console para detalhes.", variant: "destructive" });
-    // } finally {
-    //   setIsSaving(false);
-    // }
-
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulação de delay
+    await new Promise(resolve => setTimeout(resolve, 1500)); 
     toast({
       title: "Serviço Atualizado! (Simulação)",
       description: `O serviço "${data.name}" foi atualizado com sucesso (simulação frontend).`,
@@ -246,18 +238,6 @@ export default function EditServicePage() {
   const handleDelete = async () => {
     setIsSaving(true); 
     console.log("BACKEND_SIM: Solicitação de exclusão para o serviço ID:", serviceId);
-    // SIMULAÇÃO DE CHAMADA DE API PARA EXCLUIR SERVIÇO
-    // Em um app real:
-    // try {
-    //   await api.deleteService(serviceId);
-    //   toast({ title: "Serviço Excluído", description: `O serviço "${form.getValues("name")}" foi excluído do servidor.` });
-    //   router.push('/dashboard/company/services');
-    // } catch (error) {
-    //   console.error("BACKEND_SIM: Erro ao excluir serviço", error);
-    //   toast({ title: "Erro no Servidor", description: "Não foi possível excluir o serviço.", variant: "destructive" });
-    //   setIsSaving(false); // Re-enable buttons if delete failed
-    // }
-
     await new Promise(resolve => setTimeout(resolve, 1000));
     toast({
       title: "Serviço Excluído (Simulação)",
@@ -271,7 +251,7 @@ export default function EditServicePage() {
     const duplicatedValues = { 
       ...currentValues, 
       name: `${currentValues.name} (Cópia)`, 
-      uniqueSchedulingLink: `${currentValues.uniqueSchedulingLink}-copia`  // Ensure uniqueness for the copy
+      uniqueSchedulingLink: `${currentValues.uniqueSchedulingLink}-copia`
     };
     
     console.log("BACKEND_SIM: Dados do serviço duplicado (frontend) para pré-preencher formulário de adição:", duplicatedValues);
@@ -361,8 +341,8 @@ export default function EditServicePage() {
         <Tabs defaultValue="configurations" className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
             <TabsTrigger value="configurations">Configurações</TabsTrigger>
-            <TabsTrigger value="availability" disabled>Disponibilidade</TabsTrigger> 
-            <TabsTrigger value="professionalsTab" disabled>Profissionais</TabsTrigger> 
+            <TabsTrigger value="availability" disabled>Disponibilidade Avançada</TabsTrigger> 
+            <TabsTrigger value="professionalsTab" disabled>Profissionais (Detalhes)</TabsTrigger> 
             <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger> 
           </TabsList>
 
@@ -634,7 +614,7 @@ export default function EditServicePage() {
                                 <FormControl>
                                 <Input type="number" {...field} disabled={form.watch("simultaneousAppointmentsPerSlotAutomatic")} />
                                 </FormControl>
-                                <FormDescription>Quantos clientes podem agendar no mesmo horário. (Se automático, ajusta pelos profissionais)</FormDescription>
+                                <FormDescription>Quantos clientes podem agendar no mesmo horário.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -705,19 +685,25 @@ export default function EditServicePage() {
                         </FormItem>
                         )}
                     />
-                     <FormField
-                      control={form.control}
-                      name="specificAvailability"
-                      render={({ field }) => (
+                    <FormField
+                        control={form.control}
+                        name="availabilityTypeId"
+                        render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Disponibilidade Específica do Serviço (Avançado)</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="Ex: seg 14:00-18:00; qua 09:00-12:00. (Deixe em branco para usar disponibilidade padrão do profissional/empresa)." rows={3} {...field} />
-                          </FormControl>
-                          <FormDescription>Defina regras de horários específicos para este serviço. Uma interface mais detalhada para isso será adicionada futuramente. Backend aplicaria estas regras.</FormDescription>
-                          <FormMessage />
+                            <FormLabel>Tipo de Disponibilidade Vinculado</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Selecione um tipo de disponibilidade" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                     <SelectItem value="">Nenhum (usar horários do profissional/empresa)</SelectItem>
+                                    {MOCK_AVAILABILITY_TYPES.map(type => (
+                                        <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormDescription>Vincule um modelo de disponibilidade previamente cadastrado a este serviço. Se não selecionado, usará a disponibilidade do profissional e/ou da empresa.</FormDescription>
+                            <FormMessage />
                         </FormItem>
-                      )}
+                        )}
                     />
                     <FormField
                       control={form.control}
@@ -744,20 +730,20 @@ export default function EditServicePage() {
            {/* Placeholder Tabs */}
            <TabsContent value="availability">
             <Card>
-              <CardHeader><CardTitle>Disponibilidade do Serviço</CardTitle><CardDescription>Defina quando este serviço está disponível (em breve). Regras de disponibilidade geral e específica seriam aplicadas pelo backend.</CardDescription></CardHeader>
-              <CardContent><p className="text-muted-foreground">Configurações de disponibilidade específica para este serviço estarão disponíveis aqui.</p></CardContent>
+              <CardHeader><CardTitle>Disponibilidade Avançada</CardTitle><CardDescription>Configure regras detalhadas de disponibilidade para este serviço (em breve).</CardDescription></CardHeader>
+              <CardContent><p className="text-muted-foreground">Configurações avançadas de disponibilidade (ex: horários específicos, recorrência, bloqueios) para este serviço estarão disponíveis aqui, integradas com o "Tipo de Disponibilidade" selecionado.</p></CardContent>
             </Card>
           </TabsContent>
            <TabsContent value="professionalsTab">
             <Card>
-              <CardHeader><CardTitle>Profissionais (Avançado)</CardTitle><CardDescription>Gerencie detalhes da atribuição de profissionais a este serviço (em breve).</CardDescription></CardHeader>
-              <CardContent><p className="text-muted-foreground">Configurações avançadas de profissionais.</p></CardContent>
+              <CardHeader><CardTitle>Profissionais (Detalhes)</CardTitle><CardDescription>Gerencie detalhes da atribuição de profissionais a este serviço (em breve).</CardDescription></CardHeader>
+              <CardContent><p className="text-muted-foreground">Configurações avançadas por profissional para este serviço (ex: preço diferenciado, prioridade).</p></CardContent>
             </Card>
           </TabsContent>
            <TabsContent value="bling">
             <Card>
               <CardHeader><CardTitle>Integração Bling</CardTitle><CardDescription>Configure a integração com o Bling para este serviço (em breve).</CardDescription></CardHeader>
-              <CardContent><p className="text-muted-foreground">Detalhes da integração com o Bling.</p></CardContent>
+              <CardContent><p className="text-muted-foreground">Detalhes da integração com o Bling para emissão de notas ou controle de estoque (se aplicável).</p></CardContent>
             </Card>
           </TabsContent>
         </Tabs>

@@ -3,14 +3,14 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar"; // Assuming this can be reused or adapted
+import { Calendar } from "@/components/ui/calendar"; 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { APP_NAME } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import Link from "next/link";
-import { ArrowLeft, Clock, Save } from "lucide-react";
+import { ArrowLeft, Clock, Save, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { DateRange } from "react-day-picker";
 
@@ -57,11 +57,11 @@ export default function ProfessionalAvailabilityPage() {
   const handleSaveAvailability = async () => {
     setIsSaving(true);
     // Simulate API call
-    console.log("Saving weekly availability:", availability);
-    console.log("Saving date overrides:", {date: selectedDateOverrides, override: dateOverrideAvailability});
+    console.log("BACKEND_SIM: Salvando disponibilidade semanal do profissional:", availability);
+    console.log("BACKEND_SIM: Salvando exceções de datas:", {date: selectedDateOverrides, override: dateOverrideAvailability});
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    toast({ title: "Disponibilidade Atualizada", description: "Seus horários foram salvos com sucesso." });
+    toast({ title: "Disponibilidade Atualizada (Simulação)", description: "Seus horários foram salvos com sucesso." });
     setIsSaving(false);
   };
 
@@ -72,7 +72,7 @@ export default function ProfessionalAvailabilityPage() {
           <CardTitle className="text-3xl font-bold flex items-center">
             <Clock className="mr-3 h-8 w-8 text-primary" /> Definir Disponibilidade
           </CardTitle>
-          <CardDescription>Configure seus horários de trabalho semanais e exceções.</CardDescription>
+          <CardDescription>Configure seus horários de trabalho semanais e exceções. Lembre-se que seus horários devem estar dentro do horário de funcionamento da empresa.</CardDescription>
         </CardHeader>
         <Button variant="outline" asChild>
           <Link href="/dashboard/professional">
@@ -80,6 +80,19 @@ export default function ProfessionalAvailabilityPage() {
           </Link>
         </Button>
       </div>
+      
+      <Card className="shadow-sm border-blue-500/50 bg-blue-500/5">
+        <CardContent className="pt-6">
+            <div className="flex items-start space-x-3">
+                <Info className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
+                <p className="text-sm text-blue-700">
+                    Seu horário de trabalho deve estar dentro do horário de funcionamento definido pela empresa.
+                    Horários cadastrados fora do expediente da empresa podem não ser considerados válidos para agendamentos.
+                    Verifique o horário de funcionamento da empresa com o administrador.
+                </p>
+            </div>
+        </CardContent>
+      </Card>
 
       <Card className="shadow-lg">
         <CardHeader>
@@ -93,7 +106,7 @@ export default function ProfessionalAvailabilityPage() {
                 <Checkbox 
                   id={`active-${day.id}`} 
                   checked={availability[day.id]?.active}
-                  onCheckedChange={(checked) => handleAvailabilityChange(day.id, 'active', checked)}
+                  onCheckedChange={(checked) => handleAvailabilityChange(day.id, 'active', !!checked)}
                 />
                 <Label htmlFor={`active-${day.id}`} className="font-semibold text-md">{day.label}</Label>
               </div>
@@ -201,3 +214,4 @@ export default function ProfessionalAvailabilityPage() {
     </div>
   );
 }
+

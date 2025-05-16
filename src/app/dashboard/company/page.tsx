@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -236,10 +236,15 @@ export default function CompanyAdminPage() {
         <CardHeader>
             <CardTitle>Gestão de Serviços e Agendas</CardTitle>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 gap-4">
+        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
              <Button asChild>
               <Link href="/dashboard/company/services">
                 <ShoppingBag className="mr-2 h-4 w-4" /> Configurar Serviços
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/availability-types">
+                <ListChecks className="mr-2 h-4 w-4" /> Tipos de Disponibilidade
               </Link>
             </Button>
             <Button asChild variant="outline">
@@ -304,7 +309,7 @@ export default function CompanyAdminPage() {
             </Button>
             <Button asChild variant="outline">
               <Link href="/dashboard/company/general-settings/availability">
-                <Clock className="mr-2 h-4 w-4" /> Disponibilidade Padrão
+                <Clock className="mr-2 h-4 w-4" /> Horário de Funcionamento
               </Link>
             </Button>
         </CardContent>

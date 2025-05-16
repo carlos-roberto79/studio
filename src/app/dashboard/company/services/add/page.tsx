@@ -36,6 +36,12 @@ const MOCK_PROFESSIONALS = [
   { id: "prof3", name: "Carlos Souza (Esteticista)" },
 ];
 
+const MOCK_AVAILABILITY_TYPES = [
+  { id: "type1", name: "Horário Comercial Padrão" },
+  { id: "type2", name: "Plantão Final de Semana" },
+  { id: "type3", name: "Horário Noturno Reduzido" },
+];
+
 const serviceCategories = [
   "Beleza e Estética",
   "Saúde e Bem-estar",
@@ -66,7 +72,7 @@ const serviceSchema = z.object({
   blockAfter24Hours: z.boolean().default(false),
   intervalBetweenSlots: z.coerce.number().int().min(0, "O intervalo não pode ser negativo.").default(0),
   confirmationType: z.enum(["manual", "automatic"]).default("automatic"),
-  specificAvailability: z.string().optional().describe("Regras de disponibilidade específica para este serviço."),
+  availabilityTypeId: z.string().optional().describe("Tipo de disponibilidade vinculado a este serviço."),
   active: z.boolean().default(true),
 }).refine(data => {
   if (data.hasBookingFee && (data.bookingFeeValue === undefined || data.bookingFeeValue < 0)) {
@@ -116,7 +122,7 @@ export default function AddServicePage() {
       blockAfter24Hours: false,
       intervalBetweenSlots: 10,
       confirmationType: "automatic",
-      specificAvailability: "",
+      availabilityTypeId: "",
       active: true,
       image: "https://placehold.co/300x200.png?text=Serviço",
     },
@@ -170,22 +176,7 @@ export default function AddServicePage() {
   const onSubmit = async (data: ServiceFormData) => {
     setIsSaving(true);
     console.log("BACKEND_SIM: Dados do novo serviço a serem enviados:", data);
-    // SIMULAÇÃO DE CHAMADA DE API PARA CRIAR SERVIÇO
-    // Em um app real, aqui você faria uma chamada para seu backend:
-    // try {
-    //   await api.createService(data); // Substitua 'api.createService' pela sua chamada de API real
-    //   toast({ title: "Sucesso!", description: `Serviço "${data.name}" salvo com sucesso no servidor.` });
-    //   form.reset(); 
-    //   removeImage();
-    //   router.push('/dashboard/company/services'); 
-    // } catch (error) {
-    //   console.error("BACKEND_SIM: Erro ao criar serviço", error);
-    //   toast({ title: "Erro no Servidor", description: "Não foi possível salvar o serviço. Verifique o console para detalhes.", variant: "destructive" });
-    // } finally {
-    //   setIsSaving(false);
-    // }
-
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulação de delay
+    await new Promise(resolve => setTimeout(resolve, 1500)); 
     toast({
       title: "Serviço Adicionado! (Simulação)",
       description: `O serviço "${data.name}" foi cadastrado com sucesso (simulação frontend).`,
@@ -193,7 +184,6 @@ export default function AddServicePage() {
     form.reset(); 
     removeImage(); 
     setIsSaving(false);
-    // router.push('/dashboard/company/services'); // Opcional: redirecionar após adicionar
   };
 
   const watchHasBookingFee = form.watch("hasBookingFee");
@@ -238,8 +228,8 @@ export default function AddServicePage() {
         <Tabs defaultValue="configurations" className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
             <TabsTrigger value="configurations">Configurações</TabsTrigger>
-            <TabsTrigger value="availability" disabled>Disponibilidade</TabsTrigger> 
-            <TabsTrigger value="professionalsTab" disabled>Profissionais</TabsTrigger> 
+            <TabsTrigger value="availability" disabled>Disponibilidade Avançada</TabsTrigger> 
+            <TabsTrigger value="professionalsTab" disabled>Profissionais (Detalhes)</TabsTrigger> 
             <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger> 
           </TabsList>
 
@@ -512,7 +502,7 @@ export default function AddServicePage() {
                                 <FormControl>
                                 <Input type="number" {...field} disabled={form.watch("simultaneousAppointmentsPerSlotAutomatic")} />
                                 </FormControl>
-                                <FormDescription>Quantos clientes podem agendar no mesmo horário. (Se automático, ajusta pelos profissionais)</FormDescription>
+                                <FormDescription>Quantos clientes podem agendar no mesmo horário.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -583,19 +573,25 @@ export default function AddServicePage() {
                         </FormItem>
                         )}
                     />
-                     <FormField
-                      control={form.control}
-                      name="specificAvailability"
-                      render={({ field }) => (
+                    <FormField
+                        control={form.control}
+                        name="availabilityTypeId"
+                        render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Disponibilidade Específica do Serviço (Avançado)</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="Ex: seg 14:00-18:00; qua 09:00-12:00. (Deixe em branco para usar disponibilidade padrão do profissional/empresa)." rows={3} {...field} />
-                          </FormControl>
-                          <FormDescription>Defina regras de horários específicos para este serviço. Uma interface mais detalhada para isso será adicionada futuramente. Backend aplicaria estas regras.</FormDescription>
-                          <FormMessage />
+                            <FormLabel>Tipo de Disponibilidade Vinculado</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Selecione um tipo de disponibilidade" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value="">Nenhum (usar horários do profissional/empresa)</SelectItem>
+                                    {MOCK_AVAILABILITY_TYPES.map(type => (
+                                        <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormDescription>Vincule um modelo de disponibilidade previamente cadastrado a este serviço. Se não selecionado, usará a disponibilidade do profissional e/ou da empresa.</FormDescription>
+                            <FormMessage />
                         </FormItem>
-                      )}
+                        )}
                     />
                     <FormField
                       control={form.control}
@@ -622,20 +618,20 @@ export default function AddServicePage() {
           {/* Placeholder Tabs */}
           <TabsContent value="availability">
             <Card>
-              <CardHeader><CardTitle>Disponibilidade do Serviço</CardTitle><CardDescription>Defina quando este serviço está disponível (em breve). Regras de disponibilidade geral e específica seriam aplicadas pelo backend.</CardDescription></CardHeader>
-              <CardContent><p className="text-muted-foreground">Configurações de disponibilidade específica para este serviço estarão disponíveis aqui.</p></CardContent>
+              <CardHeader><CardTitle>Disponibilidade Avançada</CardTitle><CardDescription>Configure regras detalhadas de disponibilidade para este serviço (em breve).</CardDescription></CardHeader>
+              <CardContent><p className="text-muted-foreground">Configurações avançadas de disponibilidade (ex: horários específicos, recorrência, bloqueios) para este serviço estarão disponíveis aqui, integradas com o "Tipo de Disponibilidade" selecionado.</p></CardContent>
             </Card>
           </TabsContent>
            <TabsContent value="professionalsTab">
             <Card>
-              <CardHeader><CardTitle>Profissionais (Avançado)</CardTitle><CardDescription>Gerencie detalhes da atribuição de profissionais a este serviço (em breve).</CardDescription></CardHeader>
-              <CardContent><p className="text-muted-foreground">Configurações avançadas de profissionais.</p></CardContent>
+              <CardHeader><CardTitle>Profissionais (Detalhes)</CardTitle><CardDescription>Gerencie detalhes da atribuição de profissionais a este serviço (em breve).</CardDescription></CardHeader>
+              <CardContent><p className="text-muted-foreground">Configurações avançadas por profissional para este serviço (ex: preço diferenciado, prioridade).</p></CardContent>
             </Card>
           </TabsContent>
            <TabsContent value="bling">
             <Card>
               <CardHeader><CardTitle>Integração Bling</CardTitle><CardDescription>Configure a integração com o Bling para este serviço (em breve).</CardDescription></CardHeader>
-              <CardContent><p className="text-muted-foreground">Detalhes da integração com o Bling.</p></CardContent>
+              <CardContent><p className="text-muted-foreground">Detalhes da integração com o Bling para emissão de notas ou controle de estoque (se aplicável).</p></CardContent>
             </Card>
           </TabsContent>
         </Tabs>
