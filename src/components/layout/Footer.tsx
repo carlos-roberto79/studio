@@ -10,11 +10,9 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
             <h3 className="text-lg font-semibold text-foreground">{APP_NAME}</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Simplificando seus agendamentos, sem esforço.
-            </p>
+            {/* Tagline removida daqui */}
           </div>
-          {/* Seção de Links Rápidos removida */}
+          {/* Seção de Links Rápidos já havia sido removida */}
         </div>
         <div className="mt-8 border-t pt-8 text-center">
           <p className="flex items-center justify-center text-sm text-muted-foreground">
