@@ -2,12 +2,9 @@
 "use client";
 
 import type { UserRole } from '@/lib/constants';
-import { USER_ROLES } from '@/lib/constants'; // Import USER_ROLES
+import { USER_ROLES } from '@/lib/constants'; 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-// import { auth } from '@/lib/firebase'; // Will be used with actual Firebase
-// import type { User as FirebaseUser } from 'firebase/auth'; // Actual Firebase User type
 
-// Mock User type for now
 interface MockUser {
   uid: string;
   email: string | null;
@@ -17,7 +14,7 @@ interface AuthContextType {
   user: MockUser | null;
   role: UserRole | null;
   loading: boolean;
-  login: (email: string, pass: string, role?: UserRole) => Promise<void>;
+  login: (email: string, pass: string, role?: UserRole) => Promise<UserRole | null>; // Retorna o papel para redirecionamento
   signup: (email: string, pass: string, role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   setRole: (role: UserRole | null) => void;
@@ -25,8 +22,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Chave para o mock "banco de dados" de papéis de usuários
 const MOCK_USERS_ROLES_STORAGE_KEY = 'easyagenda_all_users_roles';
+const SITE_ADMIN_EMAIL = "superadmin@easyagenda.com"; // E-mail do Site Admin
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<MockUser | null>(null);
@@ -39,7 +36,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedUserString && storedRoleString) {
       try {
         const storedUser: MockUser = JSON.parse(storedUserString);
-        // Garantir que o email no estado seja normalizado ao carregar
         if (storedUser.email) {
           storedUser.email = storedUser.email.toLowerCase();
         }
@@ -54,31 +50,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email: string, _pass: string, loginRole?: UserRole) => {
+  const login = async (email: string, pass: string, loginRole?: UserRole): Promise<UserRole | null> => {
     setLoading(true);
-    const normalizedEmail = email.toLowerCase(); // Normalizar e-mail
+    const normalizedEmail = email.toLowerCase();
+    let determinedRole: UserRole;
+
+    if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase() && pass === "superadmin123") { // Senha mock para Site Admin
+      determinedRole = USER_ROLES.SITE_ADMIN;
+    } else {
+      const allUsersRoles = JSON.parse(localStorage.getItem(MOCK_USERS_ROLES_STORAGE_KEY) || '{}');
+      determinedRole = allUsersRoles[normalizedEmail] || loginRole || USER_ROLES.CLIENT;
+    }
+    
     const mockUser: MockUser = { uid: 'mock-uid-' + normalizedEmail, email: normalizedEmail };
     setUser(mockUser);
-
-    const allUsersRoles = JSON.parse(localStorage.getItem(MOCK_USERS_ROLES_STORAGE_KEY) || '{}');
-    // Usar e-mail normalizado para buscar o papel. O loginRole é um fallback menos prioritário.
-    const determinedRole = allUsersRoles[normalizedEmail] || loginRole || USER_ROLES.CLIENT;
-
     setRole(determinedRole);
     localStorage.setItem('easyagenda_user', JSON.stringify(mockUser));
     localStorage.setItem('easyagenda_role', determinedRole);
     setLoading(false);
+    return determinedRole;
   };
 
   const signup = async (email: string, _pass: string, signupRole: UserRole) => {
     setLoading(true);
-    const normalizedEmail = email.toLowerCase(); // Normalizar e-mail
+    const normalizedEmail = email.toLowerCase();
     const mockUser: MockUser = { uid: 'mock-uid-' + normalizedEmail, email: normalizedEmail };
     setUser(mockUser);
     setRole(signupRole);
 
     const allUsersRoles = JSON.parse(localStorage.getItem(MOCK_USERS_ROLES_STORAGE_KEY) || '{}');
-    allUsersRoles[normalizedEmail] = signupRole; // Usar e-mail normalizado como chave
+    allUsersRoles[normalizedEmail] = signupRole;
     localStorage.setItem(MOCK_USERS_ROLES_STORAGE_KEY, JSON.stringify(allUsersRoles));
 
     localStorage.setItem('easyagenda_user', JSON.stringify(mockUser));
@@ -92,6 +93,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRole(null);
     localStorage.removeItem('easyagenda_user');
     localStorage.removeItem('easyagenda_role');
+    // Não remover easyagenda_all_users_roles ou easyagenda_companyProfileComplete_mock no logout padrão
+    // A menos que seja um logout específico de "limpar tudo"
     setLoading(false);
   };
   
@@ -99,8 +102,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRole(newRole);
     if (user && newRole) { 
         const allUsersRoles = JSON.parse(localStorage.getItem(MOCK_USERS_ROLES_STORAGE_KEY) || '{}');
-        if (user.email) { // user.email já deve estar normalizado aqui devido ao login/signup/useEffect
-             allUsersRoles[user.email] = newRole; // Não precisa de .toLowerCase() aqui se user.email já está normalizado
+        if (user.email) {
+             allUsersRoles[user.email] = newRole;
              localStorage.setItem(MOCK_USERS_ROLES_STORAGE_KEY, JSON.stringify(allUsersRoles));
         }
     }

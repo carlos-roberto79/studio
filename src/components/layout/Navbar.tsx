@@ -1,28 +1,31 @@
+
 "use client";
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LogIn, UserPlus, LayoutDashboard, LogOut, Briefcase, Users, CalendarPlus, BellDot, Settings } from 'lucide-react';
+import { Menu, LogIn, UserPlus, LayoutDashboard, LogOut, Briefcase, Users, CalendarPlus, BellDot, Settings, ShieldAlert } from 'lucide-react';
 import { Logo } from '@/components/shared/Logo';
 import { useAuth } from '@/contexts/AuthContext'; 
 import { Separator } from '@/components/ui/separator';
+import { USER_ROLES } from '@/lib/constants';
 
 const navLinks = [
   { href: '/', label: 'Início' },
   { href: '/#features', label: 'Recursos' },
   { href: '/#pricing', label: 'Preços' },
-  { href: '/contact', label: 'Contato' }, // Assuming a contact page might exist or be added
+  { href: '/contact', label: 'Contato' },
 ];
 
 const authenticatedNavLinks = (role: string | null) => [
-  { href: '/dashboard', label: 'Painel', icon: <LayoutDashboard className="h-5 w-5" />, roles: ['client', 'professional', 'company_admin'] },
-  { href: '/dashboard/company', label: 'Minha Empresa', icon: <Briefcase className="h-5 w-5" />, roles: ['company_admin'] },
-  { href: '/dashboard/professional', label: 'Minha Agenda', icon: <CalendarPlus className="h-5 w-5" />, roles: ['professional'] },
-  { href: '/dashboard/client', label: 'Meus Agendamentos', icon: <Users className="h-5 w-5" />, roles: ['client'] },
-  { href: '/notifications-tester', label: 'IA de Notificações', icon: <BellDot className="h-5 w-5" />, roles: ['company_admin', 'professional'] },
-  { href: "/dashboard/settings", label: "Configurações", icon: <Settings className="h-5 w-5" />, roles: ['client', 'professional', 'company_admin'] },
+  { href: '/dashboard', label: 'Painel', icon: <LayoutDashboard className="h-5 w-5" />, roles: [USER_ROLES.CLIENT, USER_ROLES.PROFESSIONAL, USER_ROLES.COMPANY_ADMIN] },
+  { href: '/site-admin', label: 'Painel Site Admin', icon: <ShieldAlert className="h-5 w-5" />, roles: [USER_ROLES.SITE_ADMIN] },
+  { href: '/dashboard/company', label: 'Minha Empresa', icon: <Briefcase className="h-5 w-5" />, roles: [USER_ROLES.COMPANY_ADMIN] },
+  { href: '/dashboard/professional', label: 'Minha Agenda', icon: <CalendarPlus className="h-5 w-5" />, roles: [USER_ROLES.PROFESSIONAL] },
+  { href: '/dashboard/client', label: 'Meus Agendamentos', icon: <Users className="h-5 w-5" />, roles: [USER_ROLES.CLIENT] },
+  { href: '/notifications-tester', label: 'IA de Notificações', icon: <BellDot className="h-5 w-5" />, roles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.PROFESSIONAL] },
+  { href: "/dashboard/settings", label: "Configurações", icon: <Settings className="h-5 w-5" />, roles: [USER_ROLES.CLIENT, USER_ROLES.PROFESSIONAL, USER_ROLES.COMPANY_ADMIN, USER_ROLES.SITE_ADMIN] },
 ];
 
 export function Navbar() {
@@ -74,6 +77,9 @@ export function Navbar() {
               </Button>
               <Button size="sm" asChild>
                 <Link href="/signup"><UserPlus className="mr-2 h-4 w-4" /> Cadastrar</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/login"><ShieldAlert className="mr-2 h-4 w-4" /> Restrito</Link>
               </Button>
             </>
           )}

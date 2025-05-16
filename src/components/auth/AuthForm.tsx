@@ -19,7 +19,6 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-// import { UserRoleSelector } from "./UserRoleSelector"; // Removido pois não será mais usado aqui
 import { USER_ROLES } from "@/lib/constants";
 import type { UserRole } from "@/lib/constants";
 
@@ -34,7 +33,6 @@ const loginSchema = z.object(formSchemaBase);
 const signupSchema = z.object({
   ...formSchemaBase,
   confirmPassword: z.string(),
-  // O campo 'role' foi removido pois será fixo para COMPANY_ADMIN no cadastro público
 }).refine((data) => data.password === data.confirmPassword, {
   message: "As senhas não coincidem.",
   path: ["confirmPassword"],
@@ -65,16 +63,17 @@ export function AuthForm({ mode }: AuthFormProps) {
   async function onSubmit(values: FormData) {
     try {
       if (isLogin) {
-        await login(values.email, values.password);
+        const loggedInRole = await login(values.email, values.password);
         toast({ title: "Login Bem-sucedido", description: "Bem-vindo(a) de volta!" });
-        router.push("/dashboard");
+        if (loggedInRole === USER_ROLES.SITE_ADMIN) {
+          router.push("/site-admin");
+        } else {
+          router.push("/dashboard");
+        }
       } else {
-        // Para signup, 'values' será do tipo z.infer<typeof signupSchema>
-        // que inclui email, password, confirmPassword.
-        // O papel é fixado como COMPANY_ADMIN.
         await authSignup(values.email, values.password, USER_ROLES.COMPANY_ADMIN);
         toast({ title: "Conta de Administrador Criada", description: "Prossiga para cadastrar os detalhes da sua empresa." });
-        router.push("/register-company"); // Redireciona para o formulário de detalhes da empresa
+        router.push("/register-company");
       }
     } catch (error: any) {
       toast({
@@ -93,7 +92,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             {isLogin ? "Bem-vindo(a) de Volta!" : "Crie uma Conta para sua Empresa"}
           </CardTitle>
           <CardDescription className="text-center">
-            {isLogin ? "Faça login para gerenciar seus agendamentos." : "Cadastre sua empresa para começar a usar o EasyAgenda."}
+            {isLogin ? "Faça login para gerenciar seus agendamentos ou acessar o painel restrito." : "Cadastre sua empresa para começar a usar o EasyAgenda."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,9 +103,9 @@ export function AuthForm({ mode }: AuthFormProps) {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>E-mail do Administrador</FormLabel>
+                    <FormLabel>E-mail</FormLabel>
                     <FormControl>
-                      <Input placeholder="voce@suaempresa.com" {...field} />
+                      <Input placeholder="seu@email.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -140,7 +139,6 @@ export function AuthForm({ mode }: AuthFormProps) {
                       </FormItem>
                     )}
                   />
-                  {/* O seletor de papel foi removido. O cadastro é sempre COMPANY_ADMIN. */}
                 </>
               )}
               <Button type="submit" className="w-full" disabled={loading}>
