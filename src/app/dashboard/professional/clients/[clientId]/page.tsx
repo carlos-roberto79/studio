@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link'; // Adicionada importação
+import Link from 'next/link'; 
 import { useAuth } from '@/contexts/AuthContext';
 import { APP_NAME, USER_ROLES } from '@/lib/constants';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import { User, Phone, MapPin, CalendarDays, History, Edit2, Trash2, FileText, Up
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Badge } from "@/components/ui/badge";
 
 
 interface ClientNote {
@@ -540,3 +541,5 @@ export default function ClientProfilePage() {
     </div>
   );
 }
+
+    
