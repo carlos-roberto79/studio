@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar"; 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 
@@ -61,22 +61,23 @@ export default function CompanyFinancialsPage() {
     // Aqui, em uma aplicação real, você faria uma nova busca de dados com os filtros
   }
 
-  const displayDateRange = () => {
+ const displayDateRange = () => {
     const { from, to } = dateRange || {};
+    let fromDate = from;
+    let toDate = to;
 
-    if (!from) {
-      return <span>Selecione um período</span>;
+    if (typeof from === 'string') fromDate = parseISO(from);
+    if (typeof to === 'string') toDate = parseISO(to);
+
+    if (fromDate && isValid(fromDate)) {
+      const fromFormatted = format(fromDate, "dd/MM/yy", { locale: ptBR });
+      if (toDate && isValid(toDate)) {
+        const toFormatted = format(toDate, "dd/MM/yy", { locale: ptBR });
+        return <>{fromFormatted} - {toFormatted}</>;
+      }
+      return fromFormatted;
     }
-
-    // 'from' is a Date object here
-    const fromFormatted = format(from, "dd/MM/yy", { locale: ptBR });
-
-    if (to) { // 'to' is also a Date object if present
-      const toFormatted = format(to, "dd/MM/yy", { locale: ptBR });
-      return <>{fromFormatted} - {toFormatted}</>;
-    }
-
-    return fromFormatted;
+    return <span>Selecione um período</span>;
   };
 
   return (
@@ -116,7 +117,7 @@ export default function CompanyFinancialsPage() {
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="range"
-                    defaultMonth={dateRange?.from instanceof Date ? dateRange.from : undefined}
+                    defaultMonth={dateRange?.from instanceof Date && isValid(dateRange.from) ? dateRange.from : undefined}
                     selected={dateRange}
                     onSelect={setDateRange}
                     numberOfMonths={2}
@@ -132,7 +133,7 @@ export default function CompanyFinancialsPage() {
                   <SelectValue placeholder="Todos os Profissionais" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os Profissionais</SelectItem>
+                  <SelectItem value="all">Todos os Profissionais</SelectItem>
                   {mockProfessionals.map(prof => (
                     <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
                   ))}
@@ -146,7 +147,7 @@ export default function CompanyFinancialsPage() {
                   <SelectValue placeholder="Todas as Formas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as Formas</SelectItem>
+                  <SelectItem value="all">Todas as Formas</SelectItem>
                   <SelectItem value="Cartão de Crédito">Cartão de Crédito</SelectItem>
                   <SelectItem value="Cartão de Débito">Cartão de Débito</SelectItem>
                   <SelectItem value="Pix">Pix</SelectItem>
@@ -162,7 +163,7 @@ export default function CompanyFinancialsPage() {
                   <SelectValue placeholder="Todos os Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os Status</SelectItem>
+                  <SelectItem value="all">Todos os Status</SelectItem>
                   <SelectItem value="Pago">Pago</SelectItem>
                   <SelectItem value="Pendente">Pendente</SelectItem>
                   <SelectItem value="Reembolsado">Reembolsado</SelectItem>
@@ -212,7 +213,7 @@ export default function CompanyFinancialsPage() {
                     <TableCell className="text-right">{payment.commission.toFixed(2)}</TableCell>
                     <TableCell>{payment.paymentMethod}</TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
+                      <span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${
                         payment.status === "Pago" ? "bg-green-100 text-green-700" :
                         payment.status === "Pendente" ? "bg-yellow-100 text-yellow-700" :
                         payment.status === "Reembolsado" ? "bg-blue-100 text-blue-700" :
@@ -249,5 +250,3 @@ export default function CompanyFinancialsPage() {
     </div>
   );
 }
-
-    
