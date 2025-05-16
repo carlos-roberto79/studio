@@ -80,7 +80,7 @@ const availabilityTypeSchema = z.object({
 
 type AvailabilityTypeFormData = z.infer<typeof availabilityTypeSchema>;
 
-const initialSchedule = daysOfWeek.reduce((acc, day) => {
+const createInitialSchedule = () => daysOfWeek.reduce((acc, day) => {
   acc[day.id as keyof AvailabilityTypeFormData['schedule']] = { 
     active: day.id !== 'sab' && day.id !== 'dom', 
     intervals: [{ start: "09:00", end: "18:00" }] 
@@ -100,17 +100,17 @@ const mockExistingAvailabilityTypes: { [key: string]: AvailabilityTypeFormData }
       qua: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
       qui: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
       sex: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
-      sab: { active: false, intervals: []},
-      dom: { active: false, intervals: []},
+      sab: { active: false, intervals: []}, // Será transformado para [{start:"", end:""}] se active=false
+      dom: { active: false, intervals: []}, // Será transformado para [{start:"", end:""}] se active=false
     }
   },
   "type2": { 
     name: "Plantão Final de Semana", 
     description: "Sábados e Domingos, horários específicos sob demanda. Contatar para agendar.", 
     schedule: {
-      ...JSON.parse(JSON.stringify(initialSchedule)), // Start with default (all active except weekend)
-      sab: { active: true, intervals: [{start: "10:00", end: "14:00"}]}, // Example for Saturday
-      dom: { active: false, intervals: []}, // Keep Sunday inactive or configure as needed
+      ...(createInitialSchedule()), 
+      sab: { active: true, intervals: [{start: "10:00", end: "14:00"}]}, 
+      dom: { active: false, intervals: []}, 
     } 
   },
    "type3": { 
@@ -139,10 +139,11 @@ export default function EditAvailabilityTypePage() {
 
   const form = useForm<AvailabilityTypeFormData>({
     resolver: zodResolver(availabilityTypeSchema),
-    defaultValues: { // Default values will be overridden by fetched data
+    defaultValues: { // Definir defaultValues para campos simples, schedule será definido pelo reset
       name: "",
       description: "",
-      schedule: JSON.parse(JSON.stringify(initialSchedule)),
+      // schedule é intencionalmente omitido ou definido como undefined aqui
+      // para ser totalmente populado pelo form.reset no useEffect
     }
   });
   
@@ -153,19 +154,35 @@ export default function EditAvailabilityTypePage() {
       console.log(`BACKEND_SIM: Buscando tipo de disponibilidade com ID: ${typeId}`);
       const existingType = mockExistingAvailabilityTypes[typeId];
       if (existingType) {
-        // Ensure schedule has all days, even if not in mock (for robustness)
-        const fullSchedule = { ...initialSchedule };
-        for (const dayKey in existingType.schedule) {
-            if (Object.prototype.hasOwnProperty.call(initialSchedule, dayKey)) {
-                 fullSchedule[dayKey as keyof typeof initialSchedule] = {
-                    active: existingType.schedule[dayKey as keyof typeof existingType.schedule].active,
-                    intervals: existingType.schedule[dayKey as keyof typeof existingType.schedule].intervals.length > 0 
-                                ? existingType.schedule[dayKey as keyof typeof existingType.schedule].intervals 
-                                : [{ start: "", end: "" }] // Ensure at least one interval row if active for UI
-                 };
+        const initialScheduleBase = createInitialSchedule(); // Base com 1 interval por dia
+        const fullSchedule = { ...initialScheduleBase };
+
+        for (const dayId of daysOfWeek.map(d => d.id)) {
+          const dayKey = dayId as keyof AvailabilityTypeFormData['schedule'];
+          const existingDayData = existingType.schedule?.[dayKey];
+
+          if (existingDayData) {
+            fullSchedule[dayKey] = {
+              active: existingDayData.active,
+              intervals: (existingDayData.active && existingDayData.intervals.length > 0)
+                           ? existingDayData.intervals
+                           : [{ start: "", end: "" }] // Garante 1 item mesmo se inativo ou sem intervalos
+            };
+          } else {
+            // Se o dia não existir nos dados mockados (improvável mas seguro)
+            // Usar o padrão de initialScheduleBase (1 intervalo padrão)
+            fullSchedule[dayKey] = {
+              active: (dayKey !== 'sab' && dayKey !== 'dom'),
+              intervals: [{start: "09:00", end: "18:00"}]
             }
+          }
         }
-        form.reset({ ...existingType, schedule: fullSchedule });
+        
+        form.reset({ 
+          name: existingType.name,
+          description: existingType.description,
+          schedule: fullSchedule 
+        });
         setIsLoading(false);
       } else {
         toast({ title: "Erro", description: "Tipo de disponibilidade não encontrado.", variant: "destructive" });
@@ -175,7 +192,9 @@ export default function EditAvailabilityTypePage() {
     } else {
         setIsLoading(false); 
     }
-  }, [typeId, form, toast, router]);
+  // Removido 'form' das dependências para evitar re-execuções indesejadas do reset.
+  // O reset só deve ocorrer quando typeId mudar ou na montagem inicial.
+  }, [typeId, toast, router]); 
   
   useEffect(() => {
     if (typeName) {
@@ -187,14 +206,17 @@ export default function EditAvailabilityTypePage() {
 
   const onSubmit = async (data: AvailabilityTypeFormData) => {
     setIsSaving(true);
-     // Filtrar intervalos vazios antes de salvar
     const scheduleWithFilteredIntervals = { ...data.schedule };
     for (const dayKey in scheduleWithFilteredIntervals) {
       const day = scheduleWithFilteredIntervals[dayKey as keyof typeof scheduleWithFilteredIntervals];
       if (day.active) {
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
+        // Se após filtrar, não houver intervalos, mas o dia está ativo,
+        // pode-se adicionar um intervalo vazio para consistência ou desativar o dia.
+        // Por simplicidade, se o usuário desmarcar todos os horários, eles serão removidos.
+        // Se ele deixar campos vazios, a validação do regex no schema vai pegar.
       } else {
-        day.intervals = [];
+        day.intervals = []; // Limpar intervalos se o dia estiver inativo
       }
     }
     const finalData = { ...data, schedule: scheduleWithFilteredIntervals };
@@ -333,7 +355,6 @@ export default function EditAvailabilityTypePage() {
                                 checked={field.value}
                                 onCheckedChange={(checked) => {
                                   field.onChange(checked);
-                                  // Se ativar e não houver intervalos, adiciona um padrão
                                   if (checked && fields.length === 0) {
                                     append({ start: "09:00", end: "18:00" });
                                   }
@@ -378,7 +399,7 @@ export default function EditAvailabilityTypePage() {
                                 onClick={() => remove(index)}
                                 className="text-destructive hover:text-destructive"
                                 title="Remover horário"
-                                disabled={fields.length <= 1 && index === 0} 
+                                disabled={fields.length <= 1 && index === 0 && !form.getValues(`schedule.${dayKey}.intervals`)[index]?.start && !form.getValues(`schedule.${dayKey}.intervals`)[index]?.end}
                               >
                                 <XCircle className="h-5 w-5" />
                               </Button>
@@ -394,9 +415,14 @@ export default function EditAvailabilityTypePage() {
                           </Button>
                         </div>
                       )}
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.message}</FormMessage>
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[0]?.start?.message}</FormMessage>
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[0]?.end?.message}</FormMessage>
+                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.root?.message}</FormMessage>
+                       {fields.map((_, index) => (
+                        <React.Fragment key={`${dayKey}-intervals-errors-${index}`}>
+                          <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.start?.message}</FormMessage>
+                          <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.end?.message}</FormMessage>
+                          <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.root?.message}</FormMessage>
+                        </React.Fragment>
+                       ))}
                     </div>
                   );
                 })}
@@ -408,3 +434,4 @@ export default function EditAvailabilityTypePage() {
     </Form>
   );
 }
+
