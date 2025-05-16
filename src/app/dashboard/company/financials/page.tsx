@@ -62,29 +62,21 @@ export default function CompanyFinancialsPage() {
   }
 
   const displayDateRange = () => {
-    if (!dateRange?.from) {
+    const { from, to } = dateRange || {};
+
+    if (!from) {
       return <span>Selecione um período</span>;
     }
-    // Ensure 'from' and 'to' are Date objects before formatting
-    const fromDate = dateRange.from instanceof Date ? dateRange.from : new Date(dateRange.from);
-    
-    if (dateRange.to) {
-      const toDate = dateRange.to instanceof Date ? dateRange.to : new Date(dateRange.to);
-      // Validate dates before formatting
-      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-        return <span className="text-destructive">Data inválida</span>;
-      }
-      return (
-        <>
-          {format(fromDate, "dd/MM/yy", { locale: ptBR })} - {format(toDate, "dd/MM/yy", { locale: ptBR })}
-        </>
-      );
+
+    // 'from' is a Date object here
+    const fromFormatted = format(from, "dd/MM/yy", { locale: ptBR });
+
+    if (to) { // 'to' is also a Date object if present
+      const toFormatted = format(to, "dd/MM/yy", { locale: ptBR });
+      return <>{fromFormatted} - {toFormatted}</>;
     }
-    
-    if (isNaN(fromDate.getTime())) {
-      return <span className="text-destructive">Data inválida</span>;
-    }
-    return format(fromDate, "dd/MM/yy", { locale: ptBR });
+
+    return fromFormatted;
   };
 
   return (
@@ -123,9 +115,8 @@ export default function CompanyFinancialsPage() {
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
-                    initialFocus
                     mode="range"
-                    defaultMonth={dateRange?.from}
+                    defaultMonth={dateRange?.from instanceof Date ? dateRange.from : undefined}
                     selected={dateRange}
                     onSelect={setDateRange}
                     numberOfMonths={2}
