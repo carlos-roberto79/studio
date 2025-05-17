@@ -175,20 +175,20 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Tabela para "Agendamentos Pendentes ou Cancelados Recentes" (mockada).
     *   Placeholder para visualização completa da agenda em grade.
 *   **Relatórios (Interfaces Mockadas):**
-    *   Faturamento por Período (`/reports/revenue-by-period`)
-    *   Faturamento por Serviço (`/reports/revenue-by-service`)
-    *   Faturamento por Profissional (`/reports/revenue-by-professional`)
-    *   Relatório de Comissões (`/reports/commissions`)
-    *   Agenda e Ocupação (`/reports/occupancy`)
-    *   Cancelamentos e Faltas (`/reports/cancellations-no-shows`)
-    *   Relatório de Novos Clientes (`/reports/new-clients`)
-    *   Clientes Ativos vs. Inativos (`/reports/client-activity`)
-    *   Frequência de Atendimento por Cliente (`/reports/client-frequency`)
-    *   Avaliações e Notas dos Atendimentos (`/reports/service-reviews`)
-    *   Desempenho por Profissional (`/reports/professional-performance`)
-    *   Ranking de Profissionais por Demanda (`/reports/professional-ranking`)
-    *   Serviços Mais Vendidos (`/reports/top-services`)
-    *   Tempo Médio de Atendimento (`/reports/average-service-time`)
+    *   Faturamento por Período (`/dashboard/company/reports/revenue-by-period`)
+    *   Faturamento por Serviço (`/dashboard/company/reports/revenue-by-service`)
+    *   Faturamento por Profissional (`/dashboard/company/reports/revenue-by-professional`)
+    *   Relatório de Comissões (`/dashboard/company/reports/commissions`)
+    *   Agenda e Ocupação (`/dashboard/company/reports/occupancy`)
+    *   Cancelamentos e Faltas (`/dashboard/company/reports/cancellations-no-shows`)
+    *   Relatório de Novos Clientes (`/dashboard/company/reports/new-clients`)
+    *   Clientes Ativos vs. Inativos (`/dashboard/company/reports/client-activity`)
+    *   Frequência de Atendimento por Cliente (`/dashboard/company/reports/client-frequency`)
+    *   Avaliações e Notas dos Atendimentos (`/dashboard/company/reports/service-reviews`)
+    *   Desempenho por Profissional (`/dashboard/company/reports/professional-performance`)
+    *   Ranking de Profissionais por Demanda (`/dashboard/company/reports/professional-ranking`)
+    *   Serviços Mais Vendidos (`/dashboard/company/reports/top-services`)
+    *   Tempo Médio de Atendimento (`/dashboard/company/reports/average-service-time`)
 
 ### 2.7. Configurações da Conta (`/dashboard/settings/page.tsx`)
 
@@ -221,6 +221,11 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
 *   **Personalização de Interface (`/site-admin/customization`):**
     *   Placeholders para configurar aparência global do sistema (cores, layout).
     *   Placeholders para configurar aparência por empresa (selecionar empresa e aplicar personalizações).
+*   **Relatório de Uso e Personalização (`/site-admin/reports/customization-usage`):**
+    *   Interface para visualizar dados mockados sobre como as empresas usam o sistema e aplicam personalizações.
+    *   Filtros (placeholder) por período e busca por empresa.
+    *   Tabela com informações mockadas: plano, personalização ativa, tema, layout, logins, agendamentos, última atividade.
+    *   Botões de exportação (placeholder).
 
 ### 2.10. Componentes de UI (ShadCN)
 
