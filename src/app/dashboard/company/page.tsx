@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star, Award } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -306,6 +306,11 @@ export default function CompanyAdminPage() {
               </Link>
             </Button>
             <Button asChild variant="outline">
+              <Link href="/dashboard/company/reports/professional-ranking">
+                <Award className="mr-2 h-4 w-4" /> Ranking de Profissionais
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
               <Link href="/dashboard/company/reports/cancellations-no-shows">
                 <CalendarX2 className="mr-2 h-4 w-4" /> Relatório de Cancelamentos e Faltas
               </Link>
@@ -373,6 +378,8 @@ export default function CompanyAdminPage() {
   );
 }
     
+    
+
     
 
     
