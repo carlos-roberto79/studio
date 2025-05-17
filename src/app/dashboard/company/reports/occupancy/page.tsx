@@ -11,13 +11,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { APP_NAME } from "@/lib/constants";
-import { ArrowLeft, BarChart3, Filter, FileDown, CalendarIcon, Percent, PieChart } from "lucide-react";
+import { ArrowLeft, BarChart3, Filter, FileDown, CalendarIcon, Percent, PieChart, CheckCircle } from "lucide-react"; // Adicionado CheckCircle
 import { useToast } from "@/hooks/use-toast";
 import type { DateRange } from "react-day-picker";
 import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts"; // Renomeado para RechartsBarChart
 
 // Mock data for occupancy report
 const mockOccupancyStats = {
@@ -183,7 +183,7 @@ export default function OccupancyReportPage() {
         <CardContent className="h-[350px]">
              <ChartContainer config={chartConfig} className="w-full h-full">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={mockDailyOccupancyChartData} margin={{ top: 20, right: 20, left: -20, bottom: 5 }}>
+                    <RechartsBarChart data={mockDailyOccupancyChartData} margin={{ top: 20, right: 20, left: -20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false}/>
                         <XAxis dataKey="day" tickLine={false} axisLine={false} />
                         <YAxis tickLine={false} axisLine={false} />
@@ -191,7 +191,7 @@ export default function OccupancyReportPage() {
                         <ChartLegend content={<ChartLegendContent />} />
                         <Bar dataKey="Ocupados" fill="var(--color-Ocupados)" radius={4} />
                         <Bar dataKey="Disponíveis" fill="var(--color-Disponíveis)" radius={4} />
-                    </BarChart>
+                    </RechartsBarChart>
                 </ResponsiveContainer>
             </ChartContainer>
         </CardContent>
