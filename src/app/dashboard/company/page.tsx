@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -259,7 +259,7 @@ export default function CompanyAdminPage() {
         <CardHeader>
             <CardTitle>Financeiro e Relatórios</CardTitle>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
              <Button asChild>
               <Link href="/dashboard/company/financials">
                 <DollarSign className="mr-2 h-4 w-4" /> Painel Financeiro
@@ -315,6 +315,11 @@ export default function CompanyAdminPage() {
                 <Repeat className="mr-2 h-4 w-4" /> Relatório de Frequência de Clientes
               </Link>
             </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/reports/service-reviews">
+                <Star className="mr-2 h-4 w-4" /> Relatório de Avaliações
+              </Link>
+            </Button>
         </CardContent>
       </Card>
 
@@ -368,4 +373,6 @@ export default function CompanyAdminPage() {
   );
 }
     
+    
+
     
