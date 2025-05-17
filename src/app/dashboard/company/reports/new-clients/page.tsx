@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { APP_NAME } from "@/lib/constants";
-import { ArrowLeft, UserPlus, Filter, FileDown, CalendarIcon, Users } from "lucide-react";
+import { ArrowLeft, UserPlus, Filter, FileDown, CalendarIcon, Users, TrendingUp } from "lucide-react"; // Adicionado TrendingUp
 import { useToast } from "@/hooks/use-toast";
 import type { DateRange } from "react-day-picker";
 import { format, isValid, parseISO } from "date-fns";
