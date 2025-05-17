@@ -16,23 +16,29 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   O cadastro público é direcionado para **Administradores de Empresa (`company_admin`)**. Após a criação da conta, o usuário é redirecionado para `/register-company` para fornecer detalhes da empresa.
     *   Validação de campos (e-mail, senha, confirmação de senha) usando Zod.
     *   Feedback ao usuário via `toast` para sucesso ou erro.
+    *   Adicionada credencial de teste para o papel `professional` (email: `profissional@easyagenda.com`, senha: `prof123`) que atribui o papel correto no cadastro e login.
 *   **Fluxo de Login:**
     *   Implementado um formulário de login em `/login`.
     *   Validação de campos (e-mail, senha).
     *   Feedback ao usuário via `toast`.
-    *   Redirecionamento para `/dashboard` após login bem-sucedido.
+    *   Redirecionamento para `/dashboard` (ou `/site-admin` para super admin) após login bem-sucedido.
 *   **Contexto de Autenticação (`AuthContext`):**
     *   Gerencia o estado do usuário (logado/deslogado), seu papel e o estado de carregamento.
     *   Utiliza `localStorage` para simular persistência da sessão e papéis de usuário (incluindo um mock de "banco de dados" de papéis para consistência entre logins).
+    *   Normaliza e-mails para minúsculas ao armazenar e buscar papéis para evitar inconsistências.
     *   Fornece funções `login`, `signup`, `logout` e `setRole`.
+    *   Reconhece um e-mail/senha específico (`superadmin@easyagenda.com` / `superadmin123`) para o papel `SITE_ADMIN`.
 *   **Controle de Acesso Baseado em Papel (Role-Based Access Control - RBAC):**
-    *   Três papéis principais: `client`, `professional`, `company_admin`.
+    *   Quatro papéis principais: `client`, `professional`, `company_admin`, `site_admin`.
     *   **Layout do Dashboard (`/dashboard/layout.tsx`):**
         *   Protege todas as rotas sob `/dashboard`, exigindo autenticação.
         *   Renderiza uma barra lateral de navegação com itens visíveis de acordo com o papel do usuário logado.
     *   **Proteção de Páginas Específicas:**
         *   Páginas como `/dashboard/client`, `/dashboard/professional`, `/dashboard/company`, e `/notifications-tester` verificam se o usuário logado possui o papel apropriado. Caso contrário, redirecionam para `/dashboard`.
         *   Skeletons são exibidos durante a verificação de autenticação e papel.
+    *   **Layout do Site Admin (`/site-admin/layout.tsx`):**
+        *   Protege todas as rotas sob `/site-admin`, exigindo autenticação e o papel `SITE_ADMIN`.
+        *   Renderiza uma barra lateral específica para o super administrador.
 
 ### 2.2. Páginas Públicas
 
@@ -54,6 +60,9 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
 *   **Página de Cadastro de Detalhes da Empresa (`/register-company/page.tsx`):**
     *   Formulário para administradores de empresa recém-cadastrados inserirem detalhes como nome da empresa, CNPJ, endereço, telefone, e-mail e slug para o link público.
     *   Validação de campos com Zod.
+*   **Rodapé (`Footer.tsx`):**
+    *   Exibe informações genéricas do "EasyAgenda" (tagline, links rápidos) para usuários não logados, clientes, profissionais ou administradores de empresa que ainda não completaram o perfil.
+    *   Exibe informações básicas da empresa (nome, e-mail) se o usuário logado for um `company_admin` e tiver "completado" o perfil (simulado via `localStorage`).
 
 ### 2.3. Dashboard Geral (`/dashboard`)
 
@@ -74,9 +83,10 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Links para "Marcar Novo Agendamento", "Ver Histórico" e "Configurações da Conta".
 *   **Histórico de Agendamentos (`/dashboard/client/history/page.tsx`):**
     *   Tabela listando agendamentos passados e futuros (mockados).
-    *   Detalhes: Empresa, Serviço, Profissional, Data, Hora, Status do Agendamento, Status do Pagamento.
+    *   Detalhes: Empresa, Serviço, Profissional, Data, Hora, Status do Agendamento, Status do Pagamento (mock).
     *   Botões de ação simulados (Reagendar, Cancelar, Pagar).
     *   Placeholder visual quando não há histórico.
+    *   Uso de `data-ai-hint` para logos.
 
 ### 2.5. Dashboard do Profissional (`/dashboard/professional`)
 
@@ -84,20 +94,28 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Exibe próximos agendamentos de hoje (mockados).
     *   Estatísticas (agendamentos hoje, horários disponíveis, total de clientes - mockados).
     *   Seção de "Alertas e Lembretes" mockados.
-    *   Links para "Definir Disponibilidade", "Ver Calendário Completo", "Editar Perfil" e "Configurações".
+    *   Links para "Definir Disponibilidade", "Ver Calendário Completo", "Editar Perfil", "Ver Perfil de Cliente (Teste)" e "Configurações".
 *   **Definir Disponibilidade (`/dashboard/professional/availability/page.tsx`):**
     *   Permite ao profissional configurar seu horário semanal padrão (dia, ativo/inativo, início, fim, pausas).
+    *   Nota informativa sobre respeitar o horário de funcionamento da empresa.
     *   Seção para configurar exceções e horários especiais para datas específicas (usando `Calendar`).
     *   Simulação de salvamento dos dados.
 *   **Calendário Completo (`/dashboard/professional/calendar/page.tsx`):**
     *   Exibe um calendário (`Calendar`) onde o profissional pode selecionar uma data.
-    *   Lista os agendamentos mockados para a data selecionada.
+    *   Lista os agendamentos mockados (com datas relativas) para a data selecionada.
     *   Placeholders para visualização por semana/mês.
     *   Ícone de sino para simular notificações de novos agendamentos.
 *   **Editar Perfil do Profissional (`/dashboard/professional/profile/page.tsx`):**
     *   Formulário para editar nome, telefone, especialidade, biografia, e serviços oferecidos (como texto).
     *   Simulação de upload de foto de perfil.
     *   E-mail (login) é exibido como não editável.
+*   **Visão do Profissional no Atendimento ao Cliente (`/dashboard/professional/clients/[clientId]/page.tsx`):**
+    *   Painel completo com abas (Info Gerais, Anotações, Arquivos, Imagens).
+    *   Exibe informações do cliente, histórico de agendamentos.
+    *   Permite adicionar/visualizar anotações (com título, texto, nota 1-10, visibilidade).
+    *   Gráfico mockado para histórico de notas de atendimento.
+    *   Simula upload e listagem de arquivos e imagens com controle de visibilidade.
+    *   Seletor de cliente com busca por nome para fácil navegação entre perfis.
 
 ### 2.6. Dashboard da Empresa (`/dashboard/company`)
 
@@ -105,21 +123,23 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Estatísticas da empresa (total de agendamentos, profissionais ativos, receita estimada - mockados).
     *   Seção de "Alertas e Lembretes" mockados.
     *   Seção para gerenciar profissionais com uma tabela mockada e link para "Adicionar Profissional".
-    *   Seção para gestão de serviços e agendas com links para "Configurar Serviços" e "Visão Geral das Agendas".
+    *   Seção para gestão de serviços e agendas com links para "Configurar Serviços", "Tipos de Disponibilidade" e "Visão Geral das Agendas".
     *   Seção para o financeiro com link para "Acessar Painel Financeiro".
     *   Seção de "Gestão de Clientes e Acesso Público" com:
         *   Exibição e botão para copiar o link público de agendamento da empresa.
         *   Link para "Adicionar Cliente Manualmente".
-    *   Seção de "Configurações da Empresa" com links para "Editar Perfil da Empresa" e "Disponibilidade Padrão".
+    *   Seção de "Configurações da Empresa" com links para "Editar Perfil da Empresa" e "Horário de Funcionamento".
+    *   Seção de "Financeiro e Relatórios" com links para os diversos relatórios implementados.
+    *   Card condicional "Complete o Perfil da Sua Empresa!" que aparece para novos administradores até que o perfil seja salvo.
 *   **Adicionar Profissional (`/dashboard/company/add-professional/page.tsx`):**
     *   Formulário para cadastrar nome, e-mail, especialidade principal e telefone (opcional) de um novo profissional.
     *   Simulação de salvamento dos dados.
 *   **Editar Perfil da Empresa (`/dashboard/company/edit-profile/page.tsx`):**
     *   Formulário para editar nome da empresa, CNPJ, telefone, e-mail, endereço, descrição e slug do link público.
     *   Simulação de upload de logo da empresa com pré-visualização (usando Data URL).
-*   **Configurações Gerais de Disponibilidade (`/dashboard/company/general-settings/availability/page.tsx`):**
+    *   Ao salvar, define uma flag no `localStorage` (`easyagenda_companyProfileComplete_mock`) para indicar que o perfil foi completado. Salva nome e e-mail da empresa no `localStorage` para uso no rodapé.
+*   **Horário de Funcionamento da Empresa (`/dashboard/company/general-settings/availability/page.tsx`):**
     *   Permite definir horários de funcionamento padrão para cada dia da semana (ativo, início, fim, pausas).
-    *   Opção para indicar se essas configurações devem ser o padrão para "Todos os Serviços" ou "Todos os Profissionais" (a aplicação real seria backend).
     *   Simulação de salvamento.
 *   **Adicionar Cliente Manualmente (`/dashboard/company/add-client/page.tsx`):**
     *   Formulário para cadastrar nome, e-mail e telefone (opcional) de um cliente.
@@ -127,11 +147,11 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
 *   **Gerenciamento de Serviços:**
     *   **Listagem de Serviços (`/dashboard/company/services/page.tsx`):**
         *   Tabela exibindo serviços mockados com imagem, nome, categoria, preço e status (Ativo/Inativo).
-        *   Ações: Editar, Excluir (com diálogo de confirmação), Duplicar (simulado), Ativar/Desativar.
+        *   Ações: Editar, Excluir (com diálogo de confirmação), Duplicar (simulado com `localStorage`), Ativar/Desativar.
     *   **Adicionar Serviço (`/dashboard/company/services/add/page.tsx`):**
         *   Formulário completo com abas (Configurações, e placeholders para Disponibilidade, Profissionais, Bling).
         *   Campos implementados na aba "Configurações":
-            *   Nome, Descrição, Profissionais (seleção múltipla mockada com checkboxes), Categoria (com datalist), Imagem (upload com preview), Duração, Preço, Link Único, Comissão (tipo e valor), Taxa de Agendamento (habilitar e valor), Agendamentos Simultâneos (por usuário e por horário, com opção "automático"), Bloqueio 24h, Intervalo entre Slots, Tipo de Confirmação, Disponibilidade Específica (textarea), Switch Ativo, Checkbox Exibir Duração.
+            *   Nome, Descrição, Profissionais (seleção múltipla mockada com checkboxes), Categoria (com datalist), Imagem (upload com preview), Duração, Preço, Link Único, Comissão (tipo e valor), Taxa de Agendamento (habilitar e valor), Agendamentos Simultâneos (por usuário e por horário, com opção "automático"), Bloqueio 24h, Intervalo entre Slots, Tipo de Confirmação, Switch Ativo, Checkbox Exibir Duração, Select para "Tipo de Disponibilidade".
         *   Validação com Zod e `react-hook-form`.
         *   Simulação de salvamento.
     *   **Editar Serviço (`/dashboard/company/services/edit/[serviceId]/page.tsx`):**
@@ -139,9 +159,13 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
         *   Validação com Zod e `react-hook-form`.
         *   Funcionalidade de "Duplicar" que pré-preenche o formulário de adição com os dados do serviço atual (simulado com `localStorage`).
         *   Simulação de atualização e exclusão.
+*   **Gerenciamento de Tipos de Disponibilidade:**
+    *   **Listagem (`/dashboard/company/availability-types/page.tsx`):** Tabela de tipos mockados com ações.
+    *   **Adicionar (`/dashboard/company/availability-types/add/page.tsx`):** Formulário para nome, descrição e configuração detalhada de horários por dia da semana (com múltiplos intervalos).
+    *   **Editar (`/dashboard/company/availability-types/edit/[typeId]/page.tsx`):** Similar ao de adicionar, pré-preenchido.
 *   **Painel Financeiro (`/dashboard/company/financials/page.tsx`):**
     *   Tabela para listar pagamentos mockados (cliente, serviço, profissional, data/hora, valor total, taxa de agendamento, comissão, forma de pagamento, status).
-    *   Placeholders para filtros (período com `Calendar` e `Popover`, profissional, forma de pagamento, status).
+    *   Filtros (período com `Calendar` e `Popover`, profissional, forma de pagamento, status).
     *   Botões de "Aplicar Filtros" e "Exportar PDF/Excel" (simulados).
     *   Card informativo sobre integração com pagamento online (placeholder).
 *   **Visão Geral de Agendas (`/dashboard/company/schedules-overview/page.tsx`):**
@@ -150,6 +174,21 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Placeholder para gráfico/heatmap de análise de agendamentos (usando `recharts` com dados mockados).
     *   Tabela para "Agendamentos Pendentes ou Cancelados Recentes" (mockada).
     *   Placeholder para visualização completa da agenda em grade.
+*   **Relatórios (Interfaces Mockadas):**
+    *   Faturamento por Período (`/reports/revenue-by-period`)
+    *   Faturamento por Serviço (`/reports/revenue-by-service`)
+    *   Faturamento por Profissional (`/reports/revenue-by-professional`)
+    *   Relatório de Comissões (`/reports/commissions`)
+    *   Agenda e Ocupação (`/reports/occupancy`)
+    *   Cancelamentos e Faltas (`/reports/cancellations-no-shows`)
+    *   Relatório de Novos Clientes (`/reports/new-clients`)
+    *   Clientes Ativos vs. Inativos (`/reports/client-activity`)
+    *   Frequência de Atendimento por Cliente (`/reports/client-frequency`)
+    *   Avaliações e Notas dos Atendimentos (`/reports/service-reviews`)
+    *   Desempenho por Profissional (`/reports/professional-performance`)
+    *   Ranking de Profissionais por Demanda (`/reports/professional-ranking`)
+    *   Serviços Mais Vendidos (`/reports/top-services`)
+    *   Tempo Médio de Atendimento (`/reports/average-service-time`)
 
 ### 2.7. Configurações da Conta (`/dashboard/settings/page.tsx`)
 
@@ -161,7 +200,7 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
 ### 2.8. Funcionalidade de IA (Genkit)
 
 *   **Fluxo de Geração de Mensagem (`/src/ai/flows/generate-notification-message.ts`):**
-    *   Define um prompt Genkit (`diagnosePlantPrompt`) para gerar mensagens de notificação personalizadas.
+    *   Define um prompt Genkit (`notificationMessagePrompt`) para gerar mensagens de notificação personalizadas.
     *   Input: tipo de notificação, nome do usuário, detalhes do agendamento, nome da empresa, canal.
     *   Output: mensagem de notificação.
     *   Traduzido para Português do Brasil.
@@ -170,13 +209,26 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Permite ao usuário inserir dados e visualizar a mensagem gerada pela IA.
     *   Protegido por papel (acessível por `company_admin` e `professional`).
 
-### 2.9. Componentes de UI (ShadCN)
+### 2.9. Painel do Administrador do Site (`/site-admin`)
+*   Acesso exclusivo para o papel `SITE_ADMIN` (login com `superadmin@easyagenda.com` / `superadmin123`).
+*   **Layout Específico:** Sidebar e navegação dedicada.
+*   **Visão Geral (`/site-admin/page.tsx`):** Página de boas-vindas com links para seções de gestão.
+*   **Gestão de Empresas (`/site-admin/companies`):**
+    *   Listagem de empresas mockadas com filtros por nome/e-mail.
+    *   Visualização de plano e status de pagamento.
+    *   Ações simuladas: Adicionar, Editar, Excluir, Bloquear/Desbloquear empresas.
+    *   Páginas de formulário para adicionar (`/site-admin/companies/add`) e editar (`/site-admin/companies/edit/[companyId]`) empresas.
+*   **Personalização de Interface (`/site-admin/customization`):**
+    *   Placeholders para configurar aparência global do sistema (cores, layout).
+    *   Placeholders para configurar aparência por empresa (selecionar empresa e aplicar personalizações).
+
+### 2.10. Componentes de UI (ShadCN)
 
 *   Utilização extensiva de componentes ShadCN pré-estilizados e customizados, incluindo:
     *   `Accordion`, `AlertDialog`, `Alert`, `Avatar`, `Badge`, `Button`, `Calendar`, `Card`, `Chart` (recharts), `Checkbox`, `Dialog`, `DropdownMenu`, `Form` (com `react-hook-form` e `zod`), `Input`, `Label`, `Menubar`, `Popover`, `Progress`, `RadioGroup`, `ScrollArea`, `Select`, `Separator`, `Sheet`, `Sidebar` (componente customizado e robusto para navegação lateral), `Skeleton`, `Slider`, `Switch`, `Table`, `Tabs`, `Textarea`, `Toast`, `Toaster`, `Tooltip`.
 *   Os componentes são responsivos e seguem as diretrizes de design.
 
-### 2.10. Estilização e Tema
+### 2.11. Estilização e Tema
 
 *   **Tailwind CSS:** Utilizado para toda a estilização.
 *   **Tema Customizado (`/src/app/globals.css`):**
@@ -185,12 +237,12 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Animações para `accordion`.
 *   **Modo Escuro:** Suportado e configurado no tema.
 
-### 2.11. Internacionalização (i18n)
+### 2.12. Internacionalização (i18n)
 
 *   A linguagem primária do frontend foi traduzida para **Português do Brasil**.
 *   Textos em interfaces, mensagens de `toast`, placeholders e descrições foram ajustados.
 
-### 2.12. Qualidade e Outros
+### 2.13. Qualidade e Outros
 
 *   **Página de Erro (`/src/app/error.tsx`):** Componente de erro customizado para capturar e exibir erros de renderização no Next.js.
 *   **Página de Carregamento (`/src/app/loading.tsx`):** Componente de carregamento global exibido durante a navegação entre rotas de servidor.
@@ -209,7 +261,7 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
 *   Desenvolvimento de APIs para comunicação frontend-backend.
 *   Integração real com gateways de pagamento.
 *   Geração funcional de relatórios (PDF, Excel).
-*   Implementação completa dos gráficos dinâmicos.
+*   Implementação completa dos gráficos dinâmicos com dados reais.
 *   Sistema de envio de notificações (e-mail, WhatsApp) real.
 *   Testes unitários e de integração.
 
