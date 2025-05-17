@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity } from "lucide-react"; // Adicionado UserX e Activity
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -305,6 +305,16 @@ export default function CompanyAdminPage() {
                 <Activity className="mr-2 h-4 w-4" /> Relatório de Desempenho Profissional
               </Link>
             </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/reports/cancellations-no-shows">
+                <CalendarX2 className="mr-2 h-4 w-4" /> Relatório de Cancelamentos e Faltas
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/reports/client-frequency">
+                <Repeat className="mr-2 h-4 w-4" /> Relatório de Frequência de Clientes
+              </Link>
+            </Button>
         </CardContent>
       </Card>
 
@@ -357,7 +367,5 @@ export default function CompanyAdminPage() {
     </div>
   );
 }
-
     
-
     
