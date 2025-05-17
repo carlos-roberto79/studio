@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -54,11 +54,11 @@ export default function CompanyAdminPage() {
       if (storedProfileStatus === 'true') {
         setIsProfileComplete(true);
       } else {
-        setIsProfileComplete(false); // Explicitamente define como false se não for 'true'
+        setIsProfileComplete(false); 
       }
       setCheckingProfile(false);
     }
-  }, []); // Array de dependências vazio, executa na montagem
+  }, []); 
 
   useEffect(() => {
     if (!loading && user) {
@@ -257,12 +257,22 @@ export default function CompanyAdminPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-            <CardTitle>Financeiro da Empresa</CardTitle>
+            <CardTitle>Financeiro e Relatórios</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
              <Button asChild>
               <Link href="/dashboard/company/financials">
-                <DollarSign className="mr-2 h-4 w-4" /> Acessar Painel Financeiro
+                <DollarSign className="mr-2 h-4 w-4" /> Painel Financeiro
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/reports/commissions">
+                <FileSpreadsheet className="mr-2 h-4 w-4" /> Relatório de Comissões
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/reports/occupancy">
+                <BarChart3 className="mr-2 h-4 w-4" /> Relatório de Ocupação
               </Link>
             </Button>
         </CardContent>
