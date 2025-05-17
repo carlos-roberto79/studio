@@ -15,9 +15,9 @@ import {
 import { Logo } from "@/components/shared/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // Corrected import
+import { useRouter } from "next/navigation"; 
 import { useEffect } from "react";
-import { LayoutDashboard, Briefcase, Palette, Settings, LogOut, ShieldAlert, Users, BarChartBig } from "lucide-react"; // Adicionado BarChartBig
+import { LayoutDashboard, Briefcase, Palette, Settings, LogOut, ShieldAlert, Users, BarChartBig } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -27,7 +27,7 @@ const navItems = [
   { href: "/site-admin", label: "Visão Geral", icon: <LayoutDashboard /> },
   { href: "/site-admin/companies", label: "Gerenciar Empresas", icon: <Briefcase /> },
   { href: "/site-admin/customization", label: "Personalização", icon: <Palette /> },
-  { href: "/site-admin/reports/customization-usage", label: "Relatório de Uso", icon: <BarChartBig /> },
+  { href: "/site-admin/reports/customization-usage", label: "Uso e Personalização", icon: <BarChartBig /> },
   // { href: "/dashboard/settings", label: "Configurações Gerais", icon: <Settings /> }, // Site Admin settings might be different or not needed here
 ];
 
