@@ -19,11 +19,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { User, Phone, MapPin, CalendarDays, History, Edit2, Trash2, FileText, UploadCloud, PlusCircle, Eye, EyeOff, BarChartHorizontalBig, Star, ImagePlus } from 'lucide-react';
+import { User, Phone, MapPin, CalendarDays, History, Edit2, Trash2, FileText, UploadCloud, PlusCircle, Eye, EyeOff, BarChartHorizontalBig, Star, ImagePlus, ChevronDown, SearchIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 interface ClientNote {
@@ -52,7 +54,7 @@ interface ClientImage {
   imageUrl: string; // Placeholder or Data URL
   visibleToClient: boolean;
   fileData?: File; // Store actual file object for temporary use
-  dataAiHint?: string; // Adicionado para data-ai-hint
+  dataAiHint?: string; 
 }
 
 interface ClientData {
@@ -93,7 +95,42 @@ const mockClientDatabase: Record<string, ClientData> = {
       { id: "img1", title: "Quadro de Emoções", observation: "Construído na sessão de 24/06", imageUrl: "https://placehold.co/300x200.png?text=Quadro", visibleToClient: false, dataAiHint:"quadro emocoes"},
     ],
   },
+  "client456": {
+    id: "client456",
+    name: "Roberto Almeida",
+    phone: "(11) 91234-5678",
+    address: "Av. Paulista, 500, São Paulo, SP",
+    pastAppointments: [
+      { service: "Consulta de Avaliação", date: "05/05/2024", time: "10:00", professional: "Dra. Oliveira" },
+    ],
+    futureAppointments: [],
+    serviceNotesEnabled: true,
+    notes: [
+      { id: "note3", dateTime: new Date(2024, 4, 5, 11, 0).toISOString(), title: "Avaliação Inicial", content: "Cliente busca orientação vocacional.", rating: 6, visibleToClient: true },
+    ],
+    files: [],
+    images: [],
+  },
+  "client789": {
+    id: "client789",
+    name: "Carla Dias",
+    phone: "(31) 99876-1234",
+    address: "", // Sem endereço
+    pastAppointments: [],
+    futureAppointments: [
+        { service: "Sessão de Coaching", date: "10/08/2024", time: "10:00", professional: "Dr. Silva" },
+    ],
+    serviceNotesEnabled: false,
+    notes: [],
+    files: [],
+    images: [],
+  },
 };
+
+const allClientsForSelection = Object.keys(mockClientDatabase).map(key => ({
+  id: key,
+  name: mockClientDatabase[key].name,
+}));
 
 
 export default function ClientProfilePage() {
@@ -104,6 +141,8 @@ export default function ClientProfilePage() {
 
   const [clientData, setClientData] = useState<ClientData | null>(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isClientSelectorOpen, setIsClientSelectorOpen] = useState(false);
 
   // State for new note form
   const [newNoteTitle, setNewNoteTitle] = useState("");
@@ -143,12 +182,13 @@ export default function ClientProfilePage() {
           setClientData(data);
         } else {
           toast({ title: "Erro", description: "Cliente não encontrado.", variant: "destructive" });
-          router.push("/dashboard/professional");
+          // Não redirecionar imediatamente, pode ser que o usuário queira selecionar outro cliente
+          // router.push("/dashboard/professional"); 
         }
         setLoadingData(false);
       }, 500);
     }
-  }, [clientId, router]);
+  }, [clientId]);
 
   const handleAddNote = () => {
     if (!clientData || !newNoteTitle || !newNoteContent) {
@@ -163,7 +203,7 @@ export default function ClientProfilePage() {
       rating: newNoteRating,
       visibleToClient: newNoteVisible,
     };
-    setClientData(prev => prev ? { ...prev, notes: [...prev.notes, newNote] } : null);
+    setClientData(prev => prev ? { ...prev, notes: [...prev.notes, newNote].sort((a,b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()) } : null);
     setNewNoteTitle("");
     setNewNoteContent("");
     setNewNoteRating(5);
@@ -186,7 +226,7 @@ export default function ClientProfilePage() {
   const handleFileSelected = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       setSelectedFile(event.target.files[0]);
-      setCustomFileName(event.target.files[0].name.split('.')[0]); // Pre-fill custom name
+      setCustomFileName(event.target.files[0].name.split('.')[0]); 
     }
   };
 
@@ -200,7 +240,7 @@ export default function ClientProfilePage() {
         customName: customFileName,
         fileName: selectedFile.name,
         fileType: selectedFile.type,
-        fileUrl: URL.createObjectURL(selectedFile), // For local preview
+        fileUrl: URL.createObjectURL(selectedFile), 
         visibleToClient: fileVisibleToClient,
         fileData: selectedFile,
     };
@@ -230,7 +270,7 @@ export default function ClientProfilePage() {
     if (event.target.files && event.target.files[0]) {
         const file = event.target.files[0];
         setSelectedImageFile(file);
-        setImageTitle(file.name.split('.')[0]); // Pre-fill title
+        setImageTitle(file.name.split('.')[0]);
         
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -249,9 +289,10 @@ export default function ClientProfilePage() {
         id: `img${Date.now()}`,
         title: imageTitle,
         observation: imageObservation,
-        imageUrl: imagePreview || "https://placehold.co/150x100.png?text=IMG", // Use preview
+        imageUrl: imagePreview || "https://placehold.co/150x100.png?text=IMG",
         visibleToClient: imageVisibleToClient,
         fileData: selectedImageFile,
+        dataAiHint: "imagem cliente" // Adicionado data-ai-hint genérico
     };
     setClientData(prev => prev ? { ...prev, images: [...prev.images, newImage] } : null);
     setSelectedImageFile(null);
@@ -277,12 +318,22 @@ export default function ClientProfilePage() {
     });
   };
 
+  const filteredClientsForSelection = allClientsForSelection.filter(client =>
+    client.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  if (authLoading || loadingData || !clientData) {
+
+  if (authLoading || loadingData) {
     return (
       <div className="space-y-6 p-4 md:p-6">
-        <Skeleton className="h-10 w-3/4" />
-        <Skeleton className="h-6 w-1/2" />
+        <div className="flex items-center justify-between">
+            <div className="flex items-center">
+                <Skeleton className="h-8 w-8 rounded-full mr-3" />
+                <Skeleton className="h-8 w-1/2" />
+            </div>
+            <Skeleton className="h-9 w-32" />
+        </div>
+        <Skeleton className="h-6 w-3/4" />
         <div className="grid md:grid-cols-2 gap-6">
           <Card><CardHeader><Skeleton className="h-6 w-1/3 mb-2" /><Skeleton className="h-4 w-2/3" /></CardHeader><CardContent><Skeleton className="h-32 w-full" /></CardContent></Card>
           <Card><CardHeader><Skeleton className="h-6 w-1/3 mb-2" /><Skeleton className="h-4 w-2/3" /></CardHeader><CardContent><Skeleton className="h-32 w-full" /></CardContent></Card>
@@ -290,11 +341,66 @@ export default function ClientProfilePage() {
       </div>
     );
   }
+
+  if (!clientData) {
+    return (
+        <div className="space-y-6 p-4 md:p-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Cliente não encontrado ou nenhum cliente selecionado</CardTitle>
+                    <CardDescription>Use o seletor abaixo para encontrar um cliente.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                <Popover open={isClientSelectorOpen} onOpenChange={setIsClientSelectorOpen}>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full md:w-auto">
+                        Selecionar Cliente <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                        <div className="p-2 border-b">
+                        <div className="flex items-center space-x-2">
+                            <SearchIcon className="h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar cliente..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="h-8"
+                            />
+                        </div>
+                        </div>
+                        <ScrollArea className="h-[200px]">
+                        {filteredClientsForSelection.length > 0 ? (
+                            filteredClientsForSelection.map(client => (
+                            <Button
+                                key={client.id}
+                                variant="ghost"
+                                className="w-full justify-start text-sm py-1.5 h-auto rounded-none"
+                                onClick={() => {
+                                router.push(`/dashboard/professional/clients/${client.id}`);
+                                setIsClientSelectorOpen(false);
+                                setSearchTerm(""); 
+                                }}
+                            >
+                                {client.name}
+                            </Button>
+                            ))
+                        ) : (
+                            <p className="p-2 text-sm text-muted-foreground text-center">Nenhum cliente encontrado.</p>
+                        )}
+                        </ScrollArea>
+                    </PopoverContent>
+                </Popover>
+                </CardContent>
+            </Card>
+        </div>
+    )
+  }
   
   const notesChartData = clientData.notes
     .filter(note => note.rating > 0)
     .map(note => ({
-      name: note.title.substring(0, 15) + (note.title.length > 15 ? "..." : ""), // Truncate title for chart
+      name: note.title.substring(0, 15) + (note.title.length > 15 ? "..." : ""), 
       Nota: note.rating,
       data: format(new Date(note.dateTime), "dd/MM", { locale: ptBR })
     }));
@@ -304,13 +410,51 @@ export default function ClientProfilePage() {
     <div className="space-y-6 p-1 md:p-2 lg:p-4">
       <Card className="shadow-lg">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
             <div className='flex items-center'>
-                <User className="h-8 w-8 text-primary mr-3" />
-                <CardTitle className="text-3xl font-bold">{clientData.name}</CardTitle>
+                <User className="h-8 w-8 text-primary mr-3 flex-shrink-0" />
+                <CardTitle className="text-2xl sm:text-3xl font-bold">{clientData.name}</CardTitle>
             </div>
-            {/* O link de edição foi removido temporariamente pois não há uma página de edição de cliente */}
-            {/* <Button variant="outline" size="sm" asChild><Link href={`/dashboard/professional/clients/edit/${clientData.id}`}><Edit2 className="mr-2 h-4 w-4"/>Editar Cliente (mock)</Link></Button> */}
+            <Popover open={isClientSelectorOpen} onOpenChange={setIsClientSelectorOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full md:w-auto text-sm">
+                  Trocar Cliente <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="end">
+                <div className="p-2 border-b">
+                  <div className="flex items-center space-x-2">
+                     <SearchIcon className="h-4 w-4 text-muted-foreground" />
+                     <Input
+                        placeholder="Buscar cliente..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="h-8"
+                     />
+                  </div>
+                </div>
+                <ScrollArea className="h-[200px]">
+                  {filteredClientsForSelection.length > 0 ? (
+                    filteredClientsForSelection.map(client => (
+                      <Button
+                        key={client.id}
+                        variant="ghost"
+                        className="w-full justify-start text-sm py-1.5 h-auto rounded-none"
+                        onClick={() => {
+                          router.push(`/dashboard/professional/clients/${client.id}`);
+                          setIsClientSelectorOpen(false);
+                          setSearchTerm(""); 
+                        }}
+                      >
+                        {client.name}
+                      </Button>
+                    ))
+                  ) : (
+                    <p className="p-2 text-sm text-muted-foreground text-center">Nenhum cliente encontrado.</p>
+                  )}
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
           </div>
           <CardDescription>Painel de acompanhamento completo do cliente.</CardDescription>
         </CardHeader>
@@ -373,7 +517,7 @@ export default function ClientProfilePage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {clientData.serviceNotesEnabled && (
-                        <Card className="p-4 bg-secondary">
+                        <Card className="p-4 bg-secondary/50">
                             <CardTitle className="text-lg mb-2">Nova Anotação</CardTitle>
                             <div className="space-y-3">
                                 <Input placeholder="Título da Anotação" value={newNoteTitle} onChange={e => setNewNoteTitle(e.target.value)} />
@@ -407,8 +551,8 @@ export default function ClientProfilePage() {
                                                     <CardDescription className="text-xs">{format(new Date(note.dateTime), "dd/MM/yyyy HH:mm", {locale: ptBR})}</CardDescription>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <Badge variant={note.visibleToClient ? "default" : "secondary"} className={note.visibleToClient ? "bg-green-500" : ""}>{note.visibleToClient ? "Visível" : "Oculto"}</Badge>
-                                                    <Button variant="ghost" size="sm" onClick={() => toggleNoteVisibility(note.id)} title={note.visibleToClient ? "Ocultar do cliente" : "Tornar visível para cliente"}>
+                                                    <Badge variant={note.visibleToClient ? "default" : "secondary"} className={note.visibleToClient ? "bg-green-500 text-white" : ""}>{note.visibleToClient ? "Visível" : "Oculto"}</Badge>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleNoteVisibility(note.id)} title={note.visibleToClient ? "Ocultar do cliente" : "Tornar visível para cliente"}>
                                                         {note.visibleToClient ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                     </Button>
                                                 </div>
@@ -454,7 +598,7 @@ export default function ClientProfilePage() {
             <Card className="mt-6">
                 <CardHeader><CardTitle className="flex items-center"><UploadCloud className="mr-2 h-5 w-5 text-primary"/>Gerenciamento de Arquivos</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
-                    <Card className="p-4 bg-secondary">
+                    <Card className="p-4 bg-secondary/50">
                         <CardTitle className="text-lg mb-3">Adicionar Novo Arquivo</CardTitle>
                         <div className="space-y-3">
                             <Input id="file-upload-input" type="file" accept=".txt,.doc,.docx,.xls,.xlsx,.pdf" onChange={handleFileSelected} />
@@ -499,7 +643,7 @@ export default function ClientProfilePage() {
             <Card className="mt-6">
                 <CardHeader><CardTitle className="flex items-center"><ImagePlus className="mr-2 h-5 w-5 text-primary"/>Gerenciamento de Imagens</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
-                     <Card className="p-4 bg-secondary">
+                     <Card className="p-4 bg-secondary/50">
                         <CardTitle className="text-lg mb-3">Adicionar Nova Imagem</CardTitle>
                         <div className="space-y-3">
                             {imagePreview && <Image src={imagePreview} alt="Preview da imagem" width={150} height={100} className="rounded-md border object-cover" data-ai-hint="preview imagem upload"/>}
