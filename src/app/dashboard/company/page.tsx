@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -273,6 +273,16 @@ export default function CompanyAdminPage() {
             <Button asChild variant="outline">
               <Link href="/dashboard/company/reports/occupancy">
                 <BarChart3 className="mr-2 h-4 w-4" /> Relatório de Ocupação
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/reports/revenue-by-service">
+                <TrendingUp className="mr-2 h-4 w-4" /> Faturamento por Serviço
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/reports/new-clients">
+                <UserPlus className="mr-2 h-4 w-4" /> Relatório de Novos Clientes
               </Link>
             </Button>
         </CardContent>
