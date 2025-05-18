@@ -27,7 +27,8 @@ const professionalStats = [
 const mockProfessionalAlerts = [
     "Novo agendamento: Carol Davis às 14:00 para Check-up.",
     "Lembrete: Alice Johnson às 10:00 para Corte de Cabelo.",
-    "Sua disponibilidade para próxima semana não foi configurada."
+    "Sua disponibilidade para próxima semana não foi configurada.",
+    "✨ Nova funcionalidade: Agora você pode adicionar notas detalhadas por cliente!"
 ];
 
 

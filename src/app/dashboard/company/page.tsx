@@ -33,7 +33,8 @@ const companyPublicSlug = "sua-empresa-incrivel";
 const mockCompanyAlerts = [
     "Lembrete: 5 pagamentos pendentes esta semana.",
     "Pico de agendamentos previsto para Sexta-feira.",
-    "Atualize os horários de feriado para o próximo mês."
+    "Atualize os horários de feriado para o próximo mês.",
+    "💡 Dica: Use o relatório de 'Serviços Mais Populares' para identificar oportunidades!"
 ];
 
 export default function CompanyAdminPage() {
@@ -172,7 +173,7 @@ export default function CompanyAdminPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-            <CardTitle>Alertas e Notificações da Empresa</CardTitle>
+            <CardTitle className="text-xl flex items-center"><Bell className="mr-2 h-5 w-5 text-primary"/> Alertas e Notificações da Empresa</CardTitle>
         </CardHeader>
         <CardContent>
             {mockCompanyAlerts.length > 0 ? (

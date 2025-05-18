@@ -2,7 +2,7 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarPlus, History, Star, Settings, Bell } from "lucide-react";
+import { CalendarPlus, History, Star, Settings, Bell, Package } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -26,6 +26,7 @@ const clientStats = [
 const mockClientAlerts = [
     "Seu agendamento de 'Check-up Odontológico' é amanhã às 14:00.",
     "Pagamento pendente para 'Sessão de Terapia'.",
+    "🎉 Aproveite! Desconto de 15% em todos os serviços de spa esta semana."
 ];
 
 export default function ClientPage() {
@@ -170,6 +171,11 @@ export default function ClientPage() {
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
+            <Link href="/dashboard/client/plans">
+                <Package className="mr-2 h-5 w-5" /> Ver Planos e Assinaturas
+            </Link>
+          </Button>
+          <Button size="lg" variant="outline" asChild>
             <Link href="/dashboard/settings">
               <Settings className="mr-2 h-5 w-5" /> Configurações da Conta
             </Link>
@@ -179,5 +185,3 @@ export default function ClientPage() {
     </div>
   );
 }
-
-    
