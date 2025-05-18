@@ -164,6 +164,17 @@ export function AppointmentScheduler({ companySlug }: { companySlug: string }) {
                         </SelectContent>
                       </Select>
                       <FormMessage />
+                      {selectedService && (
+                        <Card className="mt-2 p-3 text-sm bg-muted/50 border-border">
+                          <CardDescription>
+                            <p><strong>Duração:</strong> {selectedService.duration}</p>
+                            <p><strong>Preço:</strong> {selectedService.price}</p>
+                            {selectedService.requiresPayment && (
+                              <p className="text-primary font-semibold mt-1">Este serviço requer pagamento para confirmação.</p>
+                            )}
+                          </CardDescription>
+                        </Card>
+                      )}
                     </FormItem>
                   )}
                 />
