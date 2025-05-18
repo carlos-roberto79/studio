@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building } from "lucide-react";
 import React from "react";
+import { useRouter } from "next/navigation"; // Import useRouter
 
 const companySchema = z.object({
   companyName: z.string().min(2, { message: "O nome da empresa deve ter pelo menos 2 caracteres." }),
@@ -48,20 +50,30 @@ export function CompanyRegistrationForm() {
   });
 
   const { toast } = useToast();
+  const router = useRouter(); // Initialize router
   const [loading, setLoading] = React.useState(false);
 
   async function onSubmit(values: CompanyFormData) {
     setLoading(true);
     console.log("Dados de Cadastro da Empresa:", values);
-    // Aqui você normalmente enviaria os dados para seu backend/Firebase
+    
     try {
       // Simula chamada de API
       await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Define as flags no localStorage para simular que o perfil foi completado
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('tdsagenda_companyProfileComplete_mock', 'true');
+        localStorage.setItem('tdsagenda_companyName_mock', values.companyName);
+        localStorage.setItem('tdsagenda_companyEmail_mock', values.email); // Usando o e-mail da empresa do formulário
+      }
+
       toast({
-        title: "Cadastro Enviado!",
-        description: `O cadastro da empresa ${values.companyName} está em processamento. Seu link público será /agendar/${values.publicLinkSlug}`,
+        title: "Perfil da Empresa Cadastrado!",
+        description: `A empresa ${values.companyName} foi configurada com sucesso. Você será redirecionado(a).`,
       });
-      form.reset();
+      // Redireciona para o painel da empresa
+      router.push('/dashboard/company'); 
     } catch (error: any) {
       toast({
         title: "Falha no Cadastro",
@@ -177,7 +189,7 @@ export function CompanyRegistrationForm() {
               )}
             />
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Cadastrando..." : "Cadastrar Empresa"}
+              {loading ? "Cadastrando..." : "Finalizar Cadastro da Empresa"}
             </Button>
           </form>
         </Form>
@@ -185,4 +197,3 @@ export function CompanyRegistrationForm() {
     </Card>
   );
 }
-
