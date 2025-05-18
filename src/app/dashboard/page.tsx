@@ -5,9 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight, Briefcase, CalendarCheck, UserCircle } from "lucide-react";
+import { ArrowRight, Briefcase, CalendarCheck, UserCircle, Settings, ShoppingBag, Clock } from "lucide-react"; // Adicionando ícones
 import { APP_NAME } from "@/lib/constants";
-import React, { useEffect } from 'react'; // Added React to imports for useEffect
+import React, { useEffect } from 'react'; 
 
 export default function DashboardPage() {
   const { user, role, loading } = useAuth();
@@ -21,7 +21,7 @@ export default function DashboardPage() {
   }
 
   if (!user) {
-    return <div className="text-center p-10">Redirecionando para o login...</div>; // Deve ser tratado pelo layout
+    return <div className="text-center p-10">Redirecionando para o login...</div>; 
   }
   
   const getRoleSpecificInfo = () => {
@@ -31,14 +31,19 @@ export default function DashboardPage() {
           title: "Painel da Empresa",
           description: "Gerencie seu negócio, profissionais e veja análises.",
           cta: {
-            text: "Gerenciar Empresa",
+            text: "Acessar Gestão da Empresa",
             href: "/dashboard/company",
             icon: <Briefcase className="mr-2 h-4 w-4" />
           },
           stats: [
-            { label: "Total de Agendamentos", value: "150" },
-            { label: "Profissionais Ativos", value: "5" },
-            { label: "Receita Este Mês", value: "R$5.200" },
+            { label: "Total de Agendamentos (Mock)", value: "150" },
+            { label: "Profissionais Ativos (Mock)", value: "5" },
+            { label: "Receita Este Mês (Mock)", value: "R$5.200" },
+          ],
+          quickActions: [
+            { href: "/dashboard/company/services", label: "Gerenciar Serviços", icon: <ShoppingBag /> },
+            { href: "/dashboard/company/add-professional", label: "Adicionar Profissional", icon: <UserCircle /> },
+            { href: "/dashboard/settings", label: "Configurações da Conta", icon: <Settings /> },
           ]
         };
       case "professional":
@@ -46,14 +51,19 @@ export default function DashboardPage() {
           title: "Painel do Profissional",
           description: "Veja sua agenda, gerencie agendamentos e atualize sua disponibilidade.",
            cta: {
-            text: "Ver Minha Agenda",
-            href: "/dashboard/professional",
+            text: "Ver Minha Agenda Completa",
+            href: "/dashboard/professional/calendar", // Alterado para calendário completo
             icon: <CalendarCheck className="mr-2 h-4 w-4" />
           },
            stats: [
-            { label: "Próximos Agendamentos", value: "12" },
-            { label: "Horários Disponíveis Hoje", value: "3" },
-            { label: "Concluídos Esta Semana", value: "25" },
+            { label: "Próximos Agendamentos (Mock)", value: "12" },
+            { label: "Horários Disponíveis Hoje (Mock)", value: "3" },
+            { label: "Concluídos Semana (Mock)", value: "25" },
+          ],
+          quickActions: [
+            { href: "/dashboard/professional/availability", label: "Definir Disponibilidade", icon: <Clock /> },
+            { href: "/dashboard/professional/profile", label: "Editar Meu Perfil", icon: <UserCircle /> },
+            { href: "/dashboard/settings", label: "Configurações da Conta", icon: <Settings /> },
           ]
         };
       case "client":
@@ -66,9 +76,14 @@ export default function DashboardPage() {
             icon: <UserCircle className="mr-2 h-4 w-4" />
           },
           stats: [
-            { label: "Próximos Agendamentos", value: "2" },
-            { label: "Agendamentos Passados", value: "8" },
-            { label: "Profissionais Favoritos", value: "1" },
+            { label: "Próximos Agendamentos (Mock)", value: "2" },
+            { label: "Agendamentos Passados (Mock)", value: "8" },
+            { label: "Planos Assinados (Mock)", value: "1" },
+          ],
+          quickActions: [
+            { href: "/schedule/example-company", label: "Agendar Novo Horário", icon: <CalendarCheck /> },
+            { href: "/dashboard/client/history", label: "Histórico de Agendamentos", icon: <Briefcase /> },
+            { href: "/dashboard/settings", label: "Configurações da Conta", icon: <Settings /> },
           ]
         };
       default:
@@ -76,7 +91,10 @@ export default function DashboardPage() {
           title: "Bem-vindo(a) ao seu Painel!",
           description: "Gerencie suas atividades e configurações aqui.",
           cta: null,
-          stats: []
+          stats: [],
+          quickActions: [
+            { href: "/dashboard/settings", label: "Configurações da Conta", icon: <Settings /> },
+          ]
         };
     }
   };
@@ -91,8 +109,8 @@ export default function DashboardPage() {
           <CardDescription className="text-lg">{roleInfo.description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="mb-6">
-            Bem-vindo(a), {user.email}! Você está logado como {role}.
+          <p className="mb-6 text-muted-foreground">
+            Olá, {user.email}! Você está logado como <span className="font-semibold text-primary">{role}</span>.
           </p>
           {roleInfo.cta && (
             <Button asChild size="lg">
@@ -107,32 +125,30 @@ export default function DashboardPage() {
       {roleInfo.stats.length > 0 && (
          <div className="grid gap-6 md:grid-cols-3">
           {roleInfo.stats.map(stat => (
-            <Card key={stat.label}>
+            <Card key={stat.label} className="shadow-md">
               <CardHeader>
                 <CardDescription>{stat.label}</CardDescription>
                 <CardTitle className="text-4xl font-bold">{stat.value}</CardTitle>
               </CardHeader>
+              {/* Pode adicionar um CardFooter com um link "Ver detalhes" se aplicável */}
             </Card>
           ))}
         </div>
       )}
 
-      <Card>
+      <Card className="shadow-md">
         <CardHeader>
           <CardTitle>Ações Rápidas</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {role === 'client' && (
-            <Button variant="outline" asChild><Link href="/schedule/example-company">Agendar Novo Horário</Link></Button>
-          )}
-          {role === 'professional' && (
-            <Button variant="outline" asChild><Link href="/dashboard/professional/availability">Definir Disponibilidade</Link></Button>
-          )}
-          {role === 'company_admin' && (
-            // Corrigido o link para /dashboard/company onde os profissionais são gerenciados
-            <Button variant="outline"asChild><Link href="/dashboard/company">Gerenciar Profissionais</Link></Button> 
-          )}
-          <Button variant="outline" asChild><Link href="/dashboard/settings">Configurações da Conta</Link></Button>
+          {roleInfo.quickActions.map(action => (
+            <Button key={action.href} variant="outline" asChild className="justify-start text-left h-auto py-3">
+              <Link href={action.href} className="flex items-center space-x-3">
+                {React.cloneElement(action.icon, { className: "h-5 w-5 text-primary" })}
+                <span className="text-sm font-medium">{action.label}</span>
+              </Link>
+            </Button>
+          ))}
         </CardContent>
       </Card>
     </div>
