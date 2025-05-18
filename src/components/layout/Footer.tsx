@@ -22,18 +22,23 @@ export function Footer() {
   const [companyEmail, setCompanyEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    if (role === USER_ROLES.COMPANY_ADMIN) {
-      const profileComplete = localStorage.getItem('easyagenda_companyProfileComplete_mock') === 'true';
-      setIsCompanyProfileComplete(profileComplete);
-      if (profileComplete) {
-        setCompanyName(localStorage.getItem('easyagenda_companyName_mock'));
-        setCompanyEmail(localStorage.getItem('easyagenda_companyEmail_mock'));
+    if (typeof window !== 'undefined') { // Ensure localStorage is available
+      if (role === USER_ROLES.COMPANY_ADMIN) {
+        const profileComplete = localStorage.getItem('tdsagenda_companyProfileComplete_mock') === 'true';
+        setIsCompanyProfileComplete(profileComplete);
+        if (profileComplete) {
+          setCompanyName(localStorage.getItem('tdsagenda_companyName_mock'));
+          setCompanyEmail(localStorage.getItem('tdsagenda_companyEmail_mock'));
+        } else {
+          setCompanyName(null);
+          setCompanyEmail(null);
+        }
+      } else {
+        // Para outros papéis ou usuários não logados, redefina para o padrão TDS+Agenda
+        setIsCompanyProfileComplete(false);
+        setCompanyName(null);
+        setCompanyEmail(null);
       }
-    } else {
-      // Para outros papéis ou usuários não logados, redefina para o padrão TDS+Agenda
-      setIsCompanyProfileComplete(false);
-      setCompanyName(null);
-      setCompanyEmail(null);
     }
   }, [role]);
 
@@ -104,4 +109,3 @@ export function Footer() {
     </footer>
   );
 }
-

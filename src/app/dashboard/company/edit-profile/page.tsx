@@ -11,8 +11,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import Link from "next/link";
 import { ArrowLeft, Edit, Save, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import NextImage from "next/image"; // Renomeado para NextImage para evitar conflito com o ícone
-import { useRouter } from "next/navigation"; // Importar useRouter
+import NextImage from "next/image"; 
+import { useRouter } from "next/navigation"; 
 
 // Mock existing company data
 const mockCompanyData = {
@@ -42,14 +42,12 @@ export default function EditCompanyProfilePage() {
   
   useEffect(() => {
     document.title = `Editar Perfil da Empresa - ${APP_NAME}`;
-    // In a real app, fetch company data here
-    // Potentially pre-fill from localStorage if editing an existing mock profile
-    const storedCompanyName = localStorage.getItem('easyagenda_companyName_mock');
-    const storedCompanyEmail = localStorage.getItem('easyagenda_companyEmail_mock');
-    // Add other fields if necessary
-    if (storedCompanyName) setCompanyName(storedCompanyName);
-    if (storedCompanyEmail) setEmail(storedCompanyEmail);
-    // ... etc. for other fields you want to persist in mock
+    if (typeof window !== 'undefined') {
+      const storedCompanyName = localStorage.getItem('tdsagenda_companyName_mock');
+      const storedCompanyEmail = localStorage.getItem('tdsagenda_companyEmail_mock');
+      if (storedCompanyName) setCompanyName(storedCompanyName);
+      if (storedCompanyEmail) setEmail(storedCompanyEmail);
+    }
   }, []);
 
   const handleSaveChanges = async (e: React.FormEvent) => {
@@ -66,11 +64,11 @@ export default function EditCompanyProfilePage() {
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     toast({ title: "Perfil Atualizado", description: "As informações da sua empresa foram salvas com sucesso." });
-    localStorage.setItem('easyagenda_companyProfileComplete_mock', 'true'); 
-    localStorage.setItem('easyagenda_companyName_mock', companyName);
-    localStorage.setItem('easyagenda_companyEmail_mock', email);
-    // Você pode querer salvar mais dados aqui para o rodapé se necessário
-    // ex: localStorage.setItem('easyagenda_companyPhone_mock', phone);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('tdsagenda_companyProfileComplete_mock', 'true'); 
+      localStorage.setItem('tdsagenda_companyName_mock', companyName);
+      localStorage.setItem('tdsagenda_companyEmail_mock', email);
+    }
     
     setIsSaving(false);
     router.push('/dashboard/company'); 
@@ -187,4 +185,3 @@ export default function EditCompanyProfilePage() {
     </div>
   );
 }
-

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star, Award, LineChart, Timer, Bell } from "lucide-react"; // Adicionado Bell
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star, Award, LineChart, Timer, Bell } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -51,7 +51,7 @@ export default function CompanyAdminPage() {
       const constructedLink = `${window.location.origin}/schedule/${companyPublicSlug}`;
       setPublicLink(constructedLink);
 
-      const storedProfileStatus = localStorage.getItem('easyagenda_companyProfileComplete_mock');
+      const storedProfileStatus = localStorage.getItem('tdsagenda_companyProfileComplete_mock');
       if (storedProfileStatus === 'true') {
         setIsProfileComplete(true);
       } else {
