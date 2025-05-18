@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { APP_NAME } from '@/lib/constants';
 import type { Plan } from '@/lib/types'; // Importando o tipo Plan
 import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import Link from 'next/link';
 
 const initialMockPlans: Plan[] = [
   { id: "plan_basic_01", nome: "Plano Básico", descricao: "Ideal para começar suas atividades.", preco: 49.90, duracao: "mensal", recursos: ["1 Profissional", "100 Agendamentos/mês", "Suporte por E-mail"], ativo: true },
@@ -88,15 +89,28 @@ export default function ClientPlansPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <CardHeader className="p-0">
-          <Skeleton className="h-10 w-3/5" />
-          <Skeleton className="h-6 w-4/5 mt-2" />
+        <CardHeader className="p-0 text-center md:text-left">
+          <div className='flex items-center justify-center md:justify-start'>
+            <Skeleton className="mr-3 h-8 w-8 rounded-md" />
+            <div>
+              <Skeleton className="h-10 w-64 md:w-80" />
+              <Skeleton className="h-6 w-full mt-2" />
+            </div>
+          </div>
         </CardHeader>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[1,2,3].map(i => (
             <Card key={i} className="flex flex-col justify-between">
-              <CardHeader><Skeleton className="h-7 w-1/2" /><Skeleton className="h-5 w-3/4 mt-2" /></CardHeader>
-              <CardContent className="flex-grow"><Skeleton className="h-12 w-full" /></CardContent>
+              <CardHeader>
+                <Skeleton className="h-7 w-1/2" />
+                <Skeleton className="h-5 w-3/4 mt-2" />
+                <Skeleton className="h-10 w-2/5 mt-4" />
+              </CardHeader>
+              <CardContent className="flex-grow">
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-3/4" />
+              </CardContent>
               <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
             </Card>
           ))}
@@ -227,3 +241,6 @@ export default function ClientPlansPage() {
     </div>
   );
 }
+
+
+    
