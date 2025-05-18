@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Users, CalendarDays, BellRing, Building } from "lucide-react";
@@ -25,6 +26,33 @@ export default function HomePage() {
       icon: <BellRing className="h-10 w-10 text-primary" />,
       title: "Notificações Inteligentes",
       description: "Notificações personalizadas e alimentadas por IA para confirmações, lembretes e atualizações.",
+    },
+  ];
+
+  const pricingPlans = [
+    { 
+      name: "Básico", 
+      price: "Grátis", 
+      features: ["1 Profissional", "50 Agendamentos/mês", "Notificações Básicas"],
+      ctaText: "Comece Gratuitamente",
+      ctaLink: "/signup",
+      variant: "outline" as "outline" | "default",
+    },
+    { 
+      name: "Pro", 
+      price: "R$29/mês", 
+      features: ["5 Profissionais", "500 Agendamentos/mês", "Notificações Inteligentes", "Página da Empresa"],
+      ctaText: "Assinar Plano Pro",
+      ctaLink: "/signup",
+      variant: "default" as "outline" | "default",
+    },
+    { 
+      name: "Empresarial", 
+      price: "Personalizado", 
+      features: ["Profissionais Ilimitados", "Agendamentos Ilimitados", "Suporte Dedicado", "Acesso API"],
+      ctaText: "Contatar Vendas",
+      ctaLink: "/contact",
+      variant: "outline" as "outline" | "default",
     },
   ];
 
@@ -129,12 +157,7 @@ export default function HomePage() {
             Escolha um plano que se adapte às suas necessidades. Sem taxas ocultas, nunca.
           </p>
           <div className="mt-12 grid md:grid-cols-3 gap-8">
-            {/* Placeholder for pricing cards */}
-            {[
-              { name: "Básico", price: "Grátis", features: ["1 Profissional", "50 Agendamentos/mês", "Notificações Básicas"] },
-              { name: "Pro", price: "R$29/mês", features: ["5 Profissionais", "500 Agendamentos/mês", "Notificações Inteligentes", "Página da Empresa"] },
-              { name: "Empresarial", price: "Personalizado", features: ["Profissionais Ilimitados", "Agendamentos Ilimitados", "Suporte Dedicado", "Acesso API"] },
-            ].map(plan => (
+            {pricingPlans.map(plan => (
               <Card key={plan.name} className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                 <CardHeader>
                   <CardTitle className="text-2xl font-semibold text-primary">{plan.name}</CardTitle>
@@ -145,8 +168,8 @@ export default function HomePage() {
                   <ul className="space-y-2 text-muted-foreground my-6">
                     {plan.features.map(f => <li key={f} className="flex items-center"><CheckCircle className="h-5 w-5 text-primary mr-2"/>{f}</li>)}
                   </ul>
-                  <Button className="w-full" variant={plan.name === "Pro" ? "default" : "outline"}>
-                    {plan.name === "Empresarial" ? "Contatar Vendas" : "Escolher Plano"}
+                  <Button className="w-full" variant={plan.variant} asChild>
+                    <Link href={plan.ctaLink}>{plan.ctaText}</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -174,4 +197,3 @@ export default function HomePage() {
     </div>
   );
 }
-
