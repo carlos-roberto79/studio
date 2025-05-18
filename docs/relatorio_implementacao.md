@@ -80,13 +80,17 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Exibe próximos agendamentos (mockados).
     *   Estatísticas (próximos agendamentos, agendamentos passados, profissionais favoritos - mockados).
     *   Seção de "Alertas e Lembretes" mockados.
-    *   Links para "Marcar Novo Agendamento", "Ver Histórico" e "Configurações da Conta".
+    *   Links para "Marcar Novo Agendamento", "Ver Histórico", "Ver Planos" e "Configurações da Conta".
 *   **Histórico de Agendamentos (`/dashboard/client/history/page.tsx`):**
     *   Tabela listando agendamentos passados e futuros (mockados).
     *   Detalhes: Empresa, Serviço, Profissional, Data, Hora, Status do Agendamento, Status do Pagamento (mock).
     *   Botões de ação simulados (Reagendar, Cancelar, Pagar).
     *   Placeholder visual quando não há histórico.
     *   Uso de `data-ai-hint` para logos.
+*   **Seleção de Planos (`/dashboard/client/plans/page.tsx`):**
+    *   Lista planos ativos (mockados) para o cliente selecionar.
+    *   Diálogo de confirmação com seleção de forma de pagamento (Pix, Boleto, Cartão - simulado).
+    *   Simulação de salvamento da assinatura do plano.
 
 ### 2.5. Dashboard do Profissional (`/dashboard/professional`)
 
@@ -218,6 +222,9 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Visualização de plano e status de pagamento.
     *   Ações simuladas: Adicionar, Editar, Excluir, Bloquear/Desbloquear empresas.
     *   Páginas de formulário para adicionar (`/site-admin/companies/add`) e editar (`/site-admin/companies/edit/[companyId]`) empresas.
+*   **Gestão de Planos (`/site-admin/plans`):**
+    *   Interface para listar, adicionar (`/site-admin/plans/add`), editar (`/site-admin/plans/edit/[planId]`), excluir e ativar/desativar planos de assinatura (simulado).
+    *   Campos: nome, descrição, preço, duração (mensal/anual), recursos (lista), status (ativo/inativo).
 *   **Personalização de Interface (`/site-admin/customization`):**
     *   Placeholders para configurar aparência global do sistema (cores, layout).
     *   Placeholders para configurar aparência por empresa (selecionar empresa e aplicar personalizações).

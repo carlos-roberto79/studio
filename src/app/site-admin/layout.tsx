@@ -17,7 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation"; 
 import { useEffect } from "react";
-import { LayoutDashboard, Briefcase, Palette, Settings, LogOut, ShieldAlert, Users, BarChartBig } from "lucide-react";
+import { LayoutDashboard, Briefcase, Palette, Settings, LogOut, ShieldAlert, Users, BarChartBig, PackagePlus } from "lucide-react"; // Adicionado PackagePlus
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -26,9 +26,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 const navItems = [
   { href: "/site-admin", label: "Visão Geral", icon: <LayoutDashboard /> },
   { href: "/site-admin/companies", label: "Gerenciar Empresas", icon: <Briefcase /> },
+  { href: "/site-admin/plans", label: "Gerenciar Planos", icon: <PackagePlus /> }, // Novo item
   { href: "/site-admin/customization", label: "Personalização", icon: <Palette /> },
   { href: "/site-admin/reports/customization-usage", label: "Uso e Personalização", icon: <BarChartBig /> },
-  // { href: "/dashboard/settings", label: "Configurações Gerais", icon: <Settings /> }, // Site Admin settings might be different or not needed here
 ];
 
 export default function SiteAdminLayout({
@@ -41,7 +41,7 @@ export default function SiteAdminLayout({
 
   useEffect(() => {
     if (!loading && (!user || role !== USER_ROLES.SITE_ADMIN)) {
-      router.push("/login"); // Redirect if not site admin or not logged in
+      router.push("/login"); 
     }
   }, [user, role, loading, router]);
 

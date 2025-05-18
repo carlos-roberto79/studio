@@ -1,3 +1,4 @@
+
 "use client";
 import {
   SidebarProvider,
@@ -16,17 +17,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { LayoutDashboard, Briefcase, Users, CalendarPlus, Settings, LogOut, BellDot } from "lucide-react";
+import { LayoutDashboard, Briefcase, Users, CalendarPlus, Settings, LogOut, BellDot, Package } from "lucide-react"; // Adicionado Package
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { APP_NAME } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const navItems = [
+const navItemsBase = [
   { href: "/dashboard", label: "Visão Geral", icon: <LayoutDashboard />, roles: ['client', 'professional', 'company_admin'] },
   { href: "/dashboard/company", label: "Config. Empresa", icon: <Briefcase />, roles: ['company_admin'] },
   { href: "/dashboard/professional", label: "Minha Agenda", icon: <CalendarPlus />, roles: ['professional'] },
   { href: "/dashboard/client", label: "Meus Agendamentos", icon: <Users />, roles: ['client'] },
+  { href: "/dashboard/client/plans", label: "Ver Planos", icon: <Package />, roles: ['client'] }, // Novo item para cliente
   { href: "/notifications-tester", label: "IA de Notificações", icon: <BellDot />, roles: ['company_admin', 'professional'] }, 
   { href: "/dashboard/settings", label: "Configurações", icon: <Settings />, roles: ['client', 'professional', 'company_admin'] },
 ];
@@ -57,7 +59,7 @@ export default function DashboardLayout({
     );
   }
 
-  const filteredNavItems = navItems.filter(item => item.roles.includes(role || ''));
+  const filteredNavItems = navItemsBase.filter(item => item.roles.includes(role || ''));
 
   return (
     <SidebarProvider defaultOpen>
