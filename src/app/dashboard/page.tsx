@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight, Briefcase, CalendarCheck, UserCircle, Settings, ShoppingBag, Clock } from "lucide-react"; // Adicionando ícones
+import { ArrowRight, Briefcase, CalendarCheck, UserCircle, Settings, ShoppingBag, Clock, Package } from "lucide-react"; // Adicionando Package
 import { APP_NAME } from "@/lib/constants";
 import React, { useEffect } from 'react'; 
 
@@ -83,6 +83,7 @@ export default function DashboardPage() {
           quickActions: [
             { href: "/schedule/example-company", label: "Agendar Novo Horário", icon: <CalendarCheck /> },
             { href: "/dashboard/client/history", label: "Histórico de Agendamentos", icon: <Briefcase /> },
+            { href: "/dashboard/client/plans", label: "Ver Planos e Assinaturas", icon: <Package /> },
             { href: "/dashboard/settings", label: "Configurações da Conta", icon: <Settings /> },
           ]
         };
