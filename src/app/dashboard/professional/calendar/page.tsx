@@ -10,7 +10,10 @@ import Link from "next/link";
 import { ArrowLeft, CalendarDays, PlusCircle, ExternalLink, Bell, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label"; // Adicionado Label
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 
 // Mock data for appointments - adjusted for relative dates
@@ -30,7 +33,11 @@ const mockAppointments = [
 
 export default function ProfessionalCalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day"); 
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
+  const { toast } = useToast();
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventTime, setEventTime] = useState("");
   
   useEffect(() => {
     document.title = `Meu Calendário - ${APP_NAME}`;
@@ -43,6 +50,20 @@ export default function ProfessionalCalendarPage() {
         appt.date.getDate() === selectedDate.getDate()
       ).sort((a,b) => a.date.getTime() - b.date.getTime())
     : [];
+
+  const handleAddEvent = () => {
+    if (!selectedDate || !eventTitle || !eventTime) {
+        toast({ title: "Erro", description: "Data, título e hora do evento são obrigatórios.", variant: "destructive" });
+        return;
+    }
+    console.log("BACKEND_SIM: Adicionando novo evento/bloqueio:", { date: selectedDate, title: eventTitle, time: eventTime });
+    toast({ title: "Evento Adicionado (Simulação)", description: `O evento "${eventTitle}" foi adicionado para ${selectedDate.toLocaleDateString('pt-BR')} às ${eventTime}.` });
+    setIsEventModalOpen(false);
+    setEventTitle("");
+    setEventTime("");
+  }
+
+  const bookedDays = mockAppointments.map(a => a.date);
 
   return (
     <div className="space-y-8">
@@ -99,10 +120,10 @@ export default function ProfessionalCalendarPage() {
                         onSelect={setSelectedDate}
                         className="rounded-md border p-0"
                         locale={{
-                            localize: { month: n => ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][n], day: n => ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][n]},
-                            formatLong: {}
-                        } as any}
-                        modifiers={{ booked: mockAppointments.map(a => a.date) }}
+                            localize: { month: n => ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][n], day: n => ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'][n]},
+                            formatLong: { date: () => 'dd/MM/yyyy' }, // Simplificado para evitar erros de tipo complexo
+                        }}
+                        modifiers={{ booked: bookedDays }}
                         modifiersClassNames={{ booked: 'text-primary font-bold relative after:content-["•"] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:text-lg' }}
                     />
                 </CardContent>
@@ -116,7 +137,33 @@ export default function ProfessionalCalendarPage() {
                         <CardTitle className="text-xl">
                             Agendamentos para {selectedDate ? selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) : "Nenhuma data selecionada"}
                         </CardTitle>
-                        <Button size="sm"> <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Bloqueio/Evento</Button>
+                        <Dialog open={isEventModalOpen} onOpenChange={setIsEventModalOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm"> <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Bloqueio/Evento</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Adicionar Bloqueio/Evento para {selectedDate?.toLocaleDateString('pt-BR')}</DialogTitle>
+                                    <DialogDescription>
+                                        Insira os detalhes para bloquear um horário ou adicionar um evento pessoal.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="event-title" className="text-right">Título</Label>
+                                        <Input id="event-title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} className="col-span-3" placeholder="Ex: Almoço, Reunião Interna"/>
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="event-time" className="text-right">Hora</Label>
+                                        <Input id="event-time" type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} className="col-span-3" />
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                                    <Button onClick={handleAddEvent}>Salvar Evento</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </CardHeader>
                 <CardContent>
