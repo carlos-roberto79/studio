@@ -79,7 +79,7 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
 *   **Painel Principal (`/dashboard/client/page.tsx`):**
     *   Exibe próximos agendamentos (mockados).
     *   Estatísticas (próximos agendamentos, agendamentos passados, profissionais favoritos - mockados).
-    *   Seção de "Alertas e Lembretes" mockados.
+    *   Seção de "Alertas e Lembretes" mockados e diversificados.
     *   Links para "Marcar Novo Agendamento", "Ver Histórico", "Ver Planos" e "Configurações da Conta".
 *   **Histórico de Agendamentos (`/dashboard/client/history/page.tsx`):**
     *   Tabela listando agendamentos passados e futuros (mockados).
@@ -88,16 +88,16 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Placeholder visual quando não há histórico.
     *   Uso de `data-ai-hint` para logos.
 *   **Seleção de Planos (`/dashboard/client/plans/page.tsx`):**
-    *   Lista planos ativos (mockados) para o cliente selecionar.
+    *   Lista planos ativos (mockados) para o cliente selecionar, com estado de carregamento.
     *   Diálogo de confirmação com seleção de forma de pagamento (Pix, Boleto, Cartão - simulado).
-    *   Simulação de salvamento da assinatura do plano.
+    *   Simulação de salvamento da assinatura do plano e exibição do plano atual.
 
 ### 2.5. Dashboard do Profissional (`/dashboard/professional`)
 
 *   **Painel Principal (`/dashboard/professional/page.tsx`):**
     *   Exibe próximos agendamentos de hoje (mockados).
     *   Estatísticas (agendamentos hoje, horários disponíveis, total de clientes - mockados).
-    *   Seção de "Alertas e Lembretes" mockados.
+    *   Seção de "Alertas e Lembretes" mockados e diversificados.
     *   Links para "Definir Disponibilidade", "Ver Calendário Completo", "Editar Perfil", "Ver Perfil de Cliente (Teste)" e "Configurações".
 *   **Definir Disponibilidade (`/dashboard/professional/availability/page.tsx`):**
     *   Permite ao profissional configurar seu horário semanal padrão (dia, ativo/inativo, início, fim, pausas).
@@ -105,10 +105,12 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Seção para configurar exceções e horários especiais para datas específicas (usando `Calendar`).
     *   Simulação de salvamento dos dados.
 *   **Calendário Completo (`/dashboard/professional/calendar/page.tsx`):**
-    *   Exibe um calendário (`Calendar`) onde o profissional pode selecionar uma data.
+    *   Exibe um calendário (`ShadCalendar`) onde o profissional pode selecionar uma data.
     *   Lista os agendamentos mockados (com datas relativas) para a data selecionada.
     *   Placeholders para visualização por semana/mês.
+    *   Localização do calendário para Português (pt-BR) e indicador visual para dias agendados.
     *   Ícone de sino para simular notificações de novos agendamentos.
+    *   Diálogo para adicionar bloqueios/eventos diretamente no calendário.
 *   **Editar Perfil do Profissional (`/dashboard/professional/profile/page.tsx`):**
     *   Formulário para editar nome, telefone, especialidade, biografia, e serviços oferecidos (como texto).
     *   Simulação de upload de foto de perfil.
@@ -125,23 +127,23 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
 
 *   **Painel Principal (`/dashboard/company/page.tsx`):**
     *   Estatísticas da empresa (total de agendamentos, profissionais ativos, receita estimada - mockados).
-    *   Seção de "Alertas e Lembretes" mockados.
+    *   Seção de "Alertas e Lembretes" mockados e diversificados.
     *   Seção para gerenciar profissionais com uma tabela mockada e link para "Adicionar Profissional".
     *   Seção para gestão de serviços e agendas com links para "Configurar Serviços", "Tipos de Disponibilidade" e "Visão Geral das Agendas".
     *   Seção para o financeiro com link para "Acessar Painel Financeiro".
     *   Seção de "Gestão de Clientes e Acesso Público" com:
         *   Exibição e botão para copiar o link público de agendamento da empresa.
         *   Link para "Adicionar Cliente Manualmente".
-    *   Seção de "Configurações da Empresa" com links para "Editar Perfil da Empresa", "Horário de Funcionamento" e "Configurar Notificações".
-    *   Seção de "Financeiro e Relatórios" com links para os diversos relatórios implementados.
-    *   Card condicional "Complete o Perfil da Sua Empresa!" que aparece para novos administradores até que o perfil seja salvo.
+    *   Seção de "Configurações da Empresa" com links para "Editar Perfil da Empresa", "Horário de Funcionamento", "Bloqueios de Agenda" e "Configurar Notificações".
+    *   Seção de "Relatórios" reorganizada por categorias (Financeiro, Operacional e Agenda, Clientes, Serviços e Profissionais) com links para os diversos relatórios implementados.
+    *   Card condicional "Complete o Perfil da Sua Empresa!" que aparece para novos administradores até que o perfil seja salvo (controlado por `localStorage`).
 *   **Adicionar Profissional (`/dashboard/company/add-professional/page.tsx`):**
     *   Formulário para cadastrar nome, e-mail, especialidade principal e telefone (opcional) de um novo profissional.
     *   Simulação de salvamento dos dados.
 *   **Editar Perfil da Empresa (`/dashboard/company/edit-profile/page.tsx`):**
     *   Formulário para editar nome da empresa, CNPJ, telefone, e-mail, endereço, descrição e slug do link público.
     *   Simulação de upload de logo da empresa com pré-visualização (usando Data URL).
-    *   Ao salvar, define uma flag no `localStorage` (`easyagenda_companyProfileComplete_mock`) para indicar que o perfil foi completado. Salva nome e e-mail da empresa no `localStorage` para uso no rodapé.
+    *   Ao salvar, define uma flag no `localStorage` (`tdsagenda_companyProfileComplete_mock`) para indicar que o perfil foi completado. Salva nome e e-mail da empresa no `localStorage` para uso no rodapé.
 *   **Horário de Funcionamento da Empresa (`/dashboard/company/general-settings/availability/page.tsx`):**
     *   Permite definir horários de funcionamento padrão para cada dia da semana (ativo, início, fim, pausas).
     *   Simulação de salvamento.
@@ -166,7 +168,11 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
 *   **Gerenciamento de Tipos de Disponibilidade:**
     *   **Listagem (`/dashboard/company/availability-types/page.tsx`):** Tabela de tipos mockados com ações.
     *   **Adicionar (`/dashboard/company/availability-types/add/page.tsx`):** Formulário para nome, descrição e configuração detalhada de horários por dia da semana (com múltiplos intervalos).
-    *   **Editar (`/dashboard/company/availability-types/edit/[typeId]/page.tsx`):** Similar ao de adicionar, pré-preenchido.
+    *   **Editar (`/dashboard/company/availability-types/edit/[typeId]/page.tsx`):** Similar ao de adicionar, pré-preenchido, com interface interativa para múltiplos intervalos por dia.
+*   **Gerenciamento de Bloqueios de Agenda:**
+    *   **Listagem (`/dashboard/company/agenda-blocks/page.tsx`):** Tabela para listar bloqueios mockados, com ações para editar, excluir e ativar/desativar. Exibe nome do profissional quando aplicável.
+    *   **Adicionar (`/dashboard/company/agenda-blocks/add/page.tsx`):** Formulário para criar bloqueios (global ou por profissional), definir período, motivo, repetição e status. Simulação de verificação de conflitos com agendamentos existentes (com diálogo de confirmação para cancelamento simulado).
+    *   **Editar (`/dashboard/company/agenda-blocks/edit/[blockId]/page.tsx`):** Similar ao de adicionar, pré-preenchido. Simulação de verificação de conflitos.
 *   **Painel Financeiro (`/dashboard/company/financials/page.tsx`):**
     *   Tabela para listar pagamentos mockados (cliente, serviço, profissional, data/hora, valor total, taxa de agendamento, comissão, forma de pagamento, status).
     *   Filtros (período com `Calendar` e `Popover`, profissional, forma de pagamento, status).
@@ -178,7 +184,7 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Placeholder para gráfico/heatmap de análise de agendamentos (usando `recharts` com dados mockados).
     *   Tabela para "Agendamentos Pendentes ou Cancelados Recentes" (mockada).
     *   Placeholder para visualização completa da agenda em grade.
-*   **Relatórios (Interfaces Mockadas):**
+*   **Relatórios (Interfaces Mockadas com filtros e tabelas/cards placeholder):**
     *   Faturamento por Período (`/dashboard/company/reports/revenue-by-period`)
     *   Faturamento por Serviço (`/dashboard/company/reports/revenue-by-service`)
     *   Faturamento por Profissional (`/dashboard/company/reports/revenue-by-professional`)
@@ -201,7 +207,7 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
         *   Placeholder para futuras configurações de e-mail SMTP.
     *   **Aba Modelos de Mensagem:**
         *   Tabela para listar modelos de notificação (Evento, Destinatário, Tipo, Mensagem, Ativo, Ações).
-        *   Dialog com formulário para adicionar/editar modelos (com seleção de Evento, Destinatário, Tipo, Textarea para mensagem e Switch para Ativo).
+        *   Dialog com formulário para adicionar/editar modelos (com seleção de Evento (incluindo `agendamento_cancelado_bloqueio`), Destinatário, Tipo, Textarea para mensagem e Switch para Ativo).
         *   Exibição das variáveis de template disponíveis (ex: `{{cliente_nome}}`).
     *   **Aba Histórico de Envios:**
         *   Tabela para listar envios mockados (Tipo, Para, Mensagem, Data, Status, Evento).
@@ -239,8 +245,7 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Interface para listar, adicionar (`/site-admin/plans/add`), editar (`/site-admin/plans/edit/[planId]`), excluir e ativar/desativar planos de assinatura (simulado).
     *   Campos: nome, descrição, preço, duração (mensal/anual), recursos (lista), status (ativo/inativo).
 *   **Personalização de Interface (`/site-admin/customization`):**
-    *   Placeholders para configurar aparência global do sistema (cores, layout).
-    *   Placeholders para configurar aparência por empresa (selecionar empresa e aplicar personalizações).
+    *   Campos interativos para simular a configuração de aparência global do sistema (cores) e por empresa (cor, layout).
 *   **Relatório de Uso e Personalização (`/site-admin/reports/customization-usage`):**
     *   Interface para visualizar dados mockados sobre como as empresas usam o sistema e aplicam personalizações.
     *   Filtros (placeholder) por período e busca por empresa.
@@ -266,6 +271,7 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
 
 *   A linguagem primária do frontend foi traduzida para **Português do Brasil**.
 *   Textos em interfaces, mensagens de `toast`, placeholders e descrições foram ajustados.
+*   O nome do sistema foi alterado para **TDS+Agenda**.
 
 ### 2.13. Qualidade e Outros
 
@@ -278,16 +284,17 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
     *   `useToast`: Para exibição de notificações.
     *   `useIsMobile`: Para detectar se o dispositivo é móvel.
 *   **Otimização de Imagens:** Uso de `next/image` e placeholders de `placehold.co` com `data-ai-hint`.
+*   Chaves do `localStorage` atualizadas para refletir o novo nome do sistema (`tdsagenda_`).
 
-## 3. Próximos Passos Sugeridos (Não Implementado)
+## 3. Próximos Passos Sugeridos (Não Implementado Funcionalmente)
 
 *   Integração completa com Firebase (Autenticação, Firestore, Storage).
-*   Implementação da lógica de backend para todas as operações CRUD e regras de negócio.
+*   Implementação da lógica de backend para todas as operações CRUD e regras de negócio (incluindo aplicação real de disponibilidade, comissões, taxas, bloqueios, etc.).
 *   Desenvolvimento de APIs para comunicação frontend-backend.
 *   Integração real com gateways de pagamento.
 *   Geração funcional de relatórios (PDF, Excel).
 *   Implementação completa dos gráficos dinâmicos com dados reais.
-*   Sistema de envio de notificações (e-mail, WhatsApp) real.
+*   Sistema de envio de notificações (e-mail, WhatsApp) real e automatizado.
 *   Testes unitários e de integração.
 
 Este relatório reflete o estado atual do desenvolvimento frontend do projeto TDS+Agenda, com foco na criação de interfaces de usuário ricas e na simulação de funcionalidades complexas.
