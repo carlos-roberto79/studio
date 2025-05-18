@@ -11,7 +11,7 @@ export interface Plan {
 
 // Tipos para o Sistema de Notificações
 export interface WhatsAppConnection {
-  empresaId: string; // Simulando, pois estamos no contexto da empresa logada
+  empresaId: string; 
   numeroWhatsApp: string;
   conectado: boolean;
   data_conexao?: string;
@@ -24,6 +24,7 @@ export const NotificationEvents = [
   "agendamento_aprovado",
   "agendamento_pendente_pagamento",
   "agendamento_cancelado",
+  "agendamento_cancelado_bloqueio", // Novo evento
   "pagamento_confirmado",
   "pagamento_falhou",
 ] as const;
@@ -51,8 +52,27 @@ export interface NotificationLog {
   mensagem: string;
   data_envio: string;
   status: "enviado" | "falhou" | "pendente";
-  usuarioId?: string; // ID do cliente ou profissional
+  usuarioId?: string; 
   evento: NotificationEvent;
 }
 
-// Outros tipos globais podem ser adicionados aqui
+// Tipos para Bloqueio de Agenda
+export interface AgendaBlock {
+  id: string;
+  targetType: "empresa" | "profissional";
+  profissionalId?: string;
+  profissionalNome?: string; // Para exibição
+  inicio: string; // ISO string or datetime-local string
+  fim: string;    // ISO string or datetime-local string
+  motivo: string;
+  repetirSemanalmente: boolean;
+  ativo: boolean;
+}
+
+// Tipo para simular agendamentos conflitantes
+export interface MockConflictingAppointment {
+  id: string;
+  clienteNome: string;
+  dataHora: string; // Formato "dd/MM/yyyy HH:mm" para exibição simples
+  servico: string;
+}
