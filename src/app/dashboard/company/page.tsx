@@ -260,84 +260,108 @@ export default function CompanyAdminPage() {
         <CardHeader>
             <CardTitle>Financeiro e Relatórios</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-             <Button asChild>
-              <Link href="/dashboard/company/financials">
-                <DollarSign className="mr-2 h-4 w-4" /> Painel Financeiro
-              </Link>
-            </Button>
-             <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/revenue-by-period">
-                <LineChart className="mr-2 h-4 w-4" /> Faturamento por Período
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/commissions">
-                <FileSpreadsheet className="mr-2 h-4 w-4" /> Relatório de Comissões
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/occupancy">
-                <BarChart3 className="mr-2 h-4 w-4" /> Relatório de Ocupação
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/revenue-by-service">
-                <TrendingUp className="mr-2 h-4 w-4" /> Faturamento por Serviço
-              </Link>
-            </Button>
-             <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/revenue-by-professional">
-                <DollarSign className="mr-2 h-4 w-4" /> Faturamento por Profissional
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/new-clients">
-                <UserPlus className="mr-2 h-4 w-4" /> Relatório de Novos Clientes
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/top-services">
-                <Package className="mr-2 h-4 w-4" /> Relatório de Serviços Populares
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/client-activity">
-                <UserX className="mr-2 h-4 w-4" /> Relatório de Atividade de Clientes
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/professional-performance">
-                <Activity className="mr-2 h-4 w-4" /> Relatório de Desempenho Profissional
-              </Link>
-            </Button>
-             <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/average-service-time">
-                <Timer className="mr-2 h-4 w-4" /> Tempo Médio de Atendimento
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/professional-ranking">
-                <Award className="mr-2 h-4 w-4" /> Ranking de Profissionais
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/cancellations-no-shows">
-                <CalendarX2 className="mr-2 h-4 w-4" /> Relatório de Cancelamentos e Faltas
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/client-frequency">
-                <Repeat className="mr-2 h-4 w-4" /> Relatório de Frequência de Clientes
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/reports/service-reviews">
-                <Star className="mr-2 h-4 w-4" /> Relatório de Avaliações
-              </Link>
-            </Button>
+        <CardContent className="space-y-6">
+            <div>
+                <h4 className="text-md font-semibold mb-3 text-primary">Financeiro</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/financials">
+                            <DollarSign className="mr-2 h-4 w-4" /> Painel Financeiro
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/revenue-by-period">
+                            <LineChart className="mr-2 h-4 w-4" /> Faturamento por Período
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/revenue-by-service">
+                            <TrendingUp className="mr-2 h-4 w-4" /> Faturamento por Serviço
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/revenue-by-professional">
+                            <DollarSign className="mr-2 h-4 w-4" /> Faturamento por Profissional
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/commissions">
+                            <FileSpreadsheet className="mr-2 h-4 w-4" /> Relatório de Comissões
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+
+            <div>
+                <h4 className="text-md font-semibold mb-3 text-primary">Operacional e Agenda</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/occupancy">
+                            <BarChart3 className="mr-2 h-4 w-4" /> Agenda e Ocupação
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/cancellations-no-shows">
+                            <CalendarX2 className="mr-2 h-4 w-4" /> Cancelamentos e Faltas
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/average-service-time">
+                            <Timer className="mr-2 h-4 w-4" /> Tempo Médio de Atendimento
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+
+            <div>
+                <h4 className="text-md font-semibold mb-3 text-primary">Clientes</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                     <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/new-clients">
+                            <UserPlus className="mr-2 h-4 w-4" /> Relatório de Novos Clientes
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/client-activity">
+                            <UserX className="mr-2 h-4 w-4" /> Clientes Ativos vs. Inativos
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/client-frequency">
+                            <Repeat className="mr-2 h-4 w-4" /> Frequência por Cliente
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/service-reviews">
+                            <Star className="mr-2 h-4 w-4" /> Avaliações e Notas
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+            
+            <div>
+                <h4 className="text-md font-semibold mb-3 text-primary">Serviços e Profissionais</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/professional-performance">
+                            <Activity className="mr-2 h-4 w-4" /> Desempenho por Profissional
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/professional-ranking">
+                            <Award className="mr-2 h-4 w-4" /> Ranking de Profissionais
+                        </Link>
+                    </Button>
+                     <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/top-services">
+                            <Package className="mr-2 h-4 w-4" /> Serviços Mais Populares
+                        </Link>
+                    </Button>
+                </div>
+            </div>
         </CardContent>
       </Card>
+
 
       <Card className="shadow-lg">
         <CardHeader>
