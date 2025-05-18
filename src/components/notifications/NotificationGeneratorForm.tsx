@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { generateNotificationMessage, type NotificationMessageInput } from "@/ai/flows/generate-notification-message";
 import { Wand2, MessageSquare } from "lucide-react";
 import { useState } from "react";
+import { APP_NAME } from "@/lib/constants";
 
 const notificationSchema = z.object({
   notificationType: z.enum(['confirmation', 'reminder', 'update'], { required_error: "O tipo de notificação é obrigatório." }),
@@ -78,7 +79,7 @@ export function NotificationGeneratorForm() {
           <CardTitle className="text-2xl">Gerador de Notificações IA</CardTitle>
         </div>
         <CardDescription>
-          Teste a capacidade da IA de criar notificações de agendamento personalizadas.
+          Teste a capacidade da IA de criar notificações de agendamento personalizadas para o {APP_NAME}.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -176,3 +177,4 @@ export function NotificationGeneratorForm() {
     </Card>
   );
 }
+

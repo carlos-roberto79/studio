@@ -30,7 +30,7 @@ export function Footer() {
         setCompanyEmail(localStorage.getItem('easyagenda_companyEmail_mock'));
       }
     } else {
-      // Para outros papéis ou usuários não logados, redefina para o padrão EasyAgenda
+      // Para outros papéis ou usuários não logados, redefina para o padrão TDS+Agenda
       setIsCompanyProfileComplete(false);
       setCompanyName(null);
       setCompanyEmail(null);
@@ -104,3 +104,4 @@ export function Footer() {
     </footer>
   );
 }
+

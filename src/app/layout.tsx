@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: APP_NAME,
     template: `%s | ${APP_NAME}`,
   },
-  description: 'Simplifique seus agendamentos com o EasyAgenda. Agende, gerencie e receba notificações inteligentes.',
+  description: 'Simplifique seus agendamentos com o TDS+Agenda. Agende, gerencie e receba notificações inteligentes.',
   icons: {
     icon: '/favicon.ico', // Placeholder, no actual favicon generated
   }
@@ -43,3 +43,4 @@ export default function RootLayout({
     </html>
   );
 }
+

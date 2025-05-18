@@ -172,7 +172,7 @@ export default function EditCompanyProfilePage() {
                     <Input id="public-link-slug" value={publicLinkSlug} onChange={(e) => setPublicLinkSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))} placeholder="sua-empresa" className="rounded-l-none"/>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                    Seu link público será: {typeof window !== 'undefined' ? window.location.origin : 'https://easyagenda.com'}/agendar/{publicLinkSlug || "sua-empresa"}. Use letras minúsculas, números e hífens.
+                    Seu link público será: {typeof window !== 'undefined' ? window.location.origin : 'https://tds.agenda'}/agendar/{publicLinkSlug || "sua-empresa"}. Use letras minúsculas, números e hífens.
                 </p>
             </div>
 
@@ -187,3 +187,4 @@ export default function EditCompanyProfilePage() {
     </div>
   );
 }
+

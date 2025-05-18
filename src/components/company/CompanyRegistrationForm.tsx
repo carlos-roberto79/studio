@@ -81,7 +81,7 @@ export function CompanyRegistrationForm() {
             <CardTitle className="text-2xl">Cadastre Sua Empresa</CardTitle>
         </div>
         <CardDescription>
-          Forneça os detalhes da sua empresa para começar com o EasyAgenda e criar sua página pública de agendamento.
+          Forneça os detalhes da sua empresa para começar com o TDS+Agenda e criar sua página pública de agendamento.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -169,7 +169,7 @@ export function CompanyRegistrationForm() {
                     </div>
                   </FormControl>
                   <FormDescription>
-                    Isso fará parte do seu link público (ex: easyagenda.com/agendar/{field.value || "sua-empresa"}).
+                    Isso fará parte do seu link público (ex: tds.agenda/agendar/{field.value || "sua-empresa"}).
                     Use letras minúsculas, números e hífens.
                   </FormDescription>
                   <FormMessage />
@@ -185,3 +185,4 @@ export function CompanyRegistrationForm() {
     </Card>
   );
 }
+

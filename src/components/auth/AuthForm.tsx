@@ -92,7 +92,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             {isLogin ? "Bem-vindo(a) de Volta!" : "Crie uma Conta para sua Empresa"}
           </CardTitle>
           <CardDescription className="text-center">
-            {isLogin ? "Faça login para gerenciar seus agendamentos ou acessar o painel restrito." : "Cadastre sua empresa para começar a usar o EasyAgenda."}
+            {isLogin ? "Faça login para gerenciar seus agendamentos ou acessar o painel restrito." : "Cadastre sua empresa para começar a usar o TDS+Agenda."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -168,3 +168,4 @@ export function AuthForm({ mode }: AuthFormProps) {
     </div>
   );
 }
+

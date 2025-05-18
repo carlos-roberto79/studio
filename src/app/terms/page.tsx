@@ -105,7 +105,7 @@ export default function TermsPage() {
 
           <h2>9. Contato</h2>
           <p>
-            Se você tiver alguma dúvida sobre estes Termos, entre em contato conosco em suporte@easyagenda.com.
+            Se você tiver alguma dúvida sobre estes Termos, entre em contato conosco em suporte@tdsagenda.com.
           </p>
           <p className="text-sm text-muted-foreground">Última atualização: {new Date().toLocaleDateString('pt-BR')}</p>
         </CardContent>
@@ -113,3 +113,4 @@ export default function TermsPage() {
     </div>
   );
 }
+

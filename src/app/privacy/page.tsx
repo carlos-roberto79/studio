@@ -100,7 +100,7 @@ export default function PrivacyPolicyPage() {
 
           <h2>8. Contato</h2>
           <p>
-            Se você tiver alguma dúvida sobre esta Política de Privacidade, entre em contato conosco em privacidade@easyagenda.com.
+            Se você tiver alguma dúvida sobre esta Política de Privacidade, entre em contato conosco em privacidade@tdsagenda.com.
           </p>
           <p className="text-sm text-muted-foreground">Última atualização: {new Date().toLocaleDateString('pt-BR')}</p>
         </CardContent>
@@ -108,3 +108,4 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
+

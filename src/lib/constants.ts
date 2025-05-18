@@ -8,4 +8,5 @@ export const USER_ROLES = {
 
 export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
 
-export const APP_NAME = "EasyAgenda";
+export const APP_NAME = "TDS+Agenda";
+

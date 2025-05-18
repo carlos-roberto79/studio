@@ -37,7 +37,7 @@ export default function HomePage() {
             Agendamento <span className="text-primary">Sem Esforço</span>
           </h1>
           <p className="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground">
-            EasyAgenda ajuda você a gerenciar agendamentos de forma transparente. Concentre-se em seus clientes,
+            TDS+Agenda ajuda você a gerenciar agendamentos de forma transparente. Concentre-se em seus clientes,
             nós cuidamos das complexidades do agendamento.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
@@ -55,7 +55,7 @@ export default function HomePage() {
       <section id="features" className="py-16 md:py-24">
         <div className="container mx-auto px-4 md:px-6">
           <h2 className="text-3xl md:text-4xl font-bold text-center text-foreground">
-            Por que Escolher o EasyAgenda?
+            Por que Escolher o TDS+Agenda?
           </h2>
           <p className="mt-4 max-w-xl mx-auto text-center text-muted-foreground">
             Recursos poderosos projetados para sua conveniência e eficiência.
@@ -87,7 +87,7 @@ export default function HomePage() {
                 Otimize Seu Fluxo de Trabalho
               </h2>
               <p className="mt-4 text-lg text-muted-foreground">
-                EasyAgenda simplifica cada etapa do processo de agendamento, da reserva aos lembretes.
+                TDS+Agenda simplifica cada etapa do processo de agendamento, da reserva aos lembretes.
                 Nossa interface intuitiva garante uma experiência tranquila para você e seus clientes.
               </p>
               <ul className="mt-6 space-y-3">
@@ -109,8 +109,8 @@ export default function HomePage() {
             </div>
             <div>
               <Image
-                src="https://placehold.co/600x450.png?text=Painel+EasyAgenda"
-                alt="Prévia do Painel EasyAgenda"
+                src="https://placehold.co/600x450.png?text=Painel+TDS+Agenda"
+                alt="Prévia do Painel TDS+Agenda"
                 width={600}
                 height={450}
                 className="rounded-lg shadow-2xl"
@@ -163,7 +163,7 @@ export default function HomePage() {
             Pronto para Simplificar Seus Agendamentos?
           </h2>
           <p className="mt-6 max-w-xl mx-auto text-lg">
-            Junte-se a centenas de empresas e profissionais que confiam no EasyAgenda.
+            Junte-se a centenas de empresas e profissionais que confiam no TDS+Agenda.
             Cadastre-se hoje e sinta a diferença.
           </p>
           <Button size="lg" variant="secondary" className="mt-10" asChild>
@@ -174,3 +174,4 @@ export default function HomePage() {
     </div>
   );
 }
+

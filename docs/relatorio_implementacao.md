@@ -1,11 +1,11 @@
 
-# Relatório de Implementação – Projeto EasyAgenda
+# Relatório de Implementação – Projeto TDS+Agenda
 
 **Data do Relatório:** 03/08/2024 (Data de Geração)
 
 ## 1. Visão Geral
 
-O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a gestão de horários para empresas, profissionais e seus clientes. O projeto foi desenvolvido utilizando Next.js (App Router), React, TypeScript, ShadCN UI para componentes, Tailwind CSS para estilização, e Genkit para funcionalidades de IA (geração de mensagens de notificação). Este relatório detalha as funcionalidades implementadas até a data presente.
+O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a gestão de horários para empresas, profissionais e seus clientes. O projeto foi desenvolvido utilizando Next.js (App Router), React, TypeScript, ShadCN UI para componentes, Tailwind CSS para estilização, e Genkit para funcionalidades de IA (geração de mensagens de notificação). Este relatório detalha as funcionalidades implementadas até a data presente.
 
 ## 2. Funcionalidades Implementadas
 
@@ -16,7 +16,7 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   O cadastro público é direcionado para **Administradores de Empresa (`company_admin`)**. Após a criação da conta, o usuário é redirecionado para `/register-company` para fornecer detalhes da empresa.
     *   Validação de campos (e-mail, senha, confirmação de senha) usando Zod.
     *   Feedback ao usuário via `toast` para sucesso ou erro.
-    *   Adicionada credencial de teste para o papel `professional` (email: `profissional@easyagenda.com`, senha: `prof123`) que atribui o papel correto no cadastro e login.
+    *   Adicionada credencial de teste para o papel `professional` (email: `profissional@tdsagenda.com`, senha: `prof123`) que atribui o papel correto no cadastro e login.
 *   **Fluxo de Login:**
     *   Implementado um formulário de login em `/login`.
     *   Validação de campos (e-mail, senha).
@@ -27,7 +27,7 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Utiliza `localStorage` para simular persistência da sessão e papéis de usuário (incluindo um mock de "banco de dados" de papéis para consistência entre logins).
     *   Normaliza e-mails para minúsculas ao armazenar e buscar papéis para evitar inconsistências.
     *   Fornece funções `login`, `signup`, `logout` e `setRole`.
-    *   Reconhece um e-mail/senha específico (`superadmin@easyagenda.com` / `superadmin123`) para o papel `SITE_ADMIN`.
+    *   Reconhece um e-mail/senha específico (`superadmin@tdsagenda.com` / `superadmin123`) para o papel `SITE_ADMIN`.
 *   **Controle de Acesso Baseado em Papel (Role-Based Access Control - RBAC):**
     *   Quatro papéis principais: `client`, `professional`, `company_admin`, `site_admin`.
     *   **Layout do Dashboard (`/dashboard/layout.tsx`):**
@@ -61,7 +61,7 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Formulário para administradores de empresa recém-cadastrados inserirem detalhes como nome da empresa, CNPJ, endereço, telefone, e-mail e slug para o link público.
     *   Validação de campos com Zod.
 *   **Rodapé (`Footer.tsx`):**
-    *   Exibe informações genéricas do "EasyAgenda" (tagline, links rápidos) para usuários não logados, clientes, profissionais ou administradores de empresa que ainda não completaram o perfil.
+    *   Exibe informações genéricas do "TDS+Agenda" (tagline, links rápidos) para usuários não logados, clientes, profissionais ou administradores de empresa que ainda não completaram o perfil.
     *   Exibe informações básicas da empresa (nome, e-mail) se o usuário logado for um `company_admin` e tiver "completado" o perfil (simulado via `localStorage`).
 
 ### 2.3. Dashboard Geral (`/dashboard`)
@@ -210,7 +210,7 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Protegido por papel (acessível por `company_admin` e `professional`).
 
 ### 2.9. Painel do Administrador do Site (`/site-admin`)
-*   Acesso exclusivo para o papel `SITE_ADMIN` (login com `superadmin@easyagenda.com` / `superadmin123`).
+*   Acesso exclusivo para o papel `SITE_ADMIN` (login com `superadmin@tdsagenda.com` / `superadmin123`).
 *   **Layout Específico:** Sidebar e navegação dedicada.
 *   **Visão Geral (`/site-admin/page.tsx`):** Página de boas-vindas com links para seções de gestão.
 *   **Gestão de Empresas (`/site-admin/companies`):**
@@ -270,5 +270,5 @@ O EasyAgenda é uma plataforma de agendamento online projetada para facilitar a 
 *   Sistema de envio de notificações (e-mail, WhatsApp) real.
 *   Testes unitários e de integração.
 
-Este relatório reflete o estado atual do desenvolvimento frontend do projeto EasyAgenda, com foco na criação de interfaces de usuário ricas e na simulação de funcionalidades complexas.
+Este relatório reflete o estado atual do desenvolvimento frontend do projeto TDS+Agenda, com foco na criação de interfaces de usuário ricas e na simulação de funcionalidades complexas.
         

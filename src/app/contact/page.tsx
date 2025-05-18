@@ -48,7 +48,7 @@ export default function ContactPage() {
           <div className="text-center">
             <p className="text-muted-foreground">Ou se preferir:</p>
             <p className="flex items-center justify-center mt-2">
-              <Mail className="mr-2 h-5 w-5 text-primary" /> suporte@easyagenda.com
+              <Mail className="mr-2 h-5 w-5 text-primary" /> suporte@tdsagenda.com
             </p>
             <p className="flex items-center justify-center mt-1">
               <Phone className="mr-2 h-5 w-5 text-primary" /> (123) 456-7890
@@ -59,3 +59,4 @@ export default function ContactPage() {
     </div>
   );
 }
+

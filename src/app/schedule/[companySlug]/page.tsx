@@ -26,3 +26,4 @@ export default function CompanySchedulePage({ params }: Props) {
     </div>
   );
 }
+
