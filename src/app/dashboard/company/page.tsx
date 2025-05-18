@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star, Award, LineChart, Timer } from "lucide-react"; // Adicionado LineChart e Timer
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star, Award, LineChart, Timer, Bell } from "lucide-react"; // Adicionado Bell
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
@@ -132,7 +132,7 @@ export default function CompanyAdminPage() {
             <div>
               <CardTitle className="text-xl text-primary">Complete o Perfil da Sua Empresa!</CardTitle>
               <CardDescription className="text-primary/90">
-                Para aproveitar ao máximo o EasyAgenda e publicar sua agenda, é essencial configurar os dados da sua empresa.
+                Para aproveitar ao máximo o ${APP_NAME} e publicar sua agenda, é essencial configurar os dados da sua empresa.
               </CardDescription>
             </div>
           </CardHeader>
@@ -371,7 +371,7 @@ export default function CompanyAdminPage() {
             <CardTitle>Configurações da Empresa</CardTitle>
             <CardDescription>Defina as configurações gerais e de perfil da sua empresa.</CardDescription>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 gap-4">
+        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Button asChild>
               <Link href="/dashboard/company/edit-profile">
                 <Edit className="mr-2 h-4 w-4" /> Editar Perfil da Empresa
@@ -380,6 +380,11 @@ export default function CompanyAdminPage() {
             <Button asChild variant="outline">
               <Link href="/dashboard/company/general-settings/availability">
                 <Clock className="mr-2 h-4 w-4" /> Horário de Funcionamento
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/notifications">
+                <Bell className="mr-2 h-4 w-4" /> Configurar Notificações
               </Link>
             </Button>
         </CardContent>
@@ -393,4 +398,3 @@ export default function CompanyAdminPage() {
     
 
     
-

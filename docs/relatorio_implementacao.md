@@ -132,7 +132,7 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Seção de "Gestão de Clientes e Acesso Público" com:
         *   Exibição e botão para copiar o link público de agendamento da empresa.
         *   Link para "Adicionar Cliente Manualmente".
-    *   Seção de "Configurações da Empresa" com links para "Editar Perfil da Empresa" e "Horário de Funcionamento".
+    *   Seção de "Configurações da Empresa" com links para "Editar Perfil da Empresa", "Horário de Funcionamento" e "Configurar Notificações".
     *   Seção de "Financeiro e Relatórios" com links para os diversos relatórios implementados.
     *   Card condicional "Complete o Perfil da Sua Empresa!" que aparece para novos administradores até que o perfil seja salvo.
 *   **Adicionar Profissional (`/dashboard/company/add-professional/page.tsx`):**
@@ -193,6 +193,19 @@ O TDS+Agenda é uma plataforma de agendamento online projetada para facilitar a 
     *   Ranking de Profissionais por Demanda (`/dashboard/company/reports/professional-ranking`)
     *   Serviços Mais Vendidos (`/dashboard/company/reports/top-services`)
     *   Tempo Médio de Atendimento (`/dashboard/company/reports/average-service-time`)
+*   **Painel de Notificações da Empresa (`/dashboard/company/notifications/page.tsx`):**
+    *   **Aba Conexões:**
+        *   Formulário em Dialog para conectar número WhatsApp (Número, Provedor, Token API).
+        *   Botões para testar e salvar conexão (simulados).
+        *   Exibição do status da conexão atual (mockado).
+        *   Placeholder para futuras configurações de e-mail SMTP.
+    *   **Aba Modelos de Mensagem:**
+        *   Tabela para listar modelos de notificação (Evento, Destinatário, Tipo, Mensagem, Ativo, Ações).
+        *   Dialog com formulário para adicionar/editar modelos (com seleção de Evento, Destinatário, Tipo, Textarea para mensagem e Switch para Ativo).
+        *   Exibição das variáveis de template disponíveis (ex: `{{cliente_nome}}`).
+    *   **Aba Histórico de Envios:**
+        *   Tabela para listar envios mockados (Tipo, Para, Mensagem, Data, Status, Evento).
+        *   Placeholders para filtros.
 
 ### 2.7. Configurações da Conta (`/dashboard/settings/page.tsx`)
 
