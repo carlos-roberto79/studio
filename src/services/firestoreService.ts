@@ -1,21 +1,15 @@
 // src/services/firestoreService.ts
-'use server'; // Marque como Server Action se for chamá-lo de componentes de servidor ou Server Actions
+'use server';
 
 import type { UserRole } from '@/lib/constants';
-import { db } from '@/lib/firebase'; // Importa a instância 'db' do Firestore
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, DocumentData } from 'firebase/firestore';
 
-// Constantes para nomes de coleções
 const USERS_COLLECTION = 'users';
-// Adicione outras constantes de coleção conforme necessário (ex: companies, services, plans)
+const COMPANIES_COLLECTION = 'companies';
 
-/**
- * Obtém o papel de um usuário do Firestore.
- * @param uid O ID do usuário.
- * @returns O papel do usuário ou null se não encontrado.
- */
 export async function getUserRole(uid: string): Promise<UserRole | null> {
-  console.log(`FirestoreService: Tentando buscar papel para UID: ${uid}`);
+  console.log(`FirestoreService: Buscando papel para UID: ${uid}`);
   try {
     const userDocRef = doc(db, USERS_COLLECTION, uid);
     const userDocSnap = await getDoc(userDocRef);
@@ -25,81 +19,90 @@ export async function getUserRole(uid: string): Promise<UserRole | null> {
       console.log(`FirestoreService: Papel encontrado para UID ${uid}:`, userData.role);
       return userData.role as UserRole;
     } else {
-      console.log(`FirestoreService: Nenhum documento encontrado para UID ${uid} na coleção ${USERS_COLLECTION}.`);
+      console.warn(`FirestoreService: Nenhum documento encontrado para UID ${uid} na coleção ${USERS_COLLECTION}.`);
       return null;
     }
   } catch (error) {
     console.error(`FirestoreService: Erro ao buscar papel para UID ${uid}:`, error);
-    // Em um app real, você poderia tratar o erro de forma mais específica
-    // ou lançá-lo para ser tratado pelo chamador.
-    return null; // Retorna null em caso de erro para manter a simulação simples
+    return null;
   }
 }
 
-/**
- * Define o papel de um usuário no Firestore.
- * Geralmente chamado durante o processo de signup ou quando um papel é alterado.
- * @param uid O ID do usuário.
- * @param email O e-mail do usuário (pode ser útil armazenar).
- * @param role O papel a ser definido para o usuário.
- */
 export async function setUserRole(uid: string, email: string, role: UserRole): Promise<void> {
-  console.log(`FirestoreService: Tentando definir papel para UID: ${uid}, Email: ${email}, Papel: ${role}`);
+  console.log(`FirestoreService: Definindo papel para UID: ${uid}, Email: ${email}, Papel: ${role}`);
   try {
     const userDocRef = doc(db, USERS_COLLECTION, uid);
     await setDoc(userDocRef, {
       uid: uid,
-      email: email.toLowerCase(), // Armazenar email normalizado
+      email: email.toLowerCase(),
       role: role,
-      createdAt: new Date().toISOString(), // Opcional: data de criação do registro
-    });
+      createdAt: new Date().toISOString(),
+    }, { merge: true }); // Usar merge: true para não sobrescrever outros campos se já existirem
     console.log(`FirestoreService: Papel definido com sucesso para UID ${uid}.`);
   } catch (error) {
     console.error(`FirestoreService: Erro ao definir papel para UID ${uid}:`, error);
-    // Tratar ou lançar o erro conforme necessário
-    throw error; // Re-lança o erro para que o AuthContext possa tratá-lo
+    throw error;
   }
 }
 
-// --- Outras Funções Placeholder (Exemplos) ---
-// Você precisará implementar funções similares para cada entidade do seu sistema.
-
-interface CompanyDataPlaceholder {
+export interface CompanyData {
   companyName: string;
   cnpj: string;
   address: string;
   phone: string;
   email: string;
   publicLinkSlug: string;
-  // Adicione outros campos da empresa aqui
   profileComplete?: boolean;
+  ownerUid?: string; // Adicionado para referenciar o dono
+  // Adicione outros campos da empresa aqui
 }
 
-export async function addCompanyDetails(userId: string, companyData: CompanyDataPlaceholder): Promise<void> {
-  console.log(`FirestoreService: Adicionando/atualizando detalhes da empresa para o usuário ${userId}:`, companyData);
-  // Lógica para adicionar/atualizar na coleção 'companies' no Firestore, usando userId ou um companyId.
-  // Exemplo: const companyDocRef = doc(db, 'companies', userId);
-  // await setDoc(companyDocRef, { ...companyData, ownerUid: userId }, { merge: true });
-  return Promise.resolve(); // Simulação
+export async function addCompanyDetails(userId: string, companyData: CompanyData): Promise<string> {
+  console.log(`FirestoreService: Adicionando detalhes da empresa para o usuário ${userId}:`, companyData);
+  try {
+    // Vamos verificar se já existe uma empresa para este ownerUid
+    const q = query(collection(db, COMPANIES_COLLECTION), where("ownerUid", "==", userId));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      // Empresa já existe, vamos atualizar o primeiro documento encontrado
+      const companyDoc = querySnapshot.docs[0];
+      const companyDocRef = doc(db, COMPANIES_COLLECTION, companyDoc.id);
+      await setDoc(companyDocRef, { ...companyData, ownerUid: userId, updatedAt: new Date().toISOString() }, { merge: true });
+      console.log(`FirestoreService: Detalhes da empresa atualizados para ${userId}, Doc ID: ${companyDoc.id}`);
+      return companyDoc.id;
+    } else {
+      // Nenhuma empresa encontrada, criar uma nova
+      const docRef = await addDoc(collection(db, COMPANIES_COLLECTION), {
+        ...companyData,
+        ownerUid: userId,
+        createdAt: new Date().toISOString(),
+      });
+      console.log(`FirestoreService: Detalhes da empresa adicionados para ${userId}, Novo Doc ID: ${docRef.id}`);
+      return docRef.id;
+    }
+  } catch (error) {
+    console.error(`FirestoreService: Erro ao adicionar/atualizar detalhes da empresa para ${userId}:`, error);
+    throw error;
+  }
 }
 
-export async function getCompanyDetails(userId: string): Promise<CompanyDataPlaceholder | null> {
+export async function getCompanyDetails(userId: string): Promise<(CompanyData & { id: string }) | null> {
   console.log(`FirestoreService: Buscando detalhes da empresa para o usuário ${userId}`);
-  // Lógica para buscar da coleção 'companies'.
-  // Exemplo: const companyDocRef = doc(db, 'companies', userId);
-  // const companyDocSnap = await getDoc(companyDocRef);
-  // if (companyDocSnap.exists()) return companyDocSnap.data() as CompanyDataPlaceholder;
-  return Promise.resolve(null); // Simulação
+  try {
+    const q = query(collection(db, COMPANIES_COLLECTION), where("ownerUid", "==", userId));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const companyDoc = querySnapshot.docs[0]; // Assumindo que um usuário só pode ser dono de uma empresa
+      console.log(`FirestoreService: Detalhes da empresa encontrados para ${userId}:`, companyDoc.data());
+      return { id: companyDoc.id, ...companyDoc.data() } as (CompanyData & { id: string });
+    } else {
+      console.warn(`FirestoreService: Nenhuma empresa encontrada para ownerUid ${userId}`);
+      return null;
+    }
+  } catch (error) {
+    console.error(`FirestoreService: Erro ao buscar detalhes da empresa para ${userId}:`, error);
+    return null;
+  }
 }
-
-// Adicione mais funções conforme necessário para serviços, planos, bloqueios, etc.
-// Exemplo:
-// export async function addService(companyId: string, serviceData: any): Promise<string> {
-//   console.log(`FirestoreService: Adicionando serviço para a empresa ${companyId}:`, serviceData);
-//   // const servicesCollectionRef = collection(db, 'companies', companyId, 'services');
-//   // const docRef = await addDoc(servicesCollectionRef, serviceData);
-//   // return docRef.id;
-//   return Promise.resolve("mockServiceId");
-// }
-
-// Lembre-se de criar as regras de segurança no Firestore para proteger seus dados!
