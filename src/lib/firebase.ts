@@ -1,34 +1,38 @@
-// import { initializeApp, getApps, getApp } from 'firebase/app';
-// import { getAuth } from 'firebase/auth';
-// import { getFirestore } from 'firebase/firestore';
-// import { getStorage } from 'firebase/storage';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
-// Your web app's Firebase configuration
-// IMPORTANT: Replace with your actual Firebase project configuration
+// ATENÇÃO: Substitua pelas configurações reais do seu projeto Firebase!
+// Você pode encontrar essas configurações no console do Firebase:
+// Configurações do projeto > Geral > Seus apps > Configuração do SDK
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID" // Optional
+  apiKey: "YOUR_API_KEY_HERE", // Substitua
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // Substitua
+  projectId: "YOUR_PROJECT_ID_HERE", // Substitua
+  storageBucket: "YOUR_PROJECT_ID.appspot.com", // Substitua
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE", // Substitua
+  appId: "YOUR_APP_ID_HERE", // Substitua
+  measurementId: "YOUR_MEASUREMENT_ID_HERE" // Opcional, para Google Analytics
 };
 
-// Initialize Firebase
-// const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-// const auth = getAuth(app);
-// const db = getFirestore(app);
-// const storage = getStorage(app);
+// Inicializar o Firebase
+let app;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
 
-// export { app, auth, db, storage };
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-// Placeholder exports to prevent errors until Firebase is fully set up
-export const app = {};
-export const auth = {};
-export const db = {};
-export const storage = {};
+export { app, auth, db, storage };
 
-console.warn(
-  "Firebase is not fully configured. Please update src/lib/firebase.ts with your project's Firebase configuration."
-);
+// Verificação para garantir que as credenciais foram alteradas
+if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE" || firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE") {
+  console.warn(
+    "FIREBASE NÃO CONFIGURADO: Por favor, atualize src/lib/firebase.ts com as credenciais do seu projeto Firebase para que a autenticação e outras funcionalidades do Firebase funcionem corretamente."
+  );
+}

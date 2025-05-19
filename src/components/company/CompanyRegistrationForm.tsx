@@ -20,7 +20,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building } from "lucide-react";
 import React from "react";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext"; // Importar useAuth para pegar o UID
+import { addCompanyDetails } from "@/services/firestoreService"; // Importar a função do serviço
 
 const companySchema = z.object({
   companyName: z.string().min(2, { message: "O nome da empresa deve ter pelo menos 2 caracteres." }),
@@ -50,38 +52,42 @@ export function CompanyRegistrationForm() {
   });
 
   const { toast } = useToast();
-  const router = useRouter(); // Initialize router
-  const [loading, setLoading] = React.useState(false);
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth(); // Pegar o usuário autenticado
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   async function onSubmit(values: CompanyFormData) {
-    setLoading(true);
-    console.log("Dados de Cadastro da Empresa:", values);
+    if (!user) {
+      toast({
+        title: "Erro de Autenticação",
+        description: "Usuário não autenticado. Por favor, faça login novamente.",
+        variant: "destructive",
+      });
+      router.push('/login');
+      return;
+    }
+
+    setIsSubmitting(true);
+    console.log("Dados de Cadastro da Empresa (para Firestore):", values);
     
     try {
-      // Simula chamada de API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Define as flags no localStorage para simular que o perfil foi completado
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('tdsagenda_companyProfileComplete_mock', 'true');
-        localStorage.setItem('tdsagenda_companyName_mock', values.companyName);
-        localStorage.setItem('tdsagenda_companyEmail_mock', values.email); // Usando o e-mail da empresa do formulário
-      }
+      // Agora, em vez de localStorage, chamamos o serviço para salvar no Firestore
+      await addCompanyDetails(user.uid, { ...values, profileComplete: true });
 
       toast({
         title: "Perfil da Empresa Cadastrado!",
         description: `A empresa ${values.companyName} foi configurada com sucesso. Você será redirecionado(a).`,
       });
-      // Redireciona para o painel da empresa
       router.push('/dashboard/company'); 
     } catch (error: any) {
+      console.error("Falha ao cadastrar empresa no Firestore:", error);
       toast({
         title: "Falha no Cadastro",
         description: error.message || "Não foi possível cadastrar a empresa. Por favor, tente novamente.",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -188,8 +194,8 @@ export function CompanyRegistrationForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Cadastrando..." : "Finalizar Cadastro da Empresa"}
+            <Button type="submit" className="w-full" disabled={isSubmitting || authLoading}>
+              {isSubmitting ? "Cadastrando..." : "Finalizar Cadastro da Empresa"}
             </Button>
           </form>
         </Form>

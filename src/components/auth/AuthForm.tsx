@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { USER_ROLES } from "@/lib/constants";
 import type { UserRole } from "@/lib/constants";
+import { FirebaseError } from "firebase/app"; // Importar FirebaseError para tipagem
 
 
 const formSchemaBase = {
@@ -41,6 +42,27 @@ const signupSchema = z.object({
 type AuthFormProps = {
   mode: "login" | "signup";
 };
+
+function getFirebaseErrorMessage(error: any): string {
+  if (error instanceof FirebaseError) {
+    switch (error.code) {
+      case "auth/user-not-found":
+      case "auth/wrong-password":
+        return "E-mail ou senha inválidos.";
+      case "auth/email-already-in-use":
+        return "Este e-mail já está em uso por outra conta.";
+      case "auth/weak-password":
+        return "A senha é muito fraca. Use pelo menos 6 caracteres.";
+      case "auth/invalid-email":
+        return "O formato do e-mail é inválido.";
+      // Adicione mais casos conforme necessário
+      default:
+        return error.message || "Ocorreu um erro de autenticação.";
+    }
+  }
+  return error.message || "Ocorreu um erro inesperado.";
+}
+
 
 export function AuthForm({ mode }: AuthFormProps) {
   const isLogin = mode === "login";
@@ -71,6 +93,8 @@ export function AuthForm({ mode }: AuthFormProps) {
           router.push("/dashboard");
         }
       } else {
+        // Para o cadastro público, o papel padrão será COMPANY_ADMIN.
+        // Profissionais e Clientes são cadastrados internamente ou por convite.
         await authSignup(values.email, values.password, USER_ROLES.COMPANY_ADMIN);
         toast({ title: "Conta de Administrador Criada", description: "Prossiga para cadastrar os detalhes da sua empresa." });
         router.push("/register-company");
@@ -78,7 +102,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     } catch (error: any) {
       toast({
         title: "Erro de Autenticação",
-        description: error.message || "Ocorreu um erro inesperado.",
+        description: getFirebaseErrorMessage(error),
         variant: "destructive",
       });
     }
@@ -168,4 +192,3 @@ export function AuthForm({ mode }: AuthFormProps) {
     </div>
   );
 }
-
