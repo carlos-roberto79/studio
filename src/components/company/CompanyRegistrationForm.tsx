@@ -22,8 +22,8 @@ import { Building } from "lucide-react";
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext"; 
-// addCompanyDetails de firestoreService não é mais necessário aqui
-import { APP_NAME } from "@/lib/constants"; // Import APP_NAME
+import { addCompanyDetails, type CompanyData as SupabaseCompanyData } from "@/services/supabaseService"; // Importar do supabaseService
+import { APP_NAME } from "@/lib/constants";
 
 const companySchema = z.object({
   companyName: z.string().min(2, { message: "O nome da empresa deve ter pelo menos 2 caracteres." }),
@@ -58,9 +58,9 @@ export function CompanyRegistrationForm() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   async function onSubmit(values: CompanyFormData) {
-    if (!user) { // user aqui é do AuthContext mockado
+    if (!user || !user.id) {
       toast({
-        title: "Erro de Autenticação (Simulado)",
+        title: "Erro de Autenticação",
         description: "Usuário não autenticado. Por favor, faça login novamente.",
         variant: "destructive",
       });
@@ -69,27 +69,29 @@ export function CompanyRegistrationForm() {
     }
 
     setIsSubmitting(true);
-    console.log("Dados de Cadastro da Empresa (para localStorage mock):", values);
+    
+    const companyDataForSupabase: SupabaseCompanyData = {
+      ...values,
+      ownerUid: user.id,
+      profileComplete: true, // Marcar como completo ao submeter
+    };
     
     try {
-      // Simular salvamento no localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('tdsagenda_companyProfileComplete_mock', 'true');
-        localStorage.setItem('tdsagenda_companyName_mock', values.companyName);
-        localStorage.setItem('tdsagenda_companyEmail_mock', values.email);
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular atraso da API
+      const companyId = await addCompanyDetails(companyDataForSupabase);
 
-      toast({
-        title: "Perfil da Empresa Cadastrado! (Simulado)",
-        description: `A empresa ${values.companyName} foi configurada com sucesso. Você será redirecionado(a).`,
-      });
-      router.push('/dashboard/company'); 
+      if (companyId) {
+        toast({
+          title: "Perfil da Empresa Cadastrado!",
+          description: `A empresa ${values.companyName} foi configurada com sucesso. Você será redirecionado(a).`,
+        });
+        router.push('/dashboard/company'); 
+      } else {
+        throw new Error("Não foi possível salvar os detalhes da empresa.");
+      }
     } catch (error: any) {
-      console.error("Falha ao simular cadastro da empresa:", error);
+      console.error("Falha ao cadastrar empresa (Supabase):", error);
       toast({
-        title: "Falha no Cadastro (Simulado)",
+        title: "Falha no Cadastro",
         description: error.message || "Não foi possível cadastrar a empresa. Por favor, tente novamente.",
         variant: "destructive",
       });
@@ -194,7 +196,7 @@ export function CompanyRegistrationForm() {
                     </div>
                   </FormControl>
                   <FormDescription>
-                    Isso fará parte do seu link público (ex: {APP_NAME.toLowerCase()}.agenda/agendar/{field.value || "sua-empresa"}).
+                    Isso fará parte do seu link público (ex: {APP_NAME.toLowerCase()}.com/agendar/{field.value || "sua-empresa"}).
                     Use letras minúsculas, números e hífens.
                   </FormDescription>
                   <FormMessage />

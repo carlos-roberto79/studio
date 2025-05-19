@@ -4,46 +4,34 @@
 import type { UserRole } from '@/lib/constants';
 import { USER_ROLES, APP_NAME } from '@/lib/constants';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/lib/supabaseClient'; // Import Supabase client
+import { supabase } from '@/lib/supabaseClient';
 import type { User as SupabaseUser, Session as SupabaseSession } from '@supabase/supabase-js';
+import { getUserProfile, createUserProfile, type UserProfile } from '@/services/supabaseService'; // Importar funções do supabaseService
 
-// Configuração para o admin do site e profissional de teste
 const SITE_ADMIN_EMAIL = "superadmin@" + APP_NAME.toLowerCase().replace(/\s+/g, '') + ".com";
 const PROFESSIONAL_TEST_EMAIL = "profissional@" + APP_NAME.toLowerCase().replace(/\s+/g, '') + ".com";
 
-const MOCK_USERS_ROLES_STORAGE_KEY = 'tdsagenda_all_users_roles';
+// A chave MOCK_USERS_ROLES_STORAGE_KEY não é mais primariamente usada para determinar o papel após o login,
+// mas mantida para a lógica de signup definir o papel inicial no perfil mockado.
+const MOCK_USERS_ROLES_STORAGE_KEY = 'tdsagenda_all_users_roles'; // Mantido para signup do company_admin
 
 interface User {
   id: string; // Supabase user ID (UUID)
   email: string | undefined;
+  // Outros campos do Supabase User que você possa precisar
 }
 
 interface AuthContextType {
   user: User | null;
-  session: SupabaseSession | null; // Adicionado para gerenciar a sessão do Supabase
+  session: SupabaseSession | null;
   role: UserRole | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<UserRole | null>;
-  signup: (email: string, pass: string, intendedRole: UserRole) => Promise<void>;
+  signup: (email: string, pass: string, intendedRole: UserRole) => Promise<SupabaseUser | null>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Funções auxiliares para papéis mockados (mantidas temporariamente)
-const getMockAllUsersRoles = (): Record<string, UserRole> => {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem(MOCK_USERS_ROLES_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
-  }
-  return {};
-};
-
-const setMockAllUsersRoles = (roles: Record<string, UserRole>) => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(MOCK_USERS_ROLES_STORAGE_KEY, JSON.stringify(roles));
-  }
-};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -52,43 +40,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    const getInitialSession = async () => {
+    const initializeAuth = async () => {
+      setLoading(true);
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
+
       if (currentSession?.user) {
-        const currentUser = { id: currentSession.user.id, email: currentSession.user.email };
+        const supabaseUser = currentSession.user;
+        const currentUser = { id: supabaseUser.id, email: supabaseUser.email };
         setUser(currentUser);
-        // Lógica de definição de papel ao carregar a sessão
-        const normalizedEmail = currentUser.email?.toLowerCase();
-        if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
-          setRole(USER_ROLES.SITE_ADMIN);
-        } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase()) {
-          setRole(USER_ROLES.PROFESSIONAL);
-        } else if (normalizedEmail) {
-          const allUsersRoles = getMockAllUsersRoles();
-          setRole(allUsersRoles[normalizedEmail] || USER_ROLES.CLIENT); // Default para cliente se não encontrado
+
+        // Tentar buscar o perfil/papel do banco de dados
+        const userProfile = await getUserProfile(supabaseUser.id);
+        if (userProfile) {
+          setRole(userProfile.role);
+        } else {
+          // Fallback para lógica de e-mail especial ou cliente padrão se perfil não encontrado
+          const normalizedEmail = currentUser.email?.toLowerCase();
+          if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
+            setRole(USER_ROLES.SITE_ADMIN);
+          } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase()) {
+            setRole(USER_ROLES.PROFESSIONAL);
+          } else {
+            setRole(USER_ROLES.CLIENT); // Papel padrão se nenhum perfil encontrado
+          }
         }
       }
       setLoading(false);
     };
 
-    getInitialSession();
+    initializeAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       setLoading(true);
       setSession(newSession);
       if (newSession?.user) {
-        const currentUser = { id: newSession.user.id, email: newSession.user.email };
+        const supabaseUser = newSession.user;
+        const currentUser = { id: supabaseUser.id, email: supabaseUser.email };
         setUser(currentUser);
-        const normalizedEmail = currentUser.email?.toLowerCase();
-        if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
-          setRole(USER_ROLES.SITE_ADMIN);
-        } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase()) {
-          setRole(USER_ROLES.PROFESSIONAL);
-        } else if (normalizedEmail) {
-          const allUsersRoles = getMockAllUsersRoles();
-          setRole(allUsersRoles[normalizedEmail] || USER_ROLES.CLIENT);
+
+        const userProfile = await getUserProfile(supabaseUser.id);
+        if (userProfile) {
+          setRole(userProfile.role);
+        } else {
+          const normalizedEmail = currentUser.email?.toLowerCase();
+          if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
+            setRole(USER_ROLES.SITE_ADMIN);
+          } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase()) {
+            setRole(USER_ROLES.PROFESSIONAL);
+          } else {
+            // Se o perfil não existe, poderia ser um usuário recém-cadastrado
+            // A lógica de signup deveria ter criado o perfil.
+            // Para segurança, default para CLIENT ou null.
+            setRole(USER_ROLES.CLIENT);
+          }
         }
       } else {
         setUser(null);
@@ -113,20 +118,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       setLoading(false);
       console.error("Supabase login error:", error.message);
-      throw new Error(error.message || "Falha no login com Supabase (simulado).");
+      throw new Error(error.message || "Falha no login com Supabase.");
     }
 
     if (data.user && data.session) {
-      let userRoleToSet: UserRole;
-      if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
-        userRoleToSet = USER_ROLES.SITE_ADMIN;
-      } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase()) {
-        userRoleToSet = USER_ROLES.PROFESSIONAL;
+      const userProfile = await getUserProfile(data.user.id);
+      let userRoleToSet: UserRole | null = null;
+
+      if (userProfile) {
+        userRoleToSet = userProfile.role;
       } else {
-        const allUsersRoles = getMockAllUsersRoles();
-        userRoleToSet = allUsersRoles[normalizedEmail] || USER_ROLES.CLIENT; // Default para cliente
+        // Fallback para e-mails especiais (menos ideal, mas mantido da lógica anterior)
+        if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
+          userRoleToSet = USER_ROLES.SITE_ADMIN;
+        } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase()) {
+          userRoleToSet = USER_ROLES.PROFESSIONAL;
+        } else {
+          userRoleToSet = USER_ROLES.CLIENT; // Default
+        }
+        // Tentativa de criar perfil se não existir (pode ser necessário para usuários antigos sem perfil)
+        if (data.user.email) {
+            await createUserProfile(data.user.id, data.user.email, userRoleToSet);
+        }
       }
-      setRole(userRoleToSet); // O onAuthStateChange também vai disparar, mas podemos definir aqui para feedback imediato.
+      
+      setRole(userRoleToSet);
+      // O onAuthStateChange também vai disparar, mas podemos definir aqui para feedback imediato.
       console.log(`Supabase Auth: Login bem-sucedido para ${normalizedEmail} com papel ${userRoleToSet}`);
       setLoading(false);
       return userRoleToSet;
@@ -136,7 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return null;
   };
 
-  const signup = async (email: string, pass: string, intendedRole: UserRole) => {
+  const signup = async (email: string, pass: string, intendedRole: UserRole): Promise<SupabaseUser | null> => {
     setLoading(true);
     const normalizedEmail = email.toLowerCase();
     
@@ -150,37 +167,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password: pass,
-      options: {
-        data: { 
-          // Você pode passar metadados aqui, mas o papel será gerenciado pelo mock пока
-          // role: roleToSet 
-        }
-      }
     });
 
     if (error) {
       setLoading(false);
       console.error("Supabase signup error:", error.message);
-      throw new Error(error.message || "Falha no cadastro com Supabase (simulado).");
+      throw new Error(error.message || "Falha no cadastro com Supabase.");
     }
 
     if (data.user) {
-      // Salvar no mock de papéis
-      const allUsersRoles = getMockAllUsersRoles();
-      allUsersRoles[normalizedEmail] = roleToSet;
-      setMockAllUsersRoles(allUsersRoles);
-      
-      setRole(roleToSet); // O onAuthStateChange também deve atualizar isso
-      console.log(`Supabase Auth: Signup bem-sucedido para ${normalizedEmail} com papel ${roleToSet}. Verifique seu e-mail para confirmação se habilitado.`);
-    } else if (!data.session && !data.user) {
-        // Caso comum se a confirmação de e-mail estiver habilitada
-        console.log(`Supabase Auth: Usuário criado para ${normalizedEmail}. Aguardando confirmação de e-mail.`);
-        const allUsersRoles = getMockAllUsersRoles();
-        allUsersRoles[normalizedEmail] = roleToSet;
-        setMockAllUsersRoles(allUsersRoles);
+      // Após o signup no Supabase Auth, crie o perfil no banco de dados Supabase
+      const profileCreationResult = await createUserProfile(data.user.id, normalizedEmail, roleToSet);
+      if (!profileCreationResult) {
+        // Tentar logout se a criação do perfil falhar para evitar estado inconsistente
+        await supabase.auth.signOut();
+        setLoading(false);
+        throw new Error("Falha ao criar perfil do usuário após o cadastro.");
+      }
+      setRole(roleToSet);
+      console.log(`Supabase Auth: Signup bem-sucedido para ${normalizedEmail} com papel ${roleToSet}. Perfil criado.`);
+       setLoading(false);
+      return data.user;
+    } else if (!data.session && !data.user && !error) {
+        // Caso comum se a confirmação de e-mail estiver habilitada e o usuário ainda não confirmou
+        // O perfil será criado quando o usuário confirmar e logar pela primeira vez, ou podemos criar aqui
+        // mas o usuário não terá uma sessão ainda.
+        // Para simplificar o fluxo de teste (se a confirmação de e-mail estiver desabilitada),
+        // vamos assumir que a criação do perfil é adiada ou o usuário é retornado para o onAuthStateChange.
+        console.log(`Supabase Auth: Usuário potencialmente criado para ${normalizedEmail}, aguardando confirmação de e-mail ou primeiro login para criar perfil.`);
     }
-    
+   
     setLoading(false);
+    return data.user; // Pode ser null se a sessão não for estabelecida imediatamente (ex: confirmação de email)
   };
 
   const logout = async () => {
@@ -188,7 +206,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Supabase logout error:", error.message);
-      // Mesmo com erro, tentamos limpar o estado local
     }
     setUser(null);
     setSession(null);
@@ -211,4 +228,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
