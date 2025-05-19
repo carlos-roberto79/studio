@@ -1,3 +1,4 @@
+
 // src/services/supabaseService.ts
 'use server'; 
 
@@ -42,21 +43,22 @@ export interface CompanyData {
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   console.log(`SupabaseService: Buscando perfil para UID: ${userId}`);
   try {
-    const { data, error } = await supabase
+    const { data, error, status } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') { // PGRST116: "The result contains 0 rows"
+    if (error && status !== 406) { // 406 geralmente significa "Not Acceptable", pode ser usado quando 0 linhas são retornadas com .single()
+      console.error('SupabaseService: Erro ao buscar perfil do usuário:', error);
+      // Não lançar erro aqui, pois o AuthContext pode lidar com perfil nulo
+      return null;
+    }
+     if (!data) {
         console.warn(`SupabaseService: Nenhum perfil encontrado para UID: ${userId}. Isso pode ser normal para um usuário novo.`);
         return null;
-      }
-      console.error('SupabaseService: Erro ao buscar perfil do usuário:', error.message);
-      throw error; // Re-throw para ser pego pelo chamador se necessário
     }
-    return data as UserProfile | null;
+    return data as UserProfile;
   } catch (err) {
     console.error('SupabaseService: Exceção em getUserProfile:', err);
     return null;
@@ -73,30 +75,32 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
  * @returns O perfil do usuário criado ou null em caso de erro.
  */
 export async function createUserProfile(userId: string, email: string, role: UserRole, displayName?: string): Promise<UserProfile | null> {
-  const userProfileData: Partial<UserProfile> = { 
+  const userProfileData = { 
     id: userId, 
     email: email.toLowerCase(), 
     role,
     display_name: displayName || email.split('@')[0], // Default display name
+    // created_at e updated_at serão definidos pelo default ou trigger do banco
   };
-  console.log(`SupabaseService: Criando perfil para UID: ${userId}, Email: ${email}, Papel: ${role}`);
+  console.log(`SupabaseService: Tentando criar perfil para UID: ${userId}, Email: ${email}, Papel: ${role}`);
   
   try {
     const { data, error } = await supabase
       .from('profiles')
       .insert([userProfileData])
       .select()
-      .single();
+      .single(); // Espera-se que retorne o registro inserido
 
     if (error) {
-      console.error('SupabaseService: Erro ao criar perfil do usuário:', error.message);
-      throw error;
+      console.error('SupabaseService: Erro ao criar perfil do usuário no banco de dados:', error);
+      throw error; // Re-lança o erro para ser pego pelo chamador (AuthContext)
     }
-    console.log('SupabaseService: Perfil de usuário criado com sucesso:', data);
-    return data as UserProfile | null;
-  } catch (err) {
+    console.log('SupabaseService: Perfil de usuário criado com sucesso no banco de dados:', data);
+    return data as UserProfile;
+  } catch (err: any) {
     console.error('SupabaseService: Exceção em createUserProfile:', err);
-    return null;
+    // Se o erro já for um erro do Supabase, apenas relance. Senão, crie um novo.
+    throw err.code ? err : new Error(err.message || 'Erro desconhecido ao criar perfil.');
   }
 }
 
@@ -108,10 +112,8 @@ export async function createUserProfile(userId: string, email: string, role: Use
 export async function addCompanyDetails(companyData: Omit<CompanyData, 'id' | 'created_at' | 'updated_at'>): Promise<string | null> {
   console.log(`SupabaseService: Adicionando detalhes da empresa para o proprietário ${companyData.owner_uid}:`, companyData);
   try {
-    // Os campos 'id', 'created_at', 'updated_at' são gerenciados pelo DB (DEFAULT ou Triggers)
     const companyDataToInsert = {
         ...companyData,
-        // Garantir que os campos JSONB opcionais sejam nulos se não fornecidos, ou o Supabase pode reclamar
         operating_hours: companyData.operating_hours || null,
         customization: companyData.customization || null,
         plan_id: companyData.plan_id || null,
@@ -122,11 +124,11 @@ export async function addCompanyDetails(companyData: Omit<CompanyData, 'id' | 'c
     const { data, error } = await supabase
       .from('companies')
       .insert([companyDataToInsert])
-      .select('id') // Selecionar apenas o ID da empresa recém-criada
+      .select('id') 
       .single();
 
     if (error) {
-      console.error('SupabaseService: Erro ao salvar detalhes da empresa:', error.message);
+      console.error('SupabaseService: Erro ao salvar detalhes da empresa:', error);
       throw error;
     }
     console.log('SupabaseService: Detalhes da empresa salvos com sucesso, ID:', data?.id);
@@ -149,11 +151,11 @@ export async function getCompanyDetailsByOwner(ownerUid: string): Promise<Compan
       .from('companies')
       .select('*')
       .eq('owner_uid', ownerUid)
-      .maybeSingle(); // Use maybeSingle() para não dar erro se não encontrar, apenas retornar null
+      .maybeSingle(); 
 
     if (error) {
-      console.error('SupabaseService: Erro ao buscar detalhes da empresa:', error.message);
-      throw error;
+      console.error('SupabaseService: Erro ao buscar detalhes da empresa:', error);
+      return null; // Não lançar erro, deixar o chamador tratar ausência de dados
     }
     return data as CompanyData | null;
   } catch (err) {
@@ -161,11 +163,3 @@ export async function getCompanyDetailsByOwner(ownerUid: string): Promise<Compan
     return null;
   }
 }
-
-// Você adicionará mais funções aqui para interagir com outras tabelas (services, plans, appointments, etc.)
-// Exemplo:
-// export async function getServices(companyId: string): Promise<any[] | null> {
-//   // const { data, error } = await supabase.from('services').select('*').eq('companyId', companyId);
-//   // ...
-//   return null;
-// }
