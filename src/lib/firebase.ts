@@ -7,7 +7,7 @@ import { getStorage } from 'firebase/storage';
 // Você pode encontrar essas configurações no console do Firebase:
 // Configurações do projeto > Geral > Seus apps > Configuração do SDK
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE", // Substitua
+  apiKey: "AIzaSyAlrBYq7q0OImwDmpmrTKGZdvJNbMstd8I", // Substituído
   authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // Substitua
   projectId: "YOUR_PROJECT_ID_HERE", // Substitua
   storageBucket: "YOUR_PROJECT_ID.appspot.com", // Substitua
