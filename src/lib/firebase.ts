@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -8,11 +9,11 @@ import { getStorage } from 'firebase/storage';
 // Configurações do projeto > Geral > Seus apps > Configuração do SDK
 const firebaseConfig = {
   apiKey: "AIzaSyAlrBYq7q0OImwDmpmrTKGZdvJNbMstd8I", // Substituído
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // Substitua
-  projectId: "YOUR_PROJECT_ID_HERE", // Substitua
-  storageBucket: "YOUR_PROJECT_ID.appspot.com", // Substitua
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE", // Substitua
-  appId: "YOUR_APP_ID_HERE", // Substitua
+  authDomain: "easyagenda-58w3h.firebaseapp.com",
+  projectId: "easyagenda-58w3h",
+  storageBucket: "easyagenda-58w3h.firebasestorage.app",
+  messagingSenderId: "165306321642",
+  appId: "1:165306321642:web:fc24690cf2c51b8e43e593",
   measurementId: "YOUR_MEASUREMENT_ID_HERE" // Opcional, para Google Analytics
 };
 
@@ -31,7 +32,7 @@ const storage = getStorage(app);
 export { app, auth, db, storage };
 
 // Verificação para garantir que as credenciais foram alteradas
-if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE" || firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE") {
+if (firebaseConfig.apiKey === "AIzaSyAlrBYq7q0OImwDmpmrTKGZdvJNbMstd8I" || firebaseConfig.projectId === "easyagenda-58w3h") {
   console.warn(
     "FIREBASE NÃO CONFIGURADO: Por favor, atualize src/lib/firebase.ts com as credenciais do seu projeto Firebase para que a autenticação e outras funcionalidades do Firebase funcionem corretamente."
   );
