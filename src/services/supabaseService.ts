@@ -1,143 +1,165 @@
 // src/services/supabaseService.ts
-'use server'; // Embora as chamadas reais ao Supabase sejam client-side,
-              // marcar como server action pode ser útil se você planejar chamá-las de server components no futuro.
-              // Por agora, as chamadas serão feitas do client-side AuthContext.
+'use server'; 
 
 import { supabase } from '@/lib/supabaseClient';
 import type { UserRole } from '@/lib/constants';
-import { USER_ROLES } from '@/lib/constants';
+// USER_ROLES não é mais necessário aqui diretamente, pois vem de AuthContext
 
 export interface UserProfile {
-  id: string; // Deve ser o mesmo que o Supabase Auth UID
+  id: string; 
   email: string;
   role: UserRole;
-  displayName?: string;
-  // Outros campos que você queira no perfil do usuário
+  display_name?: string;
+  phone_number?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CompanyData {
-  ownerUid: string; // UID do usuário que criou/possui a empresa
-  companyName: string;
+  id?: string; // O ID da empresa, pode ser gerado pelo Supabase
+  owner_uid: string; 
+  company_name: string;
   cnpj: string;
   address: string;
   phone: string;
-  email: string; // Email de contato da empresa
-  publicLinkSlug: string;
-  profileComplete?: boolean;
-  // Outros campos
+  email: string; 
+  public_link_slug: string;
+  description?: string;
+  logo_url?: string;
+  profile_complete?: boolean;
+  operating_hours?: any; // JSONB
+  plan_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  customization?: any; // JSONB
 }
 
 /**
- * Busca o perfil de um usuário (incluindo seu papel) do banco de dados.
+ * Busca o perfil de um usuário (incluindo seu papel) do banco de dados Supabase.
  * @param userId O UID do usuário do Supabase Auth.
- * @returns O perfil do usuário ou null se não encontrado.
+ * @returns O perfil do usuário ou null se não encontrado ou em caso de erro.
  */
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
-  console.log(`SupabaseService (MOCK/Placeholder): Buscando perfil para UID: ${userId}`);
-  // Lógica real do Supabase:
-  // const { data, error } = await supabase
-  //   .from('profiles') // Assumindo que você tem uma tabela 'profiles'
-  //   .select('*')
-  //   .eq('id', userId)
-  //   .single();
-  // if (error) {
-  //   console.error('Erro ao buscar perfil do usuário:', error);
-  //   return null;
-  // }
-  // return data as UserProfile | null;
+  console.log(`SupabaseService: Buscando perfil para UID: ${userId}`);
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-  // Simulação para prototipagem:
-  const mockProfiles: Record<string, UserProfile> = JSON.parse(localStorage.getItem('tdsagenda_supabase_profiles_mock') || '{}');
-  const profile = mockProfiles[userId];
-  if (profile) {
-    return Promise.resolve(profile);
+    if (error) {
+      if (error.code === 'PGRST116') { // PGRST116: "The result contains 0 rows"
+        console.warn(`SupabaseService: Nenhum perfil encontrado para UID: ${userId}. Isso pode ser normal para um usuário novo.`);
+        return null;
+      }
+      console.error('SupabaseService: Erro ao buscar perfil do usuário:', error.message);
+      throw error; // Re-throw para ser pego pelo chamador se necessário
+    }
+    return data as UserProfile | null;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em getUserProfile:', err);
+    return null;
   }
-  return Promise.resolve(null);
 }
 
 /**
- * Cria um novo perfil de usuário no banco de dados.
+ * Cria um novo perfil de usuário na tabela 'profiles' do Supabase.
  * Chamado geralmente após o signup bem-sucedido no Supabase Auth.
  * @param userId O UID do usuário do Supabase Auth.
  * @param email O e-mail do usuário.
  * @param role O papel inicial do usuário.
+ * @param displayName Nome de exibição opcional.
+ * @returns O perfil do usuário criado ou null em caso de erro.
  */
-export async function createUserProfile(userId: string, email: string, role: UserRole): Promise<UserProfile | null> {
-  const userProfile: UserProfile = { id: userId, email, role };
-  console.log(`SupabaseService (MOCK/Placeholder): Criando perfil para UID: ${userId}, Email: ${email}, Papel: ${role}`);
+export async function createUserProfile(userId: string, email: string, role: UserRole, displayName?: string): Promise<UserProfile | null> {
+  const userProfileData: Partial<UserProfile> = { 
+    id: userId, 
+    email: email.toLowerCase(), 
+    role,
+    display_name: displayName || email.split('@')[0], // Default display name
+  };
+  console.log(`SupabaseService: Criando perfil para UID: ${userId}, Email: ${email}, Papel: ${role}`);
   
-  // Lógica real do Supabase:
-  // const { data, error } = await supabase
-  //   .from('profiles')
-  //   .insert([userProfile])
-  //   .select()
-  //   .single();
-  // if (error) {
-  //   console.error('Erro ao criar perfil do usuário:', error);
-  //   return null;
-  // }
-  // return data as UserProfile | null;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert([userProfileData])
+      .select()
+      .single();
 
-  // Simulação para prototipagem:
-  const mockProfiles: Record<string, UserProfile> = JSON.parse(localStorage.getItem('tdsagenda_supabase_profiles_mock') || '{}');
-  mockProfiles[userId] = userProfile;
-  localStorage.setItem('tdsagenda_supabase_profiles_mock', JSON.stringify(mockProfiles));
-  return Promise.resolve(userProfile);
+    if (error) {
+      console.error('SupabaseService: Erro ao criar perfil do usuário:', error.message);
+      throw error;
+    }
+    console.log('SupabaseService: Perfil de usuário criado com sucesso:', data);
+    return data as UserProfile | null;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em createUserProfile:', err);
+    return null;
+  }
 }
 
 /**
- * Adiciona ou atualiza os detalhes de uma empresa no banco de dados.
- * @param companyData Os dados da empresa.
- * @returns O ID da empresa (pode ser o ownerUid ou um ID gerado) ou null em caso de erro.
+ * Adiciona os detalhes de uma empresa na tabela 'companies' do Supabase.
+ * @param companyData Os dados da empresa. Campos como id, created_at, updated_at serão gerados pelo Supabase.
+ * @returns O ID da empresa criada ou null em caso de erro.
  */
-export async function addCompanyDetails(companyData: CompanyData): Promise<string | null> {
-  console.log(`SupabaseService (MOCK/Placeholder): Adicionando/Atualizando detalhes da empresa para o usuário ${companyData.ownerUid}:`, companyData);
-  // Lógica real do Supabase:
-  // Assumindo que o ID da empresa é o ownerUid para simplificar, ou você pode gerar um.
-  // const { data, error } = await supabase
-  //   .from('companies')
-  //   .upsert({ id: companyData.ownerUid, ...companyData }, { onConflict: 'id' }) // 'id' seria a PK da tabela companies
-  //   .select('id')
-  //   .single();
-  // if (error) {
-  //   console.error('Erro ao salvar detalhes da empresa:', error);
-  //   return null;
-  // }
-  // return data?.id || null;
+export async function addCompanyDetails(companyData: Omit<CompanyData, 'id' | 'created_at' | 'updated_at'>): Promise<string | null> {
+  console.log(`SupabaseService: Adicionando detalhes da empresa para o proprietário ${companyData.owner_uid}:`, companyData);
+  try {
+    // Os campos 'id', 'created_at', 'updated_at' são gerenciados pelo DB (DEFAULT ou Triggers)
+    const companyDataToInsert = {
+        ...companyData,
+        // Garantir que os campos JSONB opcionais sejam nulos se não fornecidos, ou o Supabase pode reclamar
+        operating_hours: companyData.operating_hours || null,
+        customization: companyData.customization || null,
+        plan_id: companyData.plan_id || null,
+        logo_url: companyData.logo_url || null,
+        description: companyData.description || null,
+    };
 
-  // Simulação para prototipagem:
-  const mockCompanies: Record<string, CompanyData> = JSON.parse(localStorage.getItem('tdsagenda_supabase_companies_mock') || '{}');
-  mockCompanies[companyData.ownerUid] = companyData; // Usando ownerUid como ID mockado
-  localStorage.setItem('tdsagenda_supabase_companies_mock', JSON.stringify(mockCompanies));
-  localStorage.setItem('tdsagenda_companyProfileComplete_mock', 'true');
-  localStorage.setItem('tdsagenda_companyName_mock', companyData.companyName);
-  localStorage.setItem('tdsagenda_companyEmail_mock', companyData.email);
-  return Promise.resolve(companyData.ownerUid);
+    const { data, error } = await supabase
+      .from('companies')
+      .insert([companyDataToInsert])
+      .select('id') // Selecionar apenas o ID da empresa recém-criada
+      .single();
+
+    if (error) {
+      console.error('SupabaseService: Erro ao salvar detalhes da empresa:', error.message);
+      throw error;
+    }
+    console.log('SupabaseService: Detalhes da empresa salvos com sucesso, ID:', data?.id);
+    return data?.id || null;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em addCompanyDetails:', err);
+    return null;
+  }
 }
 
 /**
  * Busca os detalhes de uma empresa pelo UID do proprietário.
  * @param ownerUid O UID do usuário proprietário da empresa.
- * @returns Os dados da empresa ou null se não encontrados.
+ * @returns Os dados da empresa ou null se não encontrados ou em caso de erro.
  */
 export async function getCompanyDetailsByOwner(ownerUid: string): Promise<CompanyData | null> {
-  console.log(`SupabaseService (MOCK/Placeholder): Buscando detalhes da empresa para o proprietário UID: ${ownerUid}`);
-  // Lógica real do Supabase:
-  // const { data, error } = await supabase
-  //   .from('companies')
-  //   .select('*')
-  //   .eq('ownerUid', ownerUid) // Ou .eq('id', ownerUid) se o ID da empresa for o ownerUid
-  //   .single();
-  // if (error) {
-  //   console.error('Erro ao buscar detalhes da empresa:', error);
-  //   return null;
-  // }
-  // return data as CompanyData | null;
+  console.log(`SupabaseService: Buscando detalhes da empresa para o proprietário UID: ${ownerUid}`);
+  try {
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('owner_uid', ownerUid)
+      .maybeSingle(); // Use maybeSingle() para não dar erro se não encontrar, apenas retornar null
 
-  // Simulação para prototipagem:
-  const mockCompanies: Record<string, CompanyData> = JSON.parse(localStorage.getItem('tdsagenda_supabase_companies_mock') || '{}');
-  const company = Object.values(mockCompanies).find(c => c.ownerUid === ownerUid);
-  return Promise.resolve(company || null);
+    if (error) {
+      console.error('SupabaseService: Erro ao buscar detalhes da empresa:', error.message);
+      throw error;
+    }
+    return data as CompanyData | null;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em getCompanyDetailsByOwner:', err);
+    return null;
+  }
 }
 
 // Você adicionará mais funções aqui para interagir com outras tabelas (services, plans, appointments, etc.)
