@@ -21,7 +21,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { USER_ROLES, APP_NAME } from "@/lib/constants";
 import type { UserRole } from "@/lib/constants";
-// FirebaseError não é mais necessário aqui
 
 const formSchemaBase = {
   email: z.string().email({ message: "Endereço de e-mail inválido." }),
@@ -42,9 +41,9 @@ type AuthFormProps = {
   mode: "login" | "signup";
 };
 
-// Função de mensagem de erro genérica para o mock
-function getMockErrorMessage(error: any): string {
-  return error.message || "Ocorreu um erro inesperado (simulado).";
+// Função para extrair mensagem de erro, compatível com erros do Supabase
+function getSupabaseErrorMessage(error: any): string {
+  return error.message || "Ocorreu um erro inesperado durante a autenticação.";
 }
 
 export function AuthForm({ mode }: AuthFormProps) {
@@ -63,12 +62,12 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   const { toast } = useToast();
   const router = useRouter();
-  const { login, signup: authSignup, loading } = useAuth();
+  const { login, signup: authSignup, loading } = useAuth(); // Essas funções agora usam Supabase
 
   async function onSubmit(values: FormData) {
     try {
       if (isLogin) {
-        const loggedInRole = await login(values.email, values.password);
+        const loggedInRole = await login(values.email, values.password); // Chama a função de login do AuthContext (Supabase)
         toast({ title: "Login Bem-sucedido", description: "Bem-vindo(a) de volta!" });
         if (loggedInRole === USER_ROLES.SITE_ADMIN) {
           router.push("/site-admin");
@@ -77,14 +76,15 @@ export function AuthForm({ mode }: AuthFormProps) {
         }
       } else {
         // Para o cadastro público, o papel padrão será COMPANY_ADMIN.
-        await authSignup(values.email, values.password, USER_ROLES.COMPANY_ADMIN);
-        toast({ title: "Conta de Administrador Criada", description: "Prossiga para cadastrar os detalhes da sua empresa." });
+        // A lógica de atribuir o papel correto (SITE_ADMIN, PROFESSIONAL_TEST_EMAIL) já está no signup do AuthContext.
+        await authSignup(values.email, values.password, USER_ROLES.COMPANY_ADMIN); // Chama a função de signup do AuthContext (Supabase)
+        toast({ title: "Conta de Administrador Criada", description: "Prossiga para cadastrar os detalhes da sua empresa. Se a confirmação de e-mail estiver ativa, verifique sua caixa de entrada." });
         router.push("/register-company");
       }
     } catch (error: any) {
       toast({
-        title: "Erro de Autenticação (Simulado)",
-        description: getMockErrorMessage(error),
+        title: "Erro de Autenticação",
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     }
