@@ -4,23 +4,23 @@
 import type { UserRole } from '@/lib/constants';
 import { USER_ROLES, APP_NAME } from '@/lib/constants';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-// Firebase Auth foi removido, voltando para mock localStorage
+import { supabase } from '@/lib/supabaseClient'; // Import Supabase client
+import type { User as SupabaseUser, Session as SupabaseSession } from '@supabase/supabase-js';
 
-// Configuração para o admin do site
+// Configuração para o admin do site e profissional de teste
 const SITE_ADMIN_EMAIL = "superadmin@" + APP_NAME.toLowerCase().replace(/\s+/g, '') + ".com";
 const PROFESSIONAL_TEST_EMAIL = "profissional@" + APP_NAME.toLowerCase().replace(/\s+/g, '') + ".com";
 
-const MOCK_USERS_ROLES_STORAGE_KEY = 'tdsagenda_all_users_roles'; // Usando a chave correta
-const USER_STORAGE_KEY = 'tdsagenda_user';
-const ROLE_STORAGE_KEY = 'tdsagenda_role';
+const MOCK_USERS_ROLES_STORAGE_KEY = 'tdsagenda_all_users_roles';
 
-interface User { // Interface simplificada para o mock
-  email: string;
-  // uid não é mais usado no mock frontend
+interface User {
+  id: string; // Supabase user ID (UUID)
+  email: string | undefined;
 }
 
 interface AuthContextType {
   user: User | null;
+  session: SupabaseSession | null; // Adicionado para gerenciar a sessão do Supabase
   role: UserRole | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<UserRole | null>;
@@ -30,7 +30,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Função auxiliar para obter todos os papéis mockados
+// Funções auxiliares para papéis mockados (mantidas temporariamente)
 const getMockAllUsersRoles = (): Record<string, UserRole> => {
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem(MOCK_USERS_ROLES_STORAGE_KEY);
@@ -39,7 +39,6 @@ const getMockAllUsersRoles = (): Record<string, UserRole> => {
   return {};
 };
 
-// Função auxiliar para salvar todos os papéis mockados
 const setMockAllUsersRoles = (roles: Record<string, UserRole>) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem(MOCK_USERS_ROLES_STORAGE_KEY, JSON.stringify(roles));
@@ -48,120 +47,158 @@ const setMockAllUsersRoles = (roles: Record<string, UserRole>) => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<SupabaseSession | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simular carregamento inicial do estado de autenticação do localStorage
     setLoading(true);
-    if (typeof window !== 'undefined') {
-      const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-      const storedRole = localStorage.getItem(ROLE_STORAGE_KEY);
+    const getInitialSession = async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
+      if (currentSession?.user) {
+        const currentUser = { id: currentSession.user.id, email: currentSession.user.email };
+        setUser(currentUser);
+        // Lógica de definição de papel ao carregar a sessão
+        const normalizedEmail = currentUser.email?.toLowerCase();
+        if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
+          setRole(USER_ROLES.SITE_ADMIN);
+        } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase()) {
+          setRole(USER_ROLES.PROFESSIONAL);
+        } else if (normalizedEmail) {
+          const allUsersRoles = getMockAllUsersRoles();
+          setRole(allUsersRoles[normalizedEmail] || USER_ROLES.CLIENT); // Default para cliente se não encontrado
+        }
+      }
+      setLoading(false);
+    };
 
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser) as User;
-        setUser({email: parsedUser.email.toLowerCase()}); // Normaliza ao carregar
+    getInitialSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      setLoading(true);
+      setSession(newSession);
+      if (newSession?.user) {
+        const currentUser = { id: newSession.user.id, email: newSession.user.email };
+        setUser(currentUser);
+        const normalizedEmail = currentUser.email?.toLowerCase();
+        if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
+          setRole(USER_ROLES.SITE_ADMIN);
+        } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase()) {
+          setRole(USER_ROLES.PROFESSIONAL);
+        } else if (normalizedEmail) {
+          const allUsersRoles = getMockAllUsersRoles();
+          setRole(allUsersRoles[normalizedEmail] || USER_ROLES.CLIENT);
+        }
+      } else {
+        setUser(null);
+        setRole(null);
       }
-      if (storedRole) {
-        setRole(storedRole as UserRole);
-      }
-    }
-    setLoading(false);
+      setLoading(false);
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, pass: string): Promise<UserRole | null> => {
     setLoading(true);
     const normalizedEmail = email.toLowerCase();
-    
-    // Simulação de login (verificar apenas se o usuário existe no nosso mock de papéis)
-    // A senha não é verificada neste mock simples.
-    const allUsersRoles = getMockAllUsersRoles();
-    
-    let userRole: UserRole | null = null;
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password: pass,
+    });
 
-    if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase() && pass === "superadmin123") {
-      userRole = USER_ROLES.SITE_ADMIN;
-    } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase() && pass === "prof123") {
-      userRole = USER_ROLES.PROFESSIONAL;
-    } else if (allUsersRoles[normalizedEmail]) {
-      userRole = allUsersRoles[normalizedEmail];
-    } else {
-      // Se não for admin nem profissional de teste e não estiver no mock, simula falha.
-      // Em um sistema real, o Firebase Auth retornaria user-not-found ou wrong-password.
+    if (error) {
       setLoading(false);
-      console.error("Mock Auth: Usuário não encontrado ou senha inválida (simulado).");
-      throw new Error("E-mail ou senha inválidos (simulado).");
+      console.error("Supabase login error:", error.message);
+      throw new Error(error.message || "Falha no login com Supabase (simulado).");
     }
 
-    if (userRole) {
-      const loggedInUser: User = { email: normalizedEmail };
-      setUser(loggedInUser);
-      setRole(userRole);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(loggedInUser));
-        localStorage.setItem(ROLE_STORAGE_KEY, userRole);
+    if (data.user && data.session) {
+      let userRoleToSet: UserRole;
+      if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
+        userRoleToSet = USER_ROLES.SITE_ADMIN;
+      } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase()) {
+        userRoleToSet = USER_ROLES.PROFESSIONAL;
+      } else {
+        const allUsersRoles = getMockAllUsersRoles();
+        userRoleToSet = allUsersRoles[normalizedEmail] || USER_ROLES.CLIENT; // Default para cliente
       }
-      console.log(`Mock Auth: Login bem-sucedido para ${normalizedEmail} com papel ${userRole}`);
+      setRole(userRoleToSet); // O onAuthStateChange também vai disparar, mas podemos definir aqui para feedback imediato.
+      console.log(`Supabase Auth: Login bem-sucedido para ${normalizedEmail} com papel ${userRoleToSet}`);
       setLoading(false);
-      return userRole;
+      return userRoleToSet;
     }
     
     setLoading(false);
-    return null; // Não deve chegar aqui se a lógica acima estiver correta
+    return null;
   };
 
   const signup = async (email: string, pass: string, intendedRole: UserRole) => {
     setLoading(true);
     const normalizedEmail = email.toLowerCase();
-
-    const allUsersRoles = getMockAllUsersRoles();
-
-    if (allUsersRoles[normalizedEmail]) {
-      setLoading(false);
-      console.error(`Mock Auth: E-mail ${normalizedEmail} já cadastrado.`);
-      throw new Error("Este e-mail já está em uso por outra conta (simulado).");
-    }
-
+    
     let roleToSet = intendedRole;
-    if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
+     if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase()) {
       roleToSet = USER_ROLES.SITE_ADMIN;
-       console.warn("Mock Auth: Cadastro como SITE_ADMIN (para teste).");
     } else if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase()){
       roleToSet = USER_ROLES.PROFESSIONAL;
-      console.log("Mock Auth: Cadastro como PROFISSIONAL_TEST_EMAIL (para teste).");
     }
 
+    const { data, error } = await supabase.auth.signUp({
+      email: normalizedEmail,
+      password: pass,
+      options: {
+        data: { 
+          // Você pode passar metadados aqui, mas o papel será gerenciado pelo mock пока
+          // role: roleToSet 
+        }
+      }
+    });
 
-    allUsersRoles[normalizedEmail] = roleToSet;
-    setMockAllUsersRoles(allUsersRoles);
-
-    const newUser: User = { email: normalizedEmail };
-    setUser(newUser);
-    setRole(roleToSet);
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
-      localStorage.setItem(ROLE_STORAGE_KEY, roleToSet);
+    if (error) {
+      setLoading(false);
+      console.error("Supabase signup error:", error.message);
+      throw new Error(error.message || "Falha no cadastro com Supabase (simulado).");
     }
-    console.log(`Mock Auth: Signup bem-sucedido para ${normalizedEmail} com papel ${roleToSet}`);
+
+    if (data.user) {
+      // Salvar no mock de papéis
+      const allUsersRoles = getMockAllUsersRoles();
+      allUsersRoles[normalizedEmail] = roleToSet;
+      setMockAllUsersRoles(allUsersRoles);
+      
+      setRole(roleToSet); // O onAuthStateChange também deve atualizar isso
+      console.log(`Supabase Auth: Signup bem-sucedido para ${normalizedEmail} com papel ${roleToSet}. Verifique seu e-mail para confirmação se habilitado.`);
+    } else if (!data.session && !data.user) {
+        // Caso comum se a confirmação de e-mail estiver habilitada
+        console.log(`Supabase Auth: Usuário criado para ${normalizedEmail}. Aguardando confirmação de e-mail.`);
+        const allUsersRoles = getMockAllUsersRoles();
+        allUsersRoles[normalizedEmail] = roleToSet;
+        setMockAllUsersRoles(allUsersRoles);
+    }
+    
     setLoading(false);
   };
 
   const logout = async () => {
     setLoading(true);
-    setUser(null);
-    setRole(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(USER_STORAGE_KEY);
-      localStorage.removeItem(ROLE_STORAGE_KEY);
-      // Não remover MOCK_USERS_ROLES_STORAGE_KEY aqui para simular persistência de papéis
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Supabase logout error:", error.message);
+      // Mesmo com erro, tentamos limpar o estado local
     }
-    console.log("Mock Auth: Logout bem-sucedido.");
+    setUser(null);
+    setSession(null);
+    setRole(null);
+    console.log("Supabase Auth: Logout bem-sucedido.");
     setLoading(false);
   };
   
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, session, role, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -174,3 +211,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
