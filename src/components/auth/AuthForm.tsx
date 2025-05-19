@@ -41,9 +41,21 @@ type AuthFormProps = {
   mode: "login" | "signup";
 };
 
-// Função para extrair mensagem de erro, compatível com erros do Supabase
 function getSupabaseErrorMessage(error: any): string {
-  return error.message || "Ocorreu um erro inesperado durante a autenticação.";
+  if (error && error.message) {
+    // Tenta traduzir algumas mensagens comuns do Supabase (pode ser expandido)
+    if (error.message.includes("Invalid login credentials")) {
+      return "E-mail ou senha inválidos.";
+    }
+    if (error.message.includes("User already registered")) {
+      return "Este e-mail já está cadastrado.";
+    }
+    if (error.message.includes("Email rate limit exceeded")) {
+        return "Muitas tentativas de cadastro. Tente novamente mais tarde.";
+    }
+    return error.message;
+  }
+  return "Ocorreu um erro inesperado durante a autenticação.";
 }
 
 export function AuthForm({ mode }: AuthFormProps) {
@@ -62,26 +74,51 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   const { toast } = useToast();
   const router = useRouter();
-  const { login, signup: authSignup, loading } = useAuth(); // Essas funções agora usam Supabase
+  const { login: authLogin, signup: authSignupHook, loading, role: contextRole } = useAuth();
 
   async function onSubmit(values: FormData) {
     try {
       if (isLogin) {
-        const loggedInRole = await login(values.email, values.password); // Chama a função de login do AuthContext (Supabase)
+        const loggedInRole = await authLogin(values.email, values.password);
         toast({ title: "Login Bem-sucedido", description: "Bem-vindo(a) de volta!" });
         if (loggedInRole === USER_ROLES.SITE_ADMIN) {
           router.push("/site-admin");
-        } else {
+        } else if (loggedInRole === USER_ROLES.COMPANY_ADMIN) {
+           const { data: companyDetails } = await supabase
+            .from('companies')
+            .select('profile_complete')
+            .eq('owner_uid', (await supabase.auth.getUser()).data.user?.id || '')
+            .single();
+          if (companyDetails && !companyDetails.profile_complete) {
+            router.push("/register-company");
+          } else {
+            router.push("/dashboard");
+          }
+        }
+        else {
           router.push("/dashboard");
         }
-      } else {
+      } else { // Signup
         // Para o cadastro público, o papel padrão será COMPANY_ADMIN.
-        // A lógica de atribuir o papel correto (SITE_ADMIN, PROFESSIONAL_TEST_EMAIL) já está no signup do AuthContext.
-        await authSignup(values.email, values.password, USER_ROLES.COMPANY_ADMIN); // Chama a função de signup do AuthContext (Supabase)
-        toast({ title: "Conta de Administrador Criada", description: "Prossiga para cadastrar os detalhes da sua empresa. Se a confirmação de e-mail estiver ativa, verifique sua caixa de entrada." });
-        router.push("/register-company");
+        const signupResult = await authSignupHook(values.email, values.password, USER_ROLES.COMPANY_ADMIN);
+        
+        if (signupResult.user && signupResult.role) { // Usuário e perfil criados, sessão pode ou não estar ativa
+          if (signupResult.role === USER_ROLES.COMPANY_ADMIN) {
+            toast({ title: "Conta de Administrador Criada!", description: "Prossiga para cadastrar os detalhes da sua empresa. Se a confirmação de e-mail estiver habilitada, verifique sua caixa de entrada." });
+            router.push("/register-company");
+          } else {
+            toast({ title: `Conta de ${signupResult.role} Criada!`, description: "Bem-vindo(a)!" });
+            router.push(signupResult.role === USER_ROLES.SITE_ADMIN ? "/site-admin" : "/dashboard");
+          }
+        } else if (!signupResult.user && !signupResult.role) { 
+          // Indica que o usuário foi criado no Supabase Auth, mas precisa de confirmação de e-mail.
+          toast({ title: "Verifique seu E-mail", description: "Um link de confirmação foi enviado para o seu e-mail. Por favor, confirme para ativar sua conta e poder fazer login." });
+          // Não redirecionar, deixar o usuário na página de signup/login.
+        }
+        // Erros (incluindo falha na criação do perfil) são lançados pelo authSignupHook e capturados abaixo
       }
     } catch (error: any) {
+      console.error("Erro de Autenticação (AuthForm):", error);
       toast({
         title: "Erro de Autenticação",
         description: getSupabaseErrorMessage(error),
