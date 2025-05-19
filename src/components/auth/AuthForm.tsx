@@ -19,10 +19,9 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { USER_ROLES } from "@/lib/constants";
+import { USER_ROLES, APP_NAME } from "@/lib/constants";
 import type { UserRole } from "@/lib/constants";
-import { FirebaseError } from "firebase/app"; // Importar FirebaseError para tipagem
-
+// FirebaseError não é mais necessário aqui
 
 const formSchemaBase = {
   email: z.string().email({ message: "Endereço de e-mail inválido." }),
@@ -43,26 +42,10 @@ type AuthFormProps = {
   mode: "login" | "signup";
 };
 
-function getFirebaseErrorMessage(error: any): string {
-  if (error instanceof FirebaseError) {
-    switch (error.code) {
-      case "auth/user-not-found":
-      case "auth/wrong-password":
-        return "E-mail ou senha inválidos.";
-      case "auth/email-already-in-use":
-        return "Este e-mail já está em uso por outra conta.";
-      case "auth/weak-password":
-        return "A senha é muito fraca. Use pelo menos 6 caracteres.";
-      case "auth/invalid-email":
-        return "O formato do e-mail é inválido.";
-      // Adicione mais casos conforme necessário
-      default:
-        return error.message || "Ocorreu um erro de autenticação.";
-    }
-  }
-  return error.message || "Ocorreu um erro inesperado.";
+// Função de mensagem de erro genérica para o mock
+function getMockErrorMessage(error: any): string {
+  return error.message || "Ocorreu um erro inesperado (simulado).";
 }
-
 
 export function AuthForm({ mode }: AuthFormProps) {
   const isLogin = mode === "login";
@@ -94,15 +77,14 @@ export function AuthForm({ mode }: AuthFormProps) {
         }
       } else {
         // Para o cadastro público, o papel padrão será COMPANY_ADMIN.
-        // Profissionais e Clientes são cadastrados internamente ou por convite.
         await authSignup(values.email, values.password, USER_ROLES.COMPANY_ADMIN);
         toast({ title: "Conta de Administrador Criada", description: "Prossiga para cadastrar os detalhes da sua empresa." });
         router.push("/register-company");
       }
     } catch (error: any) {
       toast({
-        title: "Erro de Autenticação",
-        description: getFirebaseErrorMessage(error),
+        title: "Erro de Autenticação (Simulado)",
+        description: getMockErrorMessage(error),
         variant: "destructive",
       });
     }
@@ -113,10 +95,10 @@ export function AuthForm({ mode }: AuthFormProps) {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-center">
-            {isLogin ? "Bem-vindo(a) de Volta!" : "Crie uma Conta para sua Empresa"}
+            {isLogin ? "Bem-vindo(a) de Volta!" : `Crie uma Conta para sua Empresa no ${APP_NAME}`}
           </CardTitle>
           <CardDescription className="text-center">
-            {isLogin ? "Faça login para gerenciar seus agendamentos ou acessar o painel restrito." : "Cadastre sua empresa para começar a usar o TDS+Agenda."}
+            {isLogin ? "Faça login para gerenciar seus agendamentos ou acessar o painel restrito." : `Cadastre sua empresa para começar a usar o ${APP_NAME}.`}
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -21,8 +21,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Building } from "lucide-react";
 import React from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext"; // Importar useAuth para pegar o UID
-import { addCompanyDetails } from "@/services/firestoreService"; // Importar a função do serviço
+import { useAuth } from "@/contexts/AuthContext"; 
+// addCompanyDetails de firestoreService não é mais necessário aqui
+import { APP_NAME } from "@/lib/constants"; // Import APP_NAME
 
 const companySchema = z.object({
   companyName: z.string().min(2, { message: "O nome da empresa deve ter pelo menos 2 caracteres." }),
@@ -53,13 +54,13 @@ export function CompanyRegistrationForm() {
 
   const { toast } = useToast();
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth(); // Pegar o usuário autenticado
+  const { user, loading: authLoading } = useAuth(); 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   async function onSubmit(values: CompanyFormData) {
-    if (!user) {
+    if (!user) { // user aqui é do AuthContext mockado
       toast({
-        title: "Erro de Autenticação",
+        title: "Erro de Autenticação (Simulado)",
         description: "Usuário não autenticado. Por favor, faça login novamente.",
         variant: "destructive",
       });
@@ -68,21 +69,27 @@ export function CompanyRegistrationForm() {
     }
 
     setIsSubmitting(true);
-    console.log("Dados de Cadastro da Empresa (para Firestore):", values);
+    console.log("Dados de Cadastro da Empresa (para localStorage mock):", values);
     
     try {
-      // Agora, em vez de localStorage, chamamos o serviço para salvar no Firestore
-      await addCompanyDetails(user.uid, { ...values, profileComplete: true });
+      // Simular salvamento no localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('tdsagenda_companyProfileComplete_mock', 'true');
+        localStorage.setItem('tdsagenda_companyName_mock', values.companyName);
+        localStorage.setItem('tdsagenda_companyEmail_mock', values.email);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular atraso da API
 
       toast({
-        title: "Perfil da Empresa Cadastrado!",
+        title: "Perfil da Empresa Cadastrado! (Simulado)",
         description: `A empresa ${values.companyName} foi configurada com sucesso. Você será redirecionado(a).`,
       });
       router.push('/dashboard/company'); 
     } catch (error: any) {
-      console.error("Falha ao cadastrar empresa no Firestore:", error);
+      console.error("Falha ao simular cadastro da empresa:", error);
       toast({
-        title: "Falha no Cadastro",
+        title: "Falha no Cadastro (Simulado)",
         description: error.message || "Não foi possível cadastrar a empresa. Por favor, tente novamente.",
         variant: "destructive",
       });
@@ -99,7 +106,7 @@ export function CompanyRegistrationForm() {
             <CardTitle className="text-2xl">Cadastre Sua Empresa</CardTitle>
         </div>
         <CardDescription>
-          Forneça os detalhes da sua empresa para começar com o TDS+Agenda e criar sua página pública de agendamento.
+          Forneça os detalhes da sua empresa para começar com o {APP_NAME} e criar sua página pública de agendamento.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -187,7 +194,7 @@ export function CompanyRegistrationForm() {
                     </div>
                   </FormControl>
                   <FormDescription>
-                    Isso fará parte do seu link público (ex: tds.agenda/agendar/{field.value || "sua-empresa"}).
+                    Isso fará parte do seu link público (ex: {APP_NAME.toLowerCase()}.agenda/agendar/{field.value || "sua-empresa"}).
                     Use letras minúsculas, números e hífens.
                   </FormDescription>
                   <FormMessage />
