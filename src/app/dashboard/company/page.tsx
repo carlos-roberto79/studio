@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-
+import { getCompanyDetailsByOwner, type CompanyData } from "@/services/supabaseService";
 
 // Mock data
 const professionals = [
@@ -23,12 +23,10 @@ const professionals = [
 ];
 
 const companyStats = [
-    { title: "Total de Agendamentos", value: "256", icon: <CalendarDays className="h-6 w-6 text-primary" /> },
-    { title: "Profissionais Ativos", value: "3", icon: <Users className="h-6 w-6 text-primary" /> },
-    { title: "Receita Mensal Estimada", value: "R$12.500", icon: <BarChart3 className="h-6 w-6 text-primary" /> },
+    { title: "Total de Agendamentos (Mock)", value: "256", icon: <CalendarDays className="h-6 w-6 text-primary" /> },
+    { title: "Profissionais Ativos (Mock)", value: "3", icon: <Users className="h-6 w-6 text-primary" /> },
+    { title: "Receita Mensal Estimada (Mock)", value: "R$12.500", icon: <BarChart3 className="h-6 w-6 text-primary" /> },
 ];
-
-const companyPublicSlug = "sua-empresa-incrivel"; 
 
 const mockCompanyAlerts = [
     "Lembrete: 5 pagamentos pendentes esta semana.",
@@ -38,40 +36,48 @@ const mockCompanyAlerts = [
 ];
 
 export default function CompanyAdminPage() {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  
+  const [companyData, setCompanyData] = useState<CompanyData | null>(null);
+  const [isLoadingCompanyData, setIsLoadingCompanyData] = useState(true);
   const [publicLink, setPublicLink] = useState("");
-  const [isProfileComplete, setIsProfileComplete] = useState(false);
-  const [checkingProfile, setCheckingProfile] = useState(true);
 
   useEffect(() => {
     document.title = `Painel da Empresa - ${APP_NAME}`;
-    if (typeof window !== "undefined") {
-      const constructedLink = `${window.location.origin}/schedule/${companyPublicSlug}`;
-      setPublicLink(constructedLink);
-
-      const storedProfileStatus = localStorage.getItem('tdsagenda_companyProfileComplete_mock');
-      if (storedProfileStatus === 'true') {
-        setIsProfileComplete(true);
-      } else {
-        setIsProfileComplete(false); 
-      }
-      setCheckingProfile(false);
-    }
   }, []); 
 
   useEffect(() => {
-    if (!loading && user) {
-      if (role !== USER_ROLES.COMPANY_ADMIN) {
-        router.push('/dashboard');
-      }
-    } else if (!loading && !user) {
-      router.push('/login');
+    if (!authLoading && user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      setIsLoadingCompanyData(true);
+      getCompanyDetailsByOwner(user.id)
+        .then(data => {
+          setCompanyData(data);
+          if (data?.public_link_slug && typeof window !== "undefined") {
+            setPublicLink(`${window.location.origin}/schedule/${data.public_link_slug}`);
+          } else if (typeof window !== "undefined") {
+             setPublicLink(`${window.location.origin}/schedule/sua-empresa-slug`); // Fallback
+          }
+        })
+        .catch(error => {
+          console.error("Erro ao buscar dados da empresa:", error);
+          toast({ title: "Erro", description: "Não foi possível carregar os dados da sua empresa.", variant: "destructive" });
+        })
+        .finally(() => {
+          setIsLoadingCompanyData(false);
+        });
+    } else if (!authLoading && (!user || role !== USER_ROLES.COMPANY_ADMIN)) {
+      router.push(user ? '/dashboard' : '/login');
     }
-  }, [user, role, loading, router]);
+  }, [user, role, authLoading, router, toast]);
+
 
   const copyPublicLink = () => {
+    if (!publicLink) {
+        toast({ title: "Link Indisponível", description: "Complete o perfil da sua empresa para gerar o link.", variant: "destructive" });
+        return;
+    }
     navigator.clipboard.writeText(publicLink)
       .then(() => {
         toast({ title: "Link Copiado!", description: "O link de agendamento público foi copiado para sua área de transferência." });
@@ -82,7 +88,7 @@ export default function CompanyAdminPage() {
       });
   };
 
-  if (loading || !user || (user && role !== USER_ROLES.COMPANY_ADMIN) || checkingProfile) {
+  if (authLoading || isLoadingCompanyData) {
      return (
       <div className="space-y-8">
         <CardHeader className="px-0">
@@ -118,15 +124,17 @@ export default function CompanyAdminPage() {
       </div>
     );
   }
+  
+  const showCompleteProfileCard = !companyData || !companyData.profile_complete;
 
   return (
     <div className="space-y-8">
       <CardHeader className="px-0">
-        <CardTitle className="text-3xl font-bold">Gerenciamento da Empresa</CardTitle>
+        <CardTitle className="text-3xl font-bold">{companyData?.company_name || "Painel da Empresa"}</CardTitle>
         <CardDescription>Supervisione as operações, profissionais, serviços e desempenho da sua empresa.</CardDescription>
       </CardHeader>
 
-      {!isProfileComplete && (
+      {showCompleteProfileCard && (
         <Card className="mb-8 shadow-lg border-primary bg-primary/5">
          <CardHeader className="flex flex-row items-center space-x-3">
             <Info className="h-8 w-8 text-primary flex-shrink-0" />
@@ -165,7 +173,7 @@ export default function CompanyAdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">+10% do último mês</p>
+              <p className="text-xs text-muted-foreground">+10% do último mês (Mock)</p>
             </CardContent>
           </Card>
         ))}
@@ -258,7 +266,7 @@ export default function CompanyAdminPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-            <CardTitle>Financeiro e Relatórios</CardTitle>
+            <CardTitle>Relatórios</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
             <div>
@@ -373,7 +381,7 @@ export default function CompanyAdminPage() {
                 <h4 className="font-medium mb-2">Link Público de Agendamento</h4>
                 <div className="flex items-center space-x-2">
                     <Input type="text" value={publicLink} readOnly className="bg-muted flex-grow" />
-                    <Button onClick={copyPublicLink} variant="outline">
+                    <Button onClick={copyPublicLink} variant="outline" disabled={!publicLink}>
                         <LinkIcon className="mr-2 h-4 w-4" /> Copiar Link
                     </Button>
                 </div>
@@ -412,6 +420,11 @@ export default function CompanyAdminPage() {
                 <Bell className="mr-2 h-4 w-4" /> Configurar Notificações
               </Link>
             </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/agenda-blocks">
+                <CalendarDays className="mr-2 h-4 w-4" /> Bloqueios de Agenda
+              </Link>
+            </Button>
         </CardContent>
       </Card>
     </div>
@@ -423,3 +436,4 @@ export default function CompanyAdminPage() {
     
 
     
+

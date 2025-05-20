@@ -43,12 +43,12 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       .eq('id', userId)
       .single();
 
-    if (error && status !== 406) { 
+    if (error && status !== 406) { // 406: "Not Acceptable", usually when no rows are found for .single()
       console.error('SupabaseService: Erro ao buscar perfil do usuário:', error);
       return null;
     }
      if (!data) {
-        console.warn(`SupabaseService: Nenhum perfil encontrado para UID: ${userId}.`);
+        console.warn(`SupabaseService: Nenhum perfil encontrado para UID: ${userId}. Isso é esperado para novos usuários antes da criação do perfil.`);
         return null;
     }
     return data as UserProfile;
@@ -97,7 +97,7 @@ export async function addCompanyDetails(companyData: Omit<CompanyData, 'id' | 'c
         phone: companyData.phone,
         email: companyData.email,
         public_link_slug: companyData.public_link_slug,
-        profile_complete: companyData.profile_complete,
+        profile_complete: true, // Sempre marcar como completo ao adicionar detalhes
         description: companyData.description || null,
         logo_url: companyData.logo_url || null,
         operating_hours: companyData.operating_hours || null,
@@ -112,16 +112,45 @@ export async function addCompanyDetails(companyData: Omit<CompanyData, 'id' | 'c
       .single();
 
     if (error) {
-      console.error('SupabaseService: Erro ao salvar detalhes da empresa no Supabase:', error);
-      throw error; // Re-lança o erro do Supabase para ser capturado pelo chamador
+      console.error('SupabaseService: Erro ao salvar detalhes da empresa no Supabase:', error); 
+      throw error;
     }
     console.log('SupabaseService: Detalhes da empresa salvos com sucesso, ID:', data?.id);
     return data?.id || null;
   } catch (err: any) { 
-    console.error('SupabaseService: Exceção CATCH em addCompanyDetails:', err);
-    throw err; // Re-lança qualquer erro capturado
+    console.error('SupabaseService: Exceção CATCH em addCompanyDetails:', err); 
+    throw err; 
   }
 }
+
+export async function updateCompanyDetails(companyId: string, companyData: Partial<Omit<CompanyData, 'id' | 'owner_uid' | 'created_at'>>): Promise<CompanyData | null> {
+  console.log(`SupabaseService: Atualizando detalhes da empresa ID ${companyId}:`, companyData);
+  try {
+    const dataToUpdate = {
+      ...companyData,
+      profile_complete: true, // Sempre garantir que está completo após uma edição
+      updated_at: new Date().toISOString(), // Atualiza o campo updated_at
+    };
+
+    const { data, error } = await supabase
+      .from('companies')
+      .update(dataToUpdate)
+      .eq('id', companyId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('SupabaseService: Erro ao atualizar detalhes da empresa no Supabase:', error);
+      throw error;
+    }
+    console.log('SupabaseService: Detalhes da empresa atualizados com sucesso:', data);
+    return data as CompanyData | null;
+  } catch (err: any) {
+    console.error('SupabaseService: Exceção CATCH em updateCompanyDetails:', err);
+    throw err;
+  }
+}
+
 
 export async function getCompanyDetailsByOwner(ownerUid: string): Promise<CompanyData | null> {
   console.log(`SupabaseService: Buscando detalhes da empresa para o proprietário UID: ${ownerUid}`);

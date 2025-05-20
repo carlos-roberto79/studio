@@ -22,7 +22,8 @@ import { Building } from "lucide-react";
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext"; 
-import { addCompanyDetails, type CompanyData } from "@/services/supabaseService"; 
+import { addCompanyDetails } from "@/services/supabaseService"; 
+import type { CompanyData as SupabaseCompanyData } from "@/services/supabaseService";
 import { APP_NAME } from "@/lib/constants";
 
 const companySchema = z.object({
@@ -77,7 +78,7 @@ export function CompanyRegistrationForm() {
     setIsSubmitting(true);
     setSubmissionError(null);
     
-    const companyDataForSupabase: Omit<CompanyData, 'id' | 'created_at' | 'updated_at'> = {
+    const companyDataForSupabase: Omit<SupabaseCompanyData, 'id' | 'created_at' | 'updated_at'> = {
       company_name: values.companyName,
       cnpj: values.cnpj,
       address: values.address,
@@ -85,7 +86,7 @@ export function CompanyRegistrationForm() {
       email: values.email,
       public_link_slug: values.publicLinkSlug,
       owner_uid: user.id,
-      profile_complete: true, 
+      profile_complete: true, // Marcar como completo ao submeter este formulário
     };
     
     try {
@@ -96,12 +97,8 @@ export function CompanyRegistrationForm() {
           title: "Perfil da Empresa Cadastrado!",
           description: `A empresa ${values.companyName} foi configurada com sucesso. Você será redirecionado(a).`,
         });
-        // localStorage.setItem('tdsagenda_companyProfileComplete_mock', 'true'); 
-        // localStorage.setItem('tdsagenda_companyName_mock', values.companyName);
-        // localStorage.setItem('tdsagenda_companyEmail_mock', values.email);
         router.push('/dashboard/company'); 
       } else {
-        // Este else pode não ser alcançado se addCompanyDetails sempre lançar erro em caso de falha
         const defaultError = "Não foi possível salvar os detalhes da empresa. ID da empresa não retornado.";
         setSubmissionError(defaultError);
         toast({ title: "Falha no Cadastro", description: defaultError, variant: "destructive" });
@@ -112,7 +109,7 @@ export function CompanyRegistrationForm() {
       setSubmissionError(message);
       toast({
         title: "Falha no Cadastro",
-        description: `Erro: ${message}`, // Exibe a mensagem de erro específica
+        description: `Erro: ${message}`, 
         variant: "destructive",
         duration: 7000,
       });
@@ -129,7 +126,7 @@ export function CompanyRegistrationForm() {
             <CardTitle className="text-2xl">Cadastre Sua Empresa</CardTitle>
         </div>
         <CardDescription>
-          Forneça os detalhes da sua empresa para começar com o {APP_NAME} e criar sua página pública de agendamento.
+          Forneça os detalhes da sua empresa para começar com o ${APP_NAME} e criar sua página pública de agendamento.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -213,11 +210,11 @@ export function CompanyRegistrationForm() {
                       <span className="px-3 py-2 bg-muted rounded-l-md border border-r-0 text-sm text-muted-foreground">
                         /agendar/
                       </span>
-                      <Input placeholder="sua-empresa" {...field} className="rounded-l-none"/>
+                      <Input placeholder="sua-empresa" {...field} onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/\s+/g, '-'))} className="rounded-l-none"/>
                     </div>
                   </FormControl>
                   <FormDescription>
-                    Isso fará parte do seu link público (ex: {APP_NAME.toLowerCase()}.com/agendar/{field.value || "sua-empresa"}).
+                    Isso fará parte do seu link público (ex: {APP_NAME.toLowerCase().replace('+','-')}.com/agendar/{field.value || "sua-empresa"}).
                     Use letras minúsculas, números e hífens.
                   </FormDescription>
                   <FormMessage />
@@ -234,3 +231,4 @@ export function CompanyRegistrationForm() {
     </Card>
   );
 }
+
