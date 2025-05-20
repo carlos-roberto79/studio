@@ -22,7 +22,7 @@ import { Building } from "lucide-react";
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext"; 
-import { addCompanyDetails, type CompanyData as SupabaseCompanyData } from "@/services/supabaseService"; // Importar do supabaseService
+import { addCompanyDetails, type CompanyData } from "@/services/supabaseService"; 
 import { APP_NAME } from "@/lib/constants";
 
 const companySchema = z.object({
@@ -56,8 +56,14 @@ export function CompanyRegistrationForm() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth(); 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submissionError, setSubmissionError] = React.useState<string | null>(null);
+
 
   async function onSubmit(values: CompanyFormData) {
+    if (authLoading) {
+        toast({ title: "Aguarde", description: "Finalizando autenticação...", variant: "default" });
+        return;
+    }
     if (!user || !user.id) {
       toast({
         title: "Erro de Autenticação",
@@ -69,11 +75,17 @@ export function CompanyRegistrationForm() {
     }
 
     setIsSubmitting(true);
+    setSubmissionError(null);
     
-    const companyDataForSupabase: SupabaseCompanyData = {
-      ...values,
-      ownerUid: user.id,
-      profileComplete: true, // Marcar como completo ao submeter
+    const companyDataForSupabase: Omit<CompanyData, 'id' | 'created_at' | 'updated_at'> = {
+      company_name: values.companyName,
+      cnpj: values.cnpj,
+      address: values.address,
+      phone: values.phone,
+      email: values.email,
+      public_link_slug: values.publicLinkSlug,
+      owner_uid: user.id,
+      profile_complete: true, 
     };
     
     try {
@@ -84,16 +96,25 @@ export function CompanyRegistrationForm() {
           title: "Perfil da Empresa Cadastrado!",
           description: `A empresa ${values.companyName} foi configurada com sucesso. Você será redirecionado(a).`,
         });
+        // localStorage.setItem('tdsagenda_companyProfileComplete_mock', 'true'); 
+        // localStorage.setItem('tdsagenda_companyName_mock', values.companyName);
+        // localStorage.setItem('tdsagenda_companyEmail_mock', values.email);
         router.push('/dashboard/company'); 
       } else {
-        throw new Error("Não foi possível salvar os detalhes da empresa.");
+        // Este else pode não ser alcançado se addCompanyDetails sempre lançar erro em caso de falha
+        const defaultError = "Não foi possível salvar os detalhes da empresa. ID da empresa não retornado.";
+        setSubmissionError(defaultError);
+        toast({ title: "Falha no Cadastro", description: defaultError, variant: "destructive" });
       }
     } catch (error: any) {
-      console.error("Falha ao cadastrar empresa (Supabase):", error);
+      console.error("Falha ao cadastrar empresa (CompanyRegistrationForm catch):", error);
+      const message = error.message || "Ocorreu um erro desconhecido ao salvar os detalhes da empresa.";
+      setSubmissionError(message);
       toast({
         title: "Falha no Cadastro",
-        description: error.message || "Não foi possível cadastrar a empresa. Por favor, tente novamente.",
+        description: `Erro: ${message}`, // Exibe a mensagem de erro específica
         variant: "destructive",
+        duration: 7000,
       });
     } finally {
       setIsSubmitting(false);
@@ -203,8 +224,9 @@ export function CompanyRegistrationForm() {
                 </FormItem>
               )}
             />
+            {submissionError && <p className="text-sm font-medium text-destructive">{submissionError}</p>}
             <Button type="submit" className="w-full" disabled={isSubmitting || authLoading}>
-              {isSubmitting ? "Cadastrando..." : "Finalizar Cadastro da Empresa"}
+              {isSubmitting ? "Cadastrando..." : (authLoading ? "Aguardando autenticação..." : "Finalizar Cadastro da Empresa")}
             </Button>
           </form>
         </Form>
