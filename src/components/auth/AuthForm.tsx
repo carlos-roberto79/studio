@@ -50,13 +50,16 @@ function getSupabaseErrorMessage(error: any): string {
       return "Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.";
     }
     if (error.message.includes("Email rate limit exceeded")) {
-      return "Muitas tentativas de cadastro. Por favor, aguarde um momento e tente novamente mais tarde.";
+      return "Muitas tentativas de cadastro ou login. Por favor, aguarde um momento e tente novamente mais tarde.";
     }
-    if (error.message.includes("Unable to validate email address")) {
+     if (error.message.includes("Unable to validate email address")) {
         return "O endereço de e-mail fornecido não é válido.";
     }
     if (error.message.includes("Password should be at least 6 characters")) {
         return "A senha deve ter pelo menos 6 caracteres.";
+    }
+    if (error.code === "42501") { // PostgreSQL permission denied
+        return "Ocorreu um problema de permissão no servidor ao tentar acessar os dados. Por favor, contate o suporte.";
     }
     // Adicione mais traduções ou tratamentos específicos aqui conforme necessário
     return error.message;
@@ -93,23 +96,27 @@ export function AuthForm({ mode }: AuthFormProps) {
           router.push("/dashboard");
         }
       } else { // Signup
-        // Para o cadastro público, o papel padrão será COMPANY_ADMIN.
         const signupResult = await authSignupHook(values.email, values.password, USER_ROLES.COMPANY_ADMIN);
         
         if (signupResult.user && signupResult.role) {
           if (signupResult.role === USER_ROLES.COMPANY_ADMIN) {
-            toast({ title: "Conta de Administrador Criada!", description: "Prossiga para cadastrar os detalhes da sua empresa." });
-            router.push("/register-company");
+            // Tentativa de login automático para estabilizar a sessão
+            try {
+              await authLogin(values.email, values.password);
+              toast({ title: "Conta de Administrador Criada!", description: "Prossiga para cadastrar os detalhes da sua empresa." });
+              router.push("/register-company");
+            } catch (loginError: any) {
+              console.error("Erro no login automático após signup:", loginError);
+              toast({ title: "Conta Criada, Falha no Login Automático", description: `Sua conta foi criada, mas ocorreu um erro ao tentar logar automaticamente: ${getSupabaseErrorMessage(loginError)}. Por favor, tente fazer login manualmente.`, variant: "default", duration: 7000 });
+              router.push("/login"); // Redireciona para login manual
+            }
           } else { // SITE_ADMIN ou PROFESSIONAL (casos de teste)
             toast({ title: `Conta de ${signupResult.role} Criada!`, description: "Bem-vindo(a)!" });
             router.push(signupResult.role === USER_ROLES.SITE_ADMIN ? "/site-admin" : "/dashboard");
           }
         } else if (!signupResult.user && !signupResult.role && !signupResult.error) { 
-          // Usuário criado no Supabase Auth, mas precisa de confirmação de e-mail.
-          // O AuthContext.signup agora retorna { user: null, role: null, error: null } neste caso.
           toast({ title: "Verifique seu E-mail", description: "Um link de confirmação foi enviado para o seu e-mail. Por favor, confirme para ativar sua conta e poder fazer login." });
         } else if (signupResult.error) {
-            // Se o AuthContext passou um erro específico (ex: "User already registered but needs confirmation")
             toast({
                 title: "Ação Necessária",
                 description: getSupabaseErrorMessage(signupResult.error),
