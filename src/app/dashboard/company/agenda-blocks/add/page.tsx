@@ -13,61 +13,82 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Save, CalendarOff, Ban } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ArrowLeft, Save, CalendarOff, Ban, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { APP_NAME } from '@/lib/constants';
+import { APP_NAME, USER_ROLES } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
-import type { AgendaBlock, MockConflictingAppointment } from '@/lib/types';
-import { agendaBlockSchema } from '@/lib/types'; // Assumindo que o schema está em types.ts
+import type { AgendaBlockData as AgendaBlockFormDataFromService, MockConflictingAppointment } from '@/lib/types'; // Renomeado para evitar conflito
+import { agendaBlockSchema } from '@/lib/types'; 
+import { useAuth } from "@/contexts/AuthContext";
+import { getCompanyDetailsByOwner, addAgendaBlock, getProfessionalsForSelect } from "@/services/supabaseService";
 
-const MOCK_PROFESSIONALS = [
-  { id: "prof1", name: "Dr. João Silva" },
-  { id: "prof2", name: "Dra. Maria Oliveira" },
-  { id: "prof3", name: "Carlos Esteticista" },
-];
-
-// Mock de agendamentos para simular conflitos
+// Simulação de agendamentos conflitantes
 const MOCK_EXISTING_APPOINTMENTS: MockConflictingAppointment[] = [
   { id: "appt1", clienteNome: "Ana P.", dataHora: "25/07/2024 10:00", servico: "Consulta Inicial" },
   { id: "appt2", clienteNome: "Bruno L.", dataHora: "25/07/2024 11:00", servico: "Acompanhamento" },
-  { id: "appt3", clienteNome: "Carlos M.", dataHora: "26/07/2024 14:00", servico: "Avaliação" },
 ];
 
 
 export default function AddAgendaBlockPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { user, role } = useAuth();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [professionals, setProfessionals] = useState<{ id: string; name: string }[]>([]);
+  
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
   const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
   const [conflictingAppointments, setConflictingAppointments] = useState<MockConflictingAppointment[]>([]);
-  const [formDataForConflict, setFormDataForConflict] = useState<AgendaBlock | null>(null);
+  const [formDataForConflict, setFormDataForConflict] = useState<AgendaBlockFormDataFromService | null>(null);
 
 
-  const form = useForm<AgendaBlock>({
+  const form = useForm<AgendaBlockFormDataFromService>({ // Usando o tipo importado
     resolver: zodResolver(agendaBlockSchema),
     defaultValues: {
-      targetType: "empresa",
-      profissionalId: "",
-      inicio: "",
-      fim: "",
-      motivo: "",
-      repetirSemanalmente: false,
-      ativo: true,
+      target_type: "empresa",
+      professional_id: "",
+      start_time: "",
+      end_time: "",
+      reason: "",
+      repeats_weekly: false,
+      active: true,
     },
   });
 
-  const watchTargetType = form.watch("targetType");
+  const watchTargetType = form.watch("target_type");
 
   useEffect(() => {
     document.title = `Criar Bloqueio de Agenda - ${APP_NAME}`;
-  }, []);
+    if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      getCompanyDetailsByOwner(user.id).then(companyDetails => {
+        if (companyDetails && companyDetails.id) {
+          setCompanyId(companyDetails.id);
+          fetchProfessionals(companyDetails.id);
+        } else {
+          toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
+        }
+        setIsLoadingPage(false);
+      });
+    } else {
+      setIsLoadingPage(false);
+    }
+  }, [user, role, toast]);
 
-  const simulateConflictCheck = (blockData: AgendaBlock): MockConflictingAppointment[] => {
-    // Simulação muito básica: se o bloqueio for para "amanhã", encontra conflitos.
-    // Em um sistema real, isso faria uma query no banco de dados.
+  const fetchProfessionals = async (currentCompanyId: string) => {
     try {
-        const blockStartDate = new Date(blockData.inicio);
+      const profs = await getProfessionalsForSelect(currentCompanyId);
+      setProfessionals(profs);
+    } catch (error: any) {
+      toast({ title: "Erro ao buscar profissionais", description: error.message, variant: "destructive" });
+    }
+  };
+
+
+  const simulateConflictCheck = (blockData: AgendaBlockFormDataFromService): MockConflictingAppointment[] => {
+    try {
+        const blockStartDate = new Date(blockData.start_time);
         const today = new Date();
         today.setHours(0,0,0,0);
         const tomorrow = new Date(today);
@@ -76,7 +97,6 @@ export default function AddAgendaBlockPage() {
         if (blockStartDate.getFullYear() === tomorrow.getFullYear() &&
             blockStartDate.getMonth() === tomorrow.getMonth() &&
             blockStartDate.getDate() === tomorrow.getDate()) {
-            // Retorna alguns agendamentos mockados como conflitantes
             return MOCK_EXISTING_APPOINTMENTS.slice(0, 2); 
         }
     } catch (e) {
@@ -85,43 +105,55 @@ export default function AddAgendaBlockPage() {
     return []; 
   };
 
-  const handleActualSave = async (data: AgendaBlock) => {
-    setIsSaving(true);
-    console.log("BACKEND_SIM: Salvando novo bloqueio de agenda:", data);
-    // Adicionar à lista mockada em localStorage ou estado global se necessário para listagem
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({ title: "Bloqueio Criado (Simulação)", description: `O bloqueio para "${data.motivo}" foi criado.` });
-    
-    if (conflictingAppointments.length > 0 && formDataForConflict) {
-        toast({
-            title: "Agendamentos Cancelados (Simulação)",
-            description: `${conflictingAppointments.length} agendamento(s) conflitante(s) foram cancelados e os clientes notificados.`,
-            variant: "destructive"
-        });
+  const handleActualSave = async (data: AgendaBlockFormDataFromService) => {
+    if (!companyId) {
+      toast({ title: "Erro", description: "ID da empresa não encontrado.", variant: "destructive" });
+      return;
     }
-
-    form.reset();
-    setConflictingAppointments([]);
-    setFormDataForConflict(null);
-    setIsSaving(false);
-    router.push('/dashboard/company/agenda-blocks');
+    setIsSaving(true);
+    try {
+      await addAgendaBlock(companyId, data);
+      toast({ title: "Bloqueio Criado", description: `O bloqueio para "${data.reason}" foi criado.` });
+      
+      if (conflictingAppointments.length > 0 && formDataForConflict) {
+          toast({
+              title: "Agendamentos Cancelados (Simulação)",
+              description: `${conflictingAppointments.length} agendamento(s) conflitante(s) foram cancelados e os clientes notificados.`,
+              variant: "destructive"
+          });
+      }
+      form.reset();
+      setConflictingAppointments([]);
+      setFormDataForConflict(null);
+      router.push('/dashboard/company/agenda-blocks');
+    } catch (error: any) {
+      toast({ title: "Erro ao Criar Bloqueio", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
 
-  const onSubmit = async (data: AgendaBlock) => {
-    setIsSaving(true); // Indica que estamos processando
+  const onSubmit = async (data: AgendaBlockFormDataFromService) => {
+    setIsSaving(true); 
     const conflicts = simulateConflictCheck(data);
-    setIsSaving(false); // Finaliza o estado de processamento inicial
+    setIsSaving(false); 
 
     if (conflicts.length > 0) {
       setConflictingAppointments(conflicts);
-      setFormDataForConflict(data); // Salva os dados do formulário para usar após confirmação
+      setFormDataForConflict(data); 
       setIsConflictDialogOpen(true);
     } else {
-      handleActualSave(data); // Salva diretamente se não houver conflitos
+      handleActualSave(data); 
     }
   };
+
+  if (isLoadingPage) {
+    return <div className="text-center p-10">Carregando...</div>;
+  }
+  if (!companyId && !isLoadingPage) {
+     return <div className="text-center p-10 text-destructive">Não foi possível carregar os dados da empresa. Verifique se o perfil da empresa está completo.</div>;
+  }
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
@@ -146,7 +178,7 @@ export default function AddAgendaBlockPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="targetType"
+                name="target_type"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Alvo do Bloqueio</FormLabel>
@@ -165,14 +197,15 @@ export default function AddAgendaBlockPage() {
               {watchTargetType === "profissional" && (
                 <FormField
                   control={form.control}
-                  name="profissionalId"
+                  name="professional_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Profissional</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Selecione o profissional" /></SelectTrigger></FormControl>
                         <SelectContent>
-                          {MOCK_PROFESSIONALS.map(prof => (
+                          <SelectItem value="">Nenhum (Empresa Inteira)</SelectItem>
+                          {professionals.map(prof => (
                             <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
                           ))}
                         </SelectContent>
@@ -186,7 +219,7 @@ export default function AddAgendaBlockPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="inicio"
+                  name="start_time"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Data/Hora de Início</FormLabel>
@@ -197,7 +230,7 @@ export default function AddAgendaBlockPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="fim"
+                  name="end_time"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Data/Hora de Fim</FormLabel>
@@ -210,7 +243,7 @@ export default function AddAgendaBlockPage() {
 
               <FormField
                 control={form.control}
-                name="motivo"
+                name="reason"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Motivo do Bloqueio</FormLabel>
@@ -223,7 +256,7 @@ export default function AddAgendaBlockPage() {
               <div className="space-y-3">
                 <FormField
                   control={form.control}
-                  name="repetirSemanalmente"
+                  name="repeats_weekly"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
                       <FormControl>
@@ -236,7 +269,7 @@ export default function AddAgendaBlockPage() {
                 />
                  <FormField
                   control={form.control}
-                  name="ativo"
+                  name="active"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                       <div className="space-y-0.5">
@@ -254,7 +287,8 @@ export default function AddAgendaBlockPage() {
               </div>
               
               <div className="flex justify-end pt-4">
-                <Button type="submit" disabled={isSaving} size="lg">
+                <Button type="submit" disabled={isSaving || isLoadingPage} size="lg">
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   <Save className="mr-2 h-4 w-4" /> {isSaving ? "Verificando/Salvando..." : "Salvar Bloqueio"}
                 </Button>
               </div>
@@ -288,7 +322,7 @@ export default function AddAgendaBlockPage() {
                 if (formDataForConflict) {
                   handleActualSave(formDataForConflict);
                 }
-                setIsConflictDialogOpen(false); // Fechar o diálogo
+                setIsConflictDialogOpen(false); 
               }}
               className="bg-destructive hover:bg-destructive/90"
             >
@@ -300,3 +334,5 @@ export default function AddAgendaBlockPage() {
     </div>
   );
 }
+
+    

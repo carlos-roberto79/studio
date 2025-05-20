@@ -4,27 +4,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star, Award, LineChart, Timer, Bell } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star, Award, LineChart, Timer, Bell, Loader2 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+import NextImage from "next/image"; // Renomeado para evitar conflito
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCompanyDetailsByOwner, type CompanyData } from "@/services/supabaseService";
+import { getCompanyDetailsByOwner, type CompanyData, getProfessionalsByCompany, type ProfessionalData } from "@/services/supabaseService";
 
-// Mock data
-const professionals = [
-  { id: "1", name: "Dr. Alice Silva", specialty: "Dentista", appointmentsToday: 5, avatar: "https://placehold.co/40x40.png?text=AS" },
-  { id: "2", name: "João Dantas", specialty: "Cabeleireiro", appointmentsToday: 8, avatar: "https://placehold.co/40x40.png?text=JD" },
-  { id: "3", name: "Maria Garcia", specialty: "Terapeuta", appointmentsToday: 3, avatar: "https://placehold.co/40x40.png?text=MG" },
-];
 
 const companyStats = [
     { title: "Total de Agendamentos (Mock)", value: "256", icon: <CalendarDays className="h-6 w-6 text-primary" /> },
-    { title: "Profissionais Ativos (Mock)", value: "3", icon: <Users className="h-6 w-6 text-primary" /> },
+    // { title: "Profissionais Ativos (Mock)", value: "3", icon: <Users className="h-6 w-6 text-primary" /> }, // Será dinâmico
     { title: "Receita Mensal Estimada (Mock)", value: "R$12.500", icon: <BarChart3 className="h-6 w-6 text-primary" /> },
 ];
 
@@ -41,7 +35,8 @@ export default function CompanyAdminPage() {
   const { toast } = useToast();
   
   const [companyData, setCompanyData] = useState<CompanyData | null>(null);
-  const [isLoadingCompanyData, setIsLoadingCompanyData] = useState(true);
+  const [professionals, setProfessionals] = useState<ProfessionalData[]>([]);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
   const [publicLink, setPublicLink] = useState("");
 
   useEffect(() => {
@@ -50,14 +45,20 @@ export default function CompanyAdminPage() {
 
   useEffect(() => {
     if (!authLoading && user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
-      setIsLoadingCompanyData(true);
+      setIsLoadingPage(true);
       getCompanyDetailsByOwner(user.id)
         .then(data => {
           setCompanyData(data);
-          if (data?.public_link_slug && typeof window !== "undefined") {
-            setPublicLink(`${window.location.origin}/schedule/${data.public_link_slug}`);
-          } else if (typeof window !== "undefined") {
-             setPublicLink(`${window.location.origin}/schedule/sua-empresa-slug`); // Fallback
+          if (data && data.id) {
+            fetchProfessionals(data.id);
+            if (data.public_link_slug && typeof window !== "undefined") {
+              setPublicLink(`${window.location.origin}/schedule/${data.public_link_slug}`);
+            } else if (typeof window !== "undefined") {
+               setPublicLink(`${window.location.origin}/schedule/configure-seu-slug`);
+            }
+          } else {
+             // Se não há companyData, pode ser que o perfil precise ser completado.
+             // O card condicional abaixo tratará disso.
           }
         })
         .catch(error => {
@@ -65,16 +66,26 @@ export default function CompanyAdminPage() {
           toast({ title: "Erro", description: "Não foi possível carregar os dados da sua empresa.", variant: "destructive" });
         })
         .finally(() => {
-          setIsLoadingCompanyData(false);
+          setIsLoadingPage(false); 
         });
     } else if (!authLoading && (!user || role !== USER_ROLES.COMPANY_ADMIN)) {
       router.push(user ? '/dashboard' : '/login');
+    } else if (!authLoading && !user) {
+      setIsLoadingPage(false); // Se não há usuário, para o loading
     }
   }, [user, role, authLoading, router, toast]);
 
+  const fetchProfessionals = async (companyId: string) => {
+    try {
+      const fetchedProfessionals = await getProfessionalsByCompany(companyId);
+      setProfessionals(fetchedProfessionals);
+    } catch (error: any) {
+      toast({ title: "Erro ao buscar profissionais", description: error.message, variant: "destructive" });
+    }
+  };
 
   const copyPublicLink = () => {
-    if (!publicLink) {
+    if (!publicLink || publicLink.includes("configure-seu-slug")) {
         toast({ title: "Link Indisponível", description: "Complete o perfil da sua empresa para gerar o link.", variant: "destructive" });
         return;
     }
@@ -88,7 +99,7 @@ export default function CompanyAdminPage() {
       });
   };
 
-  if (authLoading || isLoadingCompanyData) {
+  if (authLoading || isLoadingPage) {
      return (
       <div className="space-y-8">
         <CardHeader className="px-0">
@@ -177,6 +188,16 @@ export default function CompanyAdminPage() {
             </CardContent>
           </Card>
         ))}
+         <Card className="shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Profissionais Ativos</CardTitle>
+              <Users className="h-6 w-6 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{professionals.length}</div>
+              <p className="text-xs text-muted-foreground">&nbsp;</p> 
+            </CardContent>
+          </Card>
       </div>
 
       <Card className="shadow-lg">
@@ -207,37 +228,41 @@ export default function CompanyAdminPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Avatar</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Especialidade</TableHead>
-                <TableHead>Agendamentos Hoje</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {professionals.map((prof) => (
-                <TableRow key={prof.id}>
-                  <TableCell>
-                    <Image src={prof.avatar} alt={prof.name} width={40} height={40} className="rounded-full" data-ai-hint="avatar pessoa" />
-                  </TableCell>
-                  <TableCell className="font-medium">{prof.name}</TableCell>
-                  <TableCell>{prof.specialty}</TableCell>
-                  <TableCell>{prof.appointmentsToday}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button variant="outline" size="icon" aria-label="Editar profissional">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="destructive" size="icon" aria-label="Remover profissional">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+          {professionals.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {/* <TableHead>Avatar</TableHead> */}
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Especialidade</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {professionals.map((prof) => (
+                  <TableRow key={prof.id}>
+                    {/* <TableCell>
+                      <NextImage src={prof.profilePictureUrl || "https://placehold.co/40x40.png?text=P"} alt={prof.name} width={40} height={40} className="rounded-full" data-ai-hint="avatar pessoa" />
+                    </TableCell> */}
+                    <TableCell className="font-medium">{prof.name}</TableCell>
+                    <TableCell>{prof.specialty}</TableCell>
+                    <TableCell>{prof.email}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="outline" size="icon" aria-label="Editar profissional" onClick={() => toast({title: "Em breve", description: "Edição de profissional."})}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="destructive" size="icon" aria-label="Remover profissional" onClick={() => toast({title: "Em breve", description: "Remoção de profissional."})}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-muted-foreground py-4">Nenhum profissional cadastrado.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -381,7 +406,7 @@ export default function CompanyAdminPage() {
                 <h4 className="font-medium mb-2">Link Público de Agendamento</h4>
                 <div className="flex items-center space-x-2">
                     <Input type="text" value={publicLink} readOnly className="bg-muted flex-grow" />
-                    <Button onClick={copyPublicLink} variant="outline" disabled={!publicLink}>
+                    <Button onClick={copyPublicLink} variant="outline" disabled={!publicLink || publicLink.includes("configure-seu-slug")}>
                         <LinkIcon className="mr-2 h-4 w-4" /> Copiar Link
                     </Button>
                 </div>
@@ -430,10 +455,5 @@ export default function CompanyAdminPage() {
     </div>
   );
 }
-    
-    
 
     
-
-    
-

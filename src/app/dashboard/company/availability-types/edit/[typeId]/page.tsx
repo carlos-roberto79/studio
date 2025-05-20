@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { APP_NAME } from "@/lib/constants";
-import { ArrowLeft, Save, ListChecks, Trash2, PlusCircle, XCircle } from "lucide-react";
+import { APP_NAME, USER_ROLES } from "@/lib/constants";
+import { ArrowLeft, Save, ListChecks, Trash2, PlusCircle, XCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -33,8 +33,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAvailabilityTypeById, updateAvailabilityType, deleteAvailabilityType } from "@/services/supabaseService";
+import type { AvailabilityTypeData } from "@/services/supabaseService";
+import { Skeleton } from "@/components/ui/skeleton";
+
 
 const daysOfWeek = [
   { id: 'seg', label: 'Segunda-feira' },
@@ -94,170 +98,179 @@ const availabilityTypeSchema = z.object({
 }, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido (início e fim)." });
 
 
-type AvailabilityTypeFormData = z.infer<typeof availabilityTypeSchema>;
+type AvailabilityTypeFormZodData = z.infer<typeof availabilityTypeSchema>;
 
-const createInitialSchedule = (): AvailabilityTypeFormData['schedule'] => daysOfWeek.reduce((acc, day) => {
-  acc[day.id as keyof AvailabilityTypeFormData['schedule']] = {
+const createInitialSchedule = (): AvailabilityTypeFormZodData['schedule'] => daysOfWeek.reduce((acc, day) => {
+  acc[day.id as keyof AvailabilityTypeFormZodData['schedule']] = {
     active: day.id !== 'sab' && day.id !== 'dom',
     intervals: [{ start: "09:00", end: "18:00" }]
   };
   return acc;
-}, {} as AvailabilityTypeFormData['schedule']);
+}, {} as AvailabilityTypeFormZodData['schedule']);
 
-
-const mockExistingAvailabilityTypes: { [key: string]: Partial<AvailabilityTypeFormData> } = {
-  "type1": {
-    name: "Horário Comercial Padrão",
-    description: "Segunda a Sexta, das 9h às 18h, com pausa para almoço.",
-    schedule: {
-      seg: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
-      ter: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
-      qua: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
-      qui: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
-      sex: { active: true, intervals: [{start: "09:00", end: "12:00"}, {start: "13:00", end: "18:00"}]},
-      sab: { active: false, intervals: [{start: "", end: ""}]},
-      dom: { active: false, intervals: [{start: "", end: ""}]},
-    }
-  },
-  "type2": {
-    name: "Plantão Final de Semana",
-    description: "Sábados e Domingos, horários específicos sob demanda. Contatar para agendar.",
-    schedule: {
-      seg: { active: false, intervals: [{start: "", end: ""}] },
-      ter: { active: false, intervals: [{start: "", end: ""}] },
-      qua: { active: false, intervals: [{start: "", end: ""}] },
-      qui: { active: false, intervals: [{start: "", end: ""}] },
-      sex: { active: false, intervals: [{start: "", end: ""}] },
-      sab: { active: true, intervals: [{start: "10:00", end: "14:00"}]},
-      dom: { active: false, intervals: [{start: "", end: ""}]},
-    }
-  },
-   "type3": {
-    name: "Horário Noturno Reduzido",
-    description: "Segunda a Quinta, das 18h às 21h.",
-    schedule: {
-      seg: { active: true, intervals: [{start: "18:00", end: "21:00"}]},
-      ter: { active: true, intervals: [{start: "18:00", end: "21:00"}]},
-      qua: { active: true, intervals: [{start: "18:00", end: "21:00"}]},
-      qui: { active: true, intervals: [{start: "18:00", end: "21:00"}]},
-      sex: { active: false, intervals: [{start: "", end: ""}]},
-      sab: { active: false, intervals: [{start: "", end: ""}]},
-      dom: { active: false, intervals: [{start: "", end: ""}]},
-    }
-  },
-};
 
 export default function EditAvailabilityTypePage() {
   const { toast } = useToast();
   const params = useParams();
   const router = useRouter();
   const typeId = params.typeId as string;
+  const { user, role } = useAuth();
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
   const [isDataProcessed, setIsDataProcessed] = useState(false);
   const [pageTitle, setPageTitle] = useState("Editar Tipo de Disponibilidade");
 
 
-  const form = useForm<AvailabilityTypeFormData>({
+  const form = useForm<AvailabilityTypeFormZodData>({
     resolver: zodResolver(availabilityTypeSchema),
-    defaultValues: {
+    defaultValues: { // Default values for form structure, actual data loaded in useEffect
       name: "",
       description: "",
       schedule: createInitialSchedule(),
     }
   });
-  const formReset = form.reset; // Store stable reference to reset
+  const formReset = form.reset;
 
   useEffect(() => {
-    setIsLoading(true);
-    setIsDataProcessed(false);
-    if (typeId) {
-      const dataFromMock = mockExistingAvailabilityTypes[typeId];
-      if (dataFromMock) {
-        setPageTitle(dataFromMock.name || "Editar Tipo de Disponibilidade");
-        
-        const scheduleForForm: AvailabilityTypeFormData['schedule'] = createInitialSchedule();
+    if (user && user.id && role === USER_ROLES.COMPANY_ADMIN && typeId) {
+      fetchTypeData(typeId);
+    } else if (!typeId) {
+        toast({ title: "Erro", description: "ID do tipo de disponibilidade não fornecido.", variant: "destructive" });
+        router.push('/dashboard/company/availability-types');
+        setIsLoadingPage(false);
+    } else {
+        setIsLoadingPage(false); // Not authorized or no user
+    }
+  }, [typeId, user, role, router, toast]); // Removed formReset from deps, it's stable
 
-        (Object.keys(scheduleForForm) as Array<keyof AvailabilityTypeFormData['schedule']>).forEach(dayKey => {
-          const mockDaySchedule = dataFromMock.schedule?.[dayKey];
-          if (mockDaySchedule) {
-            scheduleForForm[dayKey].active = mockDaySchedule.active;
-            scheduleForForm[dayKey].intervals = (mockDaySchedule.intervals && mockDaySchedule.intervals.length > 0)
-              ? mockDaySchedule.intervals.map(interval => ({ 
+  const fetchTypeData = async (currentTypeId: string) => {
+    setIsLoadingPage(true);
+    setIsDataProcessed(false);
+    try {
+      const dataFromDb = await getAvailabilityTypeById(currentTypeId);
+      if (dataFromDb) {
+        setPageTitle(dataFromDb.name || "Editar Tipo de Disponibilidade");
+        
+        const scheduleForForm: AvailabilityTypeFormZodData['schedule'] = createInitialSchedule();
+        const dbSchedule = dataFromDb.schedule as any; // Cast to any for easier access
+
+        (Object.keys(scheduleForForm) as Array<keyof AvailabilityTypeFormZodData['schedule']>).forEach(dayKey => {
+          const dbDaySchedule = dbSchedule?.[dayKey];
+          if (dbDaySchedule) {
+            scheduleForForm[dayKey].active = dbDaySchedule.active;
+            scheduleForForm[dayKey].intervals = (dbDaySchedule.intervals && dbDaySchedule.intervals.length > 0)
+              ? dbDaySchedule.intervals.map((interval: any) => ({ 
                   start: interval.start || "", 
                   end: interval.end || "" 
                 }))
-              : [{ start: "", end: "" }];
+              : [{ start: "", end: "" }]; // Ensure at least one interval object
           } else {
-             // If a day is missing in mock, ensure it still adheres to schema (1 interval)
              scheduleForForm[dayKey].intervals = [{ start: "", end: "" }];
           }
         });
         
-        formReset({
-          name: dataFromMock.name || "",
-          description: dataFromMock.description || "",
+        formReset({ // Using the stable formReset reference
+          name: dataFromDb.name || "",
+          description: dataFromDb.description || "",
           schedule: scheduleForForm,
         });
         setIsDataProcessed(true);
       } else {
-        toast({ title: "Erro", description: `Tipo de disponibilidade com ID '${typeId}' não encontrado.`, variant: "destructive" });
+        toast({ title: "Erro", description: `Tipo de disponibilidade com ID '${currentTypeId}' não encontrado.`, variant: "destructive" });
         router.push('/dashboard/company/availability-types');
       }
-    } else {
-       toast({ title: "Erro", description: "ID do tipo de disponibilidade não fornecido.", variant: "destructive" });
-       router.push('/dashboard/company/availability-types');
+    } catch (error: any) {
+      toast({ title: "Erro ao Carregar Tipo", description: error.message, variant: "destructive" });
+      router.push('/dashboard/company/availability-types');
+    } finally {
+      setIsLoadingPage(false);
     }
-    setIsLoading(false);
-  }, [typeId, router, toast, formReset]);
+  };
+
 
   useEffect(() => {
-    if (pageTitle) {
+    if (pageTitle && !isLoadingPage) {
       document.title = `Editar: ${pageTitle} - ${APP_NAME}`;
     }
-  }, [pageTitle]);
+  }, [pageTitle, isLoadingPage]);
 
-  const onSubmit = async (data: AvailabilityTypeFormData) => {
+  const onSubmit = async (data: AvailabilityTypeFormZodData) => {
     setIsSaving(true);
     const scheduleWithFilteredIntervals = { ...data.schedule };
     for (const dayKey in scheduleWithFilteredIntervals) {
       const day = scheduleWithFilteredIntervals[dayKey as keyof typeof scheduleWithFilteredIntervals];
       if (day.active) {
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
-        if (day.intervals.length === 0) {
-          // Zod refine should catch this
+         if (day.intervals.length === 0) { // Ensure at least one empty interval if active but all cleared
+            day.intervals.push({start: "", end: ""});
         }
       } else {
-        day.intervals = [{ start: "", end: "" }];
+        day.intervals = [{ start: "", end: "" }]; // Reset to one empty if not active
       }
     }
-    const finalData = { ...data, schedule: scheduleWithFilteredIntervals };
+    const typeDataToUpdate: Partial<Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'>> = {
+      name: data.name,
+      description: data.description,
+      schedule: scheduleWithFilteredIntervals,
+    };
 
-    console.log("BACKEND_SIM: Tipo de disponibilidade a ser atualizado:", { typeId, data: finalData });
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: "Tipo Atualizado (Simulação)",
-      description: `O tipo "${data.name}" foi atualizado.`,
-    });
-    setIsSaving(false);
-    router.push('/dashboard/company/availability-types');
+    try {
+      await updateAvailabilityType(typeId, typeDataToUpdate);
+      toast({
+        title: "Tipo Atualizado",
+        description: `O tipo "${data.name}" foi atualizado.`,
+      });
+      router.push('/dashboard/company/availability-types');
+    } catch (error: any) {
+      toast({ title: "Erro ao Atualizar", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async () => {
     setIsSaving(true);
-    console.log("BACKEND_SIM: Solicitação de exclusão para o tipo de disponibilidade ID:", typeId);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: "Tipo Excluído (Simulação)",
-      description: `O tipo "${form.getValues("name")}" foi excluído.`,
-    });
-    router.push('/dashboard/company/availability-types');
+    try {
+      await deleteAvailabilityType(typeId);
+      toast({
+        title: "Tipo Excluído",
+        description: `O tipo "${form.getValues("name")}" foi excluído.`,
+      });
+      router.push('/dashboard/company/availability-types');
+    } catch (error: any) {
+      toast({ title: "Erro ao Excluir", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  if (isLoading || !isDataProcessed) {
-    return <div className="flex justify-center items-center h-64"><p>Carregando dados...</p></div>;
+  if (isLoadingPage) {
+    return (
+        <div className="space-y-8 max-w-2xl mx-auto">
+            <div className="flex items-center justify-between"><Skeleton className="h-10 w-3/5" /><Skeleton className="h-9 w-24" /></div>
+            <Card className="shadow-lg"><CardContent className="pt-6 space-y-6">
+                {[...Array(3)].map((_,i) => <div key={i} className="space-y-2"><Skeleton className="h-5 w-1/4" /><Skeleton className="h-10 w-full" /></div>)}
+                <Skeleton className="h-64 w-full"/>
+                <div className="flex justify-end"><Skeleton className="h-10 w-32" /></div>
+            </CardContent></Card>
+        </div>
+    );
   }
+
+  if (!isDataProcessed && !isLoadingPage) { // Handle case where data processing might have failed or ID was bad
+     return (
+      <div className="flex flex-col justify-center items-center h-64 space-y-4">
+        <p className="text-xl text-destructive">Não foi possível carregar os dados do tipo de disponibilidade.</p>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/company/availability-types">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para Lista
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
 
   return (
     <Form {...form}>
@@ -296,143 +309,146 @@ export default function EditAvailabilityTypePage() {
               </AlertDialogContent>
             </AlertDialog>
             <Button type="submit" disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Save className="mr-2 h-4 w-4" /> {isSaving ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </div>
         </div>
 
-        <Card className="shadow-lg">
-          <CardContent className="pt-6 space-y-6">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Tipo de Disponibilidade</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormDescription>Um nome claro para identificar este modelo de horário.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descrição (Opcional)</FormLabel>
-                  <FormControl>
-                    <Textarea rows={3} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        {isDataProcessed && (
+            <Card className="shadow-lg">
+            <CardContent className="pt-6 space-y-6">
+                <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Nome do Tipo de Disponibilidade</FormLabel>
+                    <FormControl>
+                        <Input {...field} />
+                    </FormControl>
+                    <FormDescription>Um nome claro para identificar este modelo de horário.</FormDescription>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Descrição (Opcional)</FormLabel>
+                    <FormControl>
+                        <Textarea rows={3} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Horário Semanal Padrão</CardTitle>
-                <CardDescription>Defina os horários para cada dia da semana para este tipo de disponibilidade.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {daysOfWeek.map((day) => {
-                  const dayKey = day.id as keyof AvailabilityTypeFormData['schedule'];
-                  const { fields, append, remove } = useFieldArray({
-                    control: form.control,
-                    name: `schedule.${dayKey}.intervals`
-                  });
+                <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Horário Semanal Padrão</CardTitle>
+                    <CardDescription>Defina os horários para cada dia da semana para este tipo de disponibilidade.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {daysOfWeek.map((day) => {
+                    const dayKey = day.id as keyof AvailabilityTypeFormZodData['schedule'];
+                    const { fields, append, remove } = useFieldArray({
+                        control: form.control,
+                        name: `schedule.${dayKey}.intervals`
+                    });
 
-                  return (
-                    <div key={day.id} className="p-4 border rounded-md space-y-3">
-                       <FormField
-                        control={form.control}
-                        name={`schedule.${dayKey}.active`}
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={(checked) => {
-                                  field.onChange(checked);
-                                  if (checked && fields.length === 0) {
-                                    append({ start: "09:00", end: "18:00" });
-                                  }
-                                }}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-semibold text-md">{day.label}</FormLabel>
-                          </FormItem>
-                        )}
-                      />
+                    return (
+                        <div key={day.id} className="p-4 border rounded-md space-y-3">
+                        <FormField
+                            control={form.control}
+                            name={`schedule.${dayKey}.active`}
+                            render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                <FormControl>
+                                <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={(checked) => {
+                                    field.onChange(checked);
+                                    if (checked && fields.length === 0) {
+                                        append({ start: "09:00", end: "18:00" });
+                                    }
+                                    }}
+                                />
+                                </FormControl>
+                                <FormLabel className="font-semibold text-md">{day.label}</FormLabel>
+                            </FormItem>
+                            )}
+                        />
 
-                      {form.watch(`schedule.${dayKey}.active`) && (
-                        <div className="space-y-2 pl-6">
-                          {fields.map((intervalField, index) => (
-                            <div key={intervalField.id} className="flex items-end gap-2">
-                              <FormField
-                                control={form.control}
-                                name={`schedule.${dayKey}.intervals.${index}.start`}
-                                render={({ field }) => (
-                                  <FormItem className="flex-1">
-                                    <FormLabel className="text-xs">Início</FormLabel>
-                                    <FormControl><Input type="time" {...field} /></FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name={`schedule.${dayKey}.intervals.${index}.end`}
-                                render={({ field }) => (
-                                  <FormItem className="flex-1">
-                                    <FormLabel className="text-xs">Fim</FormLabel>
-                                    <FormControl><Input type="time" {...field} /></FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <Button
+                        {form.watch(`schedule.${dayKey}.active`) && (
+                            <div className="space-y-2 pl-6">
+                            {fields.map((intervalField, index) => (
+                                <div key={intervalField.id} className="flex items-end gap-2">
+                                <FormField
+                                    control={form.control}
+                                    name={`schedule.${dayKey}.intervals.${index}.start`}
+                                    render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel className="text-xs">Início</FormLabel>
+                                        <FormControl><Input type="time" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`schedule.${dayKey}.intervals.${index}.end`}
+                                    render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel className="text-xs">Fim</FormLabel>
+                                        <FormControl><Input type="time" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => remove(index)}
+                                    className="text-destructive hover:text-destructive"
+                                    title="Remover horário"
+                                    disabled={fields.length <= 1}
+                                >
+                                    <XCircle className="h-5 w-5" />
+                                </Button>
+                                </div>
+                            ))}
+                            <Button
                                 type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => remove(index)}
-                                className="text-destructive hover:text-destructive"
-                                title="Remover horário"
-                                disabled={fields.length <= 1 && (!fields[0]?.start && !fields[0]?.end)}
-                              >
-                                <XCircle className="h-5 w-5" />
-                              </Button>
+                                variant="outline"
+                                size="sm"
+                                onClick={() => append({ start: "", end: "" })}
+                            >
+                                <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Horário
+                            </Button>
                             </div>
-                          ))}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => append({ start: "", end: "" })}
-                          >
-                            <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Horário
-                          </Button>
+                        )}
+                        <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.root?.message}</FormMessage>
+                        {fields.map((_, index) => (
+                            <React.Fragment key={`${dayKey}-intervals-errors-${index}`}>
+                            <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.start?.message}</FormMessage>
+                            <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.end?.message}</FormMessage>
+                            <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.root?.message}</FormMessage>
+                            </React.Fragment>
+                        ))}
+                        <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage>
+                        <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage>
                         </div>
-                      )}
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.root?.message}</FormMessage>
-                       {fields.map((_, index) => (
-                        <React.Fragment key={`${dayKey}-intervals-errors-${index}`}>
-                          <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.start?.message}</FormMessage>
-                          <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.end?.message}</FormMessage>
-                          <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.root?.message}</FormMessage>
-                        </React.Fragment>
-                       ))}
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage> {/* Corrected path for day-level errors */}
-                       <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage>
-                    </div>
-                  );
-                })}
-              </CardContent>
+                    );
+                    })}
+                </CardContent>
+                </Card>
+            </CardContent>
             </Card>
-          </CardContent>
-        </Card>
+        )}
       </form>
     </Form>
   );

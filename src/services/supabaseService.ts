@@ -34,6 +34,76 @@ export interface CompanyData {
   customization?: any; 
 }
 
+// Tipos para Serviços
+export interface ServiceData {
+  id?: string;
+  company_id: string;
+  name: string;
+  description?: string;
+  // professionalIds: string[]; // Para simplificar, não vamos gerenciar a relação M-M com profissionais nesta etapa via Supabase
+  category: string;
+  image_url?: string;
+  duration_minutes: number;
+  display_duration: boolean;
+  unique_scheduling_link_slug?: string;
+  price: number; // Armazenar como número
+  commission_type?: 'fixed' | 'percentage';
+  commission_value?: number;
+  has_booking_fee: boolean;
+  booking_fee_value?: number;
+  simultaneous_appointments_per_user: number;
+  simultaneous_appointments_per_slot: number;
+  simultaneous_appointments_per_slot_automatic: boolean;
+  block_after_24_hours: boolean;
+  interval_between_slots_minutes: number;
+  confirmation_type: 'manual' | 'automatic';
+  availability_type_id?: string | null; // Permitir null
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Tipos para Profissionais
+export interface ProfessionalData {
+  id?: string;
+  company_id: string;
+  user_id?: string | null; // Se o profissional tem uma conta de usuário
+  name: string;
+  email?: string;
+  phone?: string;
+  specialty?: string;
+  // Adicionar outros campos do profissional conforme necessário (bio, profilePictureUrl, etc.)
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Tipos para Tipos de Disponibilidade
+export interface AvailabilityTypeData {
+  id?: string;
+  company_id: string;
+  name: string;
+  description?: string;
+  schedule: any; // JSONB no Supabase
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Tipos para Bloqueios de Agenda
+export interface AgendaBlockData {
+  id?: string;
+  company_id: string;
+  professional_id?: string | null;
+  target_type: 'empresa' | 'profissional';
+  start_time: string; // ISO string
+  end_time: string;   // ISO string
+  reason: string;
+  repeats_weekly: boolean;
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   console.log(`SupabaseService: Buscando perfil para UID: ${userId}`);
   try {
@@ -43,12 +113,12 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       .eq('id', userId)
       .single();
 
-    if (error && status !== 406) { // 406: "Not Acceptable", usually when no rows are found for .single()
+    if (error && status !== 406) { 
       console.error('SupabaseService: Erro ao buscar perfil do usuário:', error);
       return null;
     }
      if (!data) {
-        console.warn(`SupabaseService: Nenhum perfil encontrado para UID: ${userId}. Isso é esperado para novos usuários antes da criação do perfil.`);
+        console.warn(`SupabaseService: Nenhum perfil encontrado para UID: ${userId}.`);
         return null;
     }
     return data as UserProfile;
@@ -82,7 +152,9 @@ export async function createUserProfile(userId: string, email: string, role: Use
     return data as UserProfile;
   } catch (err: any) {
     console.error('SupabaseService: Exceção em createUserProfile:', err);
-    throw err.code ? err : new Error(err.message || 'Erro desconhecido ao criar perfil.');
+    // Re-lançar o erro para que o chamador possa tratá-lo
+    // O chamador (AuthContext) já tem um log para "Falha ao criar perfil..."
+    throw err;
   }
 }
 
@@ -97,7 +169,7 @@ export async function addCompanyDetails(companyData: Omit<CompanyData, 'id' | 'c
         phone: companyData.phone,
         email: companyData.email,
         public_link_slug: companyData.public_link_slug,
-        profile_complete: true, // Sempre marcar como completo ao adicionar detalhes
+        profile_complete: true, 
         description: companyData.description || null,
         logo_url: companyData.logo_url || null,
         operating_hours: companyData.operating_hours || null,
@@ -128,8 +200,8 @@ export async function updateCompanyDetails(companyId: string, companyData: Parti
   try {
     const dataToUpdate = {
       ...companyData,
-      profile_complete: true, // Sempre garantir que está completo após uma edição
-      updated_at: new Date().toISOString(), // Atualiza o campo updated_at
+      profile_complete: true, 
+      updated_at: new Date().toISOString(), 
     };
 
     const { data, error } = await supabase
@@ -151,7 +223,6 @@ export async function updateCompanyDetails(companyId: string, companyData: Parti
   }
 }
 
-
 export async function getCompanyDetailsByOwner(ownerUid: string): Promise<CompanyData | null> {
   console.log(`SupabaseService: Buscando detalhes da empresa para o proprietário UID: ${ownerUid}`);
   try {
@@ -171,3 +242,382 @@ export async function getCompanyDetailsByOwner(ownerUid: string): Promise<Compan
     return null;
   }
 }
+
+// --- Funções CRUD para Serviços ---
+export async function addService(companyId: string, serviceData: Omit<ServiceData, 'id' | 'company_id' | 'created_at' | 'updated_at'>): Promise<ServiceData | null> {
+  console.log(`SupabaseService: Adicionando serviço para empresa ID ${companyId}:`, serviceData);
+  try {
+    const dataToInsert = {
+      ...serviceData,
+      company_id: companyId,
+      price: parseFloat(String(serviceData.price).replace(",", ".")), // Garantir que o preço é um número
+      availability_type_id: serviceData.availability_type_id === "" ? null : serviceData.availability_type_id,
+    };
+    const { data, error } = await supabase
+      .from('services')
+      .insert([dataToInsert])
+      .select()
+      .single();
+    if (error) {
+      console.error('SupabaseService: Erro ao adicionar serviço:', error);
+      throw error;
+    }
+    return data as ServiceData;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em addService:', err);
+    throw err;
+  }
+}
+
+export async function getServicesByCompany(companyId: string): Promise<ServiceData[]> {
+  console.log(`SupabaseService: Buscando serviços para empresa ID ${companyId}`);
+  try {
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('name', { ascending: true });
+    if (error) {
+      console.error('SupabaseService: Erro ao buscar serviços:', error);
+      throw error;
+    }
+    return (data as ServiceData[]) || [];
+  } catch (err) {
+    console.error('SupabaseService: Exceção em getServicesByCompany:', err);
+    throw err;
+  }
+}
+
+export async function getServiceById(serviceId: string): Promise<ServiceData | null> {
+  console.log(`SupabaseService: Buscando serviço por ID: ${serviceId}`);
+  try {
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('id', serviceId)
+      .single();
+    if (error) {
+      console.error('SupabaseService: Erro ao buscar serviço por ID:', error);
+      throw error; // Pode ser 406 se não encontrado, tratar no componente
+    }
+    return data as ServiceData;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em getServiceById:', err);
+    throw err;
+  }
+}
+
+export async function updateService(serviceId: string, serviceData: Partial<Omit<ServiceData, 'id' | 'company_id' | 'created_at' | 'updated_at'>>): Promise<ServiceData | null> {
+  console.log(`SupabaseService: Atualizando serviço ID ${serviceId}:`, serviceData);
+  try {
+    const dataToUpdate = { ...serviceData };
+    if (serviceData.price !== undefined) {
+      dataToUpdate.price = parseFloat(String(serviceData.price).replace(",", "."));
+    }
+    if (serviceData.availability_type_id === "") {
+        dataToUpdate.availability_type_id = null;
+    }
+
+    const { data, error } = await supabase
+      .from('services')
+      .update(dataToUpdate)
+      .eq('id', serviceId)
+      .select()
+      .single();
+    if (error) {
+      console.error('SupabaseService: Erro ao atualizar serviço:', error);
+      throw error;
+    }
+    return data as ServiceData;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em updateService:', err);
+    throw err;
+  }
+}
+
+export async function deleteService(serviceId: string): Promise<boolean> {
+  console.log(`SupabaseService: Deletando serviço ID ${serviceId}`);
+  try {
+    const { error } = await supabase
+      .from('services')
+      .delete()
+      .eq('id', serviceId);
+    if (error) {
+      console.error('SupabaseService: Erro ao deletar serviço:', error);
+      throw error;
+    }
+    return true;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em deleteService:', err);
+    throw err;
+  }
+}
+
+// --- Funções CRUD para Profissionais ---
+export async function addProfessional(companyId: string, professionalData: Omit<ProfessionalData, 'id' | 'company_id' | 'created_at' | 'updated_at'>): Promise<ProfessionalData | null> {
+  console.log(`SupabaseService: Adicionando profissional para empresa ID ${companyId}:`, professionalData);
+  try {
+    const dataToInsert = { ...professionalData, company_id: companyId };
+    const { data, error } = await supabase
+      .from('professionals')
+      .insert([dataToInsert])
+      .select()
+      .single();
+    if (error) {
+      console.error('SupabaseService: Erro ao adicionar profissional:', error);
+      throw error;
+    }
+    return data as ProfessionalData;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em addProfessional:', err);
+    throw err;
+  }
+}
+
+export async function getProfessionalsByCompany(companyId: string): Promise<ProfessionalData[]> {
+  console.log(`SupabaseService: Buscando profissionais para empresa ID ${companyId}`);
+  try {
+    const { data, error } = await supabase
+      .from('professionals')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('name', { ascending: true });
+    if (error) {
+      console.error('SupabaseService: Erro ao buscar profissionais:', error);
+      throw error;
+    }
+    return (data as ProfessionalData[]) || [];
+  } catch (err) {
+    console.error('SupabaseService: Exceção em getProfessionalsByCompany:', err);
+    throw err;
+  }
+}
+// Adicionar updateProfessional e deleteProfessional se necessário
+
+// --- Funções CRUD para Tipos de Disponibilidade ---
+export async function addAvailabilityType(companyId: string, availabilityTypeData: Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'>): Promise<AvailabilityTypeData | null> {
+  console.log(`SupabaseService: Adicionando tipo de disponibilidade para empresa ID ${companyId}:`, availabilityTypeData);
+  try {
+    const dataToInsert = { ...availabilityTypeData, company_id: companyId };
+    const { data, error } = await supabase
+      .from('availability_types')
+      .insert([dataToInsert])
+      .select()
+      .single();
+    if (error) {
+      console.error('SupabaseService: Erro ao adicionar tipo de disponibilidade:', error);
+      throw error;
+    }
+    return data as AvailabilityTypeData;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em addAvailabilityType:', err);
+    throw err;
+  }
+}
+
+export async function getAvailabilityTypesByCompany(companyId: string): Promise<AvailabilityTypeData[]> {
+  console.log(`SupabaseService: Buscando tipos de disponibilidade para empresa ID ${companyId}`);
+  try {
+    const { data, error } = await supabase
+      .from('availability_types')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('name', { ascending: true });
+    if (error) {
+      console.error('SupabaseService: Erro ao buscar tipos de disponibilidade:', error);
+      throw error;
+    }
+    return (data as AvailabilityTypeData[]) || [];
+  } catch (err) {
+    console.error('SupabaseService: Exceção em getAvailabilityTypesByCompany:', err);
+    throw err;
+  }
+}
+
+export async function getAvailabilityTypeById(typeId: string): Promise<AvailabilityTypeData | null> {
+    console.log(`SupabaseService: Buscando tipo de disponibilidade por ID: ${typeId}`);
+    try {
+        const { data, error } = await supabase
+            .from('availability_types')
+            .select('*')
+            .eq('id', typeId)
+            .single();
+        if (error) {
+            console.error('SupabaseService: Erro ao buscar tipo de disponibilidade por ID:', error.message);
+            if (error.code === 'PGRST116') return null; // "Not Found" - .single()
+            throw error;
+        }
+        return data as AvailabilityTypeData;
+    } catch (err) {
+        console.error('SupabaseService: Exceção em getAvailabilityTypeById:', err);
+        throw err;
+    }
+}
+
+
+export async function updateAvailabilityType(typeId: string, availabilityTypeData: Partial<Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'>>): Promise<AvailabilityTypeData | null> {
+  console.log(`SupabaseService: Atualizando tipo de disponibilidade ID ${typeId}:`, availabilityTypeData);
+  try {
+    const { data, error } = await supabase
+      .from('availability_types')
+      .update(availabilityTypeData)
+      .eq('id', typeId)
+      .select()
+      .single();
+    if (error) {
+      console.error('SupabaseService: Erro ao atualizar tipo de disponibilidade:', error);
+      throw error;
+    }
+    return data as AvailabilityTypeData;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em updateAvailabilityType:', err);
+    throw err;
+  }
+}
+
+export async function deleteAvailabilityType(typeId: string): Promise<boolean> {
+  console.log(`SupabaseService: Deletando tipo de disponibilidade ID ${typeId}`);
+  try {
+    const { error } = await supabase
+      .from('availability_types')
+      .delete()
+      .eq('id', typeId);
+    if (error) {
+      console.error('SupabaseService: Erro ao deletar tipo de disponibilidade:', error);
+      throw error;
+    }
+    return true;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em deleteAvailabilityType:', err);
+    throw err;
+  }
+}
+
+// --- Funções CRUD para Bloqueios de Agenda ---
+export async function addAgendaBlock(companyId: string, agendaBlockData: Omit<AgendaBlockData, 'id' | 'company_id' | 'created_at' | 'updated_at'>): Promise<AgendaBlockData | null> {
+  console.log(`SupabaseService: Adicionando bloqueio de agenda para empresa ID ${companyId}:`, agendaBlockData);
+  try {
+    const dataToInsert = { 
+      ...agendaBlockData, 
+      company_id: companyId,
+      professional_id: agendaBlockData.professional_id === "" ? null : agendaBlockData.professional_id,
+      start_time: new Date(agendaBlockData.start_time).toISOString(), // Garantir formato ISO
+      end_time: new Date(agendaBlockData.end_time).toISOString(),     // Garantir formato ISO
+    };
+    const { data, error } = await supabase
+      .from('agenda_blocks')
+      .insert([dataToInsert])
+      .select()
+      .single();
+    if (error) {
+      console.error('SupabaseService: Erro ao adicionar bloqueio de agenda:', error);
+      throw error;
+    }
+    return data as AgendaBlockData;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em addAgendaBlock:', err);
+    throw err;
+  }
+}
+
+export async function getAgendaBlocksByCompany(companyId: string): Promise<AgendaBlockData[]> {
+  console.log(`SupabaseService: Buscando bloqueios de agenda para empresa ID ${companyId}`);
+  try {
+    const { data, error } = await supabase
+      .from('agenda_blocks')
+      .select('*, professionals ( name )') // Exemplo de join se professional_id referencia 'professionals.id'
+      .eq('company_id', companyId)
+      .order('start_time', { ascending: false });
+    if (error) {
+      console.error('SupabaseService: Erro ao buscar bloqueios de agenda:', error);
+      throw error;
+    }
+    // Mapear para incluir professionalName se o join funcionar
+    return (data?.map(block => ({
+        ...block,
+        professionalName: (block.professionals as any)?.name || undefined
+    })) as AgendaBlockData[]) || [];
+  } catch (err) {
+    console.error('SupabaseService: Exceção em getAgendaBlocksByCompany:', err);
+    throw err;
+  }
+}
+
+export async function getAgendaBlockById(blockId: string): Promise<AgendaBlockData | null> {
+    console.log(`SupabaseService: Buscando bloqueio de agenda por ID: ${blockId}`);
+    try {
+        const { data, error } = await supabase
+            .from('agenda_blocks')
+            .select('*')
+            .eq('id', blockId)
+            .single();
+        if (error) {
+            console.error('SupabaseService: Erro ao buscar bloqueio de agenda por ID:', error);
+             if (error.code === 'PGRST116') return null; // "Not Found"
+            throw error;
+        }
+        return data as AgendaBlockData;
+    } catch (err) {
+        console.error('SupabaseService: Exceção em getAgendaBlockById:', err);
+        throw err;
+    }
+}
+
+export async function updateAgendaBlock(blockId: string, agendaBlockData: Partial<Omit<AgendaBlockData, 'id' | 'company_id' | 'created_at' | 'updated_at'>>): Promise<AgendaBlockData | null> {
+  console.log(`SupabaseService: Atualizando bloqueio de agenda ID ${blockId}:`, agendaBlockData);
+  try {
+    const dataToUpdate = { 
+        ...agendaBlockData,
+        professional_id: agendaBlockData.professional_id === "" ? null : agendaBlockData.professional_id,
+    };
+    if (dataToUpdate.start_time) dataToUpdate.start_time = new Date(dataToUpdate.start_time).toISOString();
+    if (dataToUpdate.end_time) dataToUpdate.end_time = new Date(dataToUpdate.end_time).toISOString();
+    
+    const { data, error } = await supabase
+      .from('agenda_blocks')
+      .update(dataToUpdate)
+      .eq('id', blockId)
+      .select()
+      .single();
+    if (error) {
+      console.error('SupabaseService: Erro ao atualizar bloqueio de agenda:', error);
+      throw error;
+    }
+    return data as AgendaBlockData;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em updateAgendaBlock:', err);
+    throw err;
+  }
+}
+
+export async function deleteAgendaBlock(blockId: string): Promise<boolean> {
+  console.log(`SupabaseService: Deletando bloqueio de agenda ID ${blockId}`);
+  try {
+    const { error } = await supabase
+      .from('agenda_blocks')
+      .delete()
+      .eq('id', blockId);
+    if (error) {
+      console.error('SupabaseService: Erro ao deletar bloqueio de agenda:', error);
+      throw error;
+    }
+    return true;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em deleteAgendaBlock:', err);
+    throw err;
+  }
+}
+
+// Função para buscar profissionais para o Select no formulário de AgendaBlock
+// (Reutiliza getProfessionalsByCompany, mas pode ser específica se necessário)
+export async function getProfessionalsForSelect(companyId: string): Promise<{ id: string; name: string }[]> {
+    const professionals = await getProfessionalsByCompany(companyId);
+    return professionals.map(prof => ({ id: prof.id!, name: prof.name }));
+}
+
+export async function getAvailabilityTypesForSelect(companyId: string): Promise<{ id: string; name: string }[]> {
+    const availabilityTypes = await getAvailabilityTypesByCompany(companyId);
+    return availabilityTypes.map(type => ({ id: type.id!, name: type.name }));
+}
+
+    

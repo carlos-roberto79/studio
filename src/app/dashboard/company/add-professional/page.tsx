@@ -5,49 +5,89 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import Link from "next/link";
-import { ArrowLeft, UserPlus, Save } from "lucide-react";
+import { ArrowLeft, UserPlus, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCompanyDetailsByOwner, addProfessional } from "@/services/supabaseService";
+import type { ProfessionalData } from "@/services/supabaseService";
 
-// Mock data for specialties
+// Mock data for specialties - pode ser removido se não for mais usado ou se as especialidades vierem de outro lugar
 const specialties = ["Dentista", "Cabeleireiro", "Terapeuta", "Manicure", "Esteticista", "Personal Trainer"];
 
 export default function AddProfessionalPage() {
   const { toast } = useToast();
+  const { user, role } = useAuth();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [phone, setPhone] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingCompany, setIsLoadingCompany] = useState(true);
 
   useEffect(() => {
     document.title = `Adicionar Profissional - ${APP_NAME}`;
-  }, []);
+    if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      getCompanyDetailsByOwner(user.id).then(companyDetails => {
+        if (companyDetails && companyDetails.id) {
+          setCompanyId(companyDetails.id);
+        } else {
+          toast({ title: "Erro", description: "Empresa não encontrada. Cadastre os detalhes da empresa primeiro.", variant: "destructive" });
+        }
+        setIsLoadingCompany(false);
+      });
+    } else {
+      setIsLoadingCompany(false);
+    }
+  }, [user, role, toast]);
 
   const handleSaveProfessional = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!companyId) {
+      toast({ title: "Erro", description: "ID da empresa não encontrado. Não é possível adicionar profissional.", variant: "destructive" });
+      return;
+    }
     setIsSaving(true);
-    // Basic validation
     if (!name || !email || !specialty) {
       toast({ title: "Erro", description: "Nome, e-mail e especialidade são obrigatórios.", variant: "destructive" });
       setIsSaving(false);
       return;
     }
     
-    // Simulate API call
-    console.log("Saving professional:", { name, email, specialty, phone });
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({ title: "Profissional Adicionado", description: `${name} foi adicionado(a) à sua equipe.` });
-    setName("");
-    setEmail("");
-    setSpecialty("");
-    setPhone("");
-    setIsSaving(false);
-    // Potentially redirect or update a list elsewhere
+    const professionalData: Omit<ProfessionalData, 'id' | 'company_id' | 'created_at' | 'updated_at'> = {
+      name,
+      email,
+      specialty,
+      phone: phone || undefined, // Enviar undefined se vazio, para não salvar string vazia
+      // user_id: null, // Se o profissional não tiver uma conta de login própria inicialmente
+    };
+
+    try {
+      await addProfessional(companyId, professionalData);
+      toast({ title: "Profissional Adicionado", description: `${name} foi adicionado(a) à sua equipe.` });
+      setName("");
+      setEmail("");
+      setSpecialty("");
+      setPhone("");
+      // Potencialmente redirecionar ou atualizar uma lista em outro lugar
+    } catch (error: any) {
+      toast({ title: "Erro ao Adicionar Profissional", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoadingCompany) {
+    return <div className="text-center p-10">Carregando dados da empresa...</div>;
+  }
+  if (!companyId && !isLoadingCompany) {
+     return <div className="text-center p-10 text-destructive">Não foi possível carregar os dados da empresa. Verifique se o perfil da empresa está completo.</div>;
+  }
+
 
   return (
     <div className="space-y-8">
@@ -60,7 +100,7 @@ export default function AddProfessionalPage() {
         </CardHeader>
         <Button variant="outline" asChild>
           <Link href="/dashboard/company">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para Gerenciar Profissionais
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao Painel da Empresa
           </Link>
         </Button>
       </div>
@@ -82,7 +122,6 @@ export default function AddProfessionalPage() {
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="prof-specialty">Especialidade Principal</Label>
-                {/* In a real app, this might be a Select component or datalist */}
                 <Input id="prof-specialty" value={specialty} onChange={(e) => setSpecialty(e.target.value)} placeholder="Ex: Dentista, Cabeleireiro" list="specialties-list" className="mt-1" />
                 <datalist id="specialties-list">
                     {specialties.map(s => <option key={s} value={s} />)}
@@ -94,15 +133,14 @@ export default function AddProfessionalPage() {
               </div>
             </div>
             
-            {/* Add more fields as needed, e.g., description, photo upload, specific services offered by this professional */}
-            
             <p className="text-sm text-muted-foreground">
                 Após adicionar, você poderá configurar os horários de disponibilidade e serviços específicos para este profissional.
-                Um convite por e-mail poderá ser enviado para que ele(a) acesse o painel de profissional.
+                Um convite por e-mail poderá ser enviado para que ele(a) acesse o painel de profissional (funcionalidade futura).
             </p>
             
             <div className="flex justify-end">
-              <Button type="submit" disabled={isSaving}>
+              <Button type="submit" disabled={isSaving || isLoadingCompany}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <Save className="mr-2 h-4 w-4" /> {isSaving ? "Salvando..." : "Salvar Profissional"}
               </Button>
             </div>
@@ -112,3 +150,5 @@ export default function AddProfessionalPage() {
     </div>
   );
 }
+
+    

@@ -14,26 +14,18 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Save, CalendarOff, Ban } from "lucide-react";
+import { ArrowLeft, Save, CalendarOff, Ban, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { APP_NAME } from '@/lib/constants';
+import { APP_NAME, USER_ROLES } from '@/lib/constants';
 import { useParams, useRouter } from "next/navigation";
-import type { AgendaBlock, MockConflictingAppointment } from '@/lib/types';
-import { agendaBlockSchema } from '@/lib/types'; // Assumindo que o schema está em types.ts
+import type { AgendaBlockData as AgendaBlockFormDataFromService, MockConflictingAppointment } from '@/lib/types'; // Renomeado
+import { agendaBlockSchema } from '@/lib/types'; 
+import { useAuth } from "@/contexts/AuthContext";
+import { getCompanyDetailsByOwner, getAgendaBlockById, updateAgendaBlock, getProfessionalsForSelect } from "@/services/supabaseService";
+import { format } from 'date-fns'; // Para formatar data do datetime-local
+import { Skeleton } from '@/components/ui/skeleton';
 
 
-const MOCK_PROFESSIONALS = [
-  { id: "prof1", name: "Dr. João Silva" },
-  { id: "prof2", name: "Dra. Maria Oliveira" },
-  { id: "prof3", name: "Carlos Esteticista" },
-];
-
-const MOCK_EXISTING_BLOCKS: Record<string, AgendaBlock> = {
-    "block1": { id: "block1", targetType: "empresa", inicio: "2024-08-10T09:00", fim: "2024-08-10T17:00", motivo: "Feriado Municipal", repetirSemanalmente: false, ativo: true },
-    "block2": { id: "block2", targetType: "profissional", profissionalId: "prof1", profissionalNome: "Dr. João Silva", inicio: "2024-08-12T12:00", fim: "2024-08-12T13:00", motivo: "Almoço João", repetirSemanalmente: true, ativo: true },
-};
-
-// Mock de agendamentos para simular conflitos
 const MOCK_EXISTING_APPOINTMENTS_EDIT: MockConflictingAppointment[] = [
   { id: "apptEdit1", clienteNome: "Laura P.", dataHora: "27/07/2024 15:00", servico: "Manicure" },
   { id: "apptEdit2", clienteNome: "Pedro S.", dataHora: "27/07/2024 16:00", servico: "Corte Masculino" },
@@ -45,64 +37,119 @@ export default function EditAgendaBlockPage() {
   const params = useParams();
   const router = useRouter();
   const blockId = params.blockId as string;
+  const { user, role } = useAuth();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [professionals, setProfessionals] = useState<{ id: string; name: string }[]>([]);
   
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentBlockMotivo, setCurrentBlockMotivo] = useState<string>("Carregando...");
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
+  const [currentBlockReason, setCurrentBlockReason] = useState<string>("Carregando...");
 
   const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
   const [conflictingAppointments, setConflictingAppointments] = useState<MockConflictingAppointment[]>([]);
-  const [formDataForConflict, setFormDataForConflict] = useState<AgendaBlock | null>(null);
+  const [formDataForConflict, setFormDataForConflict] = useState<AgendaBlockFormDataFromService | null>(null);
   
-  const form = useForm<AgendaBlock>({
+  const form = useForm<AgendaBlockFormDataFromService>({
     resolver: zodResolver(agendaBlockSchema),
   });
   
-  const watchTargetType = form.watch("targetType");
+  const watchTargetType = form.watch("target_type");
 
   useEffect(() => {
-    setIsLoading(true);
-    const blockToEdit = MOCK_EXISTING_BLOCKS[blockId];
-    if (blockToEdit) {
-      form.reset(blockToEdit);
-      setCurrentBlockMotivo(blockToEdit.motivo);
-      document.title = `Editar Bloqueio: ${blockToEdit.motivo} - ${APP_NAME}`;
+    if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      getCompanyDetailsByOwner(user.id).then(companyDetails => {
+        if (companyDetails && companyDetails.id) {
+          setCompanyId(companyDetails.id);
+          fetchProfessionals(companyDetails.id);
+          if (blockId) {
+            fetchBlockData(blockId);
+          } else {
+            toast({ title: "Erro", description: "ID do bloqueio não fornecido.", variant: "destructive" });
+            router.push("/dashboard/company/agenda-blocks");
+            setIsLoadingPage(false);
+          }
+        } else {
+          toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
+          setIsLoadingPage(false);
+          router.push("/dashboard/company");
+        }
+      });
     } else {
-      toast({ title: "Erro", description: "Bloqueio não encontrado.", variant: "destructive" });
-      router.push("/dashboard/company/agenda-blocks");
+      setIsLoadingPage(false);
+       router.push("/login");
     }
-    setIsLoading(false);
-  }, [blockId, form, router, toast]);
+  }, [user, role, blockId, router, toast]); // form não é mais dependência direta aqui
 
-  const simulateConflictCheck = (blockData: AgendaBlock): MockConflictingAppointment[] => {
-    // Simulação básica: se o motivo for alterado para algo específico ou data for específica
-    if (blockData.motivo.toLowerCase().includes("urgente") || blockData.inicio.includes("2024-07-27")) {
+  const fetchProfessionals = async (currentCompanyId: string) => {
+    try {
+      const profs = await getProfessionalsForSelect(currentCompanyId);
+      setProfessionals(profs);
+    } catch (error: any) {
+      toast({ title: "Erro ao buscar profissionais", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const fetchBlockData = async (currentBlockId: string) => {
+    setIsLoadingPage(true);
+    try {
+      const blockToEdit = await getAgendaBlockById(currentBlockId);
+      if (blockToEdit) {
+        // Formatar datas para datetime-local
+        const startTimeFormatted = blockToEdit.start_time ? format(new Date(blockToEdit.start_time), "yyyy-MM-dd'T'HH:mm") : "";
+        const endTimeFormatted = blockToEdit.end_time ? format(new Date(blockToEdit.end_time), "yyyy-MM-dd'T'HH:mm") : "";
+
+        form.reset({
+            ...blockToEdit,
+            start_time: startTimeFormatted,
+            end_time: endTimeFormatted,
+            professional_id: blockToEdit.professional_id || "", // Garantir que é string para o Select
+        });
+        setCurrentBlockReason(blockToEdit.reason);
+        document.title = `Editar Bloqueio: ${blockToEdit.reason} - ${APP_NAME}`;
+      } else {
+        toast({ title: "Erro", description: "Bloqueio não encontrado.", variant: "destructive" });
+        router.push("/dashboard/company/agenda-blocks");
+      }
+    } catch (error: any) {
+        toast({ title: "Erro ao Carregar Bloqueio", description: error.message, variant: "destructive" });
+        router.push("/dashboard/company/agenda-blocks");
+    } finally {
+        setIsLoadingPage(false);
+    }
+  };
+
+
+  const simulateConflictCheck = (blockData: AgendaBlockFormDataFromService): MockConflictingAppointment[] => {
+    if (blockData.reason.toLowerCase().includes("urgente") || blockData.start_time.includes("2024-07-27")) {
       return MOCK_EXISTING_APPOINTMENTS_EDIT;
     }
     return [];
   };
 
-  const handleActualSave = async (data: AgendaBlock) => {
+  const handleActualSave = async (data: AgendaBlockFormDataFromService) => {
     setIsSaving(true);
-    console.log("BACKEND_SIM: Atualizando bloqueio de agenda:", { blockId, data });
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({ title: "Bloqueio Atualizado (Simulação)", description: `O bloqueio "${data.motivo}" foi atualizado.` });
+    try {
+      await updateAgendaBlock(blockId, data);
+      toast({ title: "Bloqueio Atualizado", description: `O bloqueio "${data.reason}" foi atualizado.` });
 
-    if (conflictingAppointments.length > 0 && formDataForConflict) {
-        toast({
-            title: "Agendamentos Cancelados (Simulação)",
-            description: `${conflictingAppointments.length} agendamento(s) conflitante(s) foram cancelados e os clientes notificados.`,
-            variant: "destructive"
-        });
+      if (conflictingAppointments.length > 0 && formDataForConflict) {
+          toast({
+              title: "Agendamentos Cancelados (Simulação)",
+              description: `${conflictingAppointments.length} agendamento(s) conflitante(s) foram cancelados e os clientes notificados.`,
+              variant: "destructive"
+          });
+      }
+      setConflictingAppointments([]);
+      setFormDataForConflict(null);
+      router.push('/dashboard/company/agenda-blocks');
+    } catch (error: any) {
+      toast({ title: "Erro ao Atualizar Bloqueio", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
     }
-    setConflictingAppointments([]);
-    setFormDataForConflict(null);
-    setIsSaving(false);
-    router.push('/dashboard/company/agenda-blocks');
   };
 
-  const onSubmit = async (data: AgendaBlock) => {
+  const onSubmit = async (data: AgendaBlockFormDataFromService) => {
     setIsSaving(true);
     const conflicts = simulateConflictCheck(data);
     setIsSaving(false);
@@ -116,8 +163,16 @@ export default function EditAgendaBlockPage() {
     }
   };
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-64"><p>Carregando dados do bloqueio...</p></div>;
+  if (isLoadingPage) {
+    return (
+        <div className="space-y-8 max-w-2xl mx-auto">
+            <div className="flex items-center justify-between"><Skeleton className="h-10 w-3/5" /><Skeleton className="h-9 w-24" /></div>
+            <Card className="shadow-lg"><CardContent className="pt-6 space-y-6">
+                {[...Array(4)].map((_,i) => <div key={i} className="space-y-2"><Skeleton className="h-5 w-1/4" /><Skeleton className="h-10 w-full" /></div>)}
+                <div className="flex justify-end"><Skeleton className="h-10 w-32" /></div>
+            </CardContent></Card>
+        </div>
+    );
   }
 
   return (
@@ -126,7 +181,7 @@ export default function EditAgendaBlockPage() {
         <div className="flex items-center">
           <CalendarOff className="mr-3 h-8 w-8 text-primary" />
           <CardHeader className="p-0">
-            <CardTitle className="text-3xl font-bold">Editar Bloqueio: {currentBlockMotivo}</CardTitle>
+            <CardTitle className="text-3xl font-bold">Editar Bloqueio: {currentBlockReason}</CardTitle>
             <CardDescription>Modifique os detalhes do bloqueio selecionado.</CardDescription>
           </CardHeader>
         </div>
@@ -143,7 +198,7 @@ export default function EditAgendaBlockPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
                 control={form.control}
-                name="targetType"
+                name="target_type"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Alvo do Bloqueio</FormLabel>
@@ -162,14 +217,15 @@ export default function EditAgendaBlockPage() {
               {watchTargetType === "profissional" && (
                 <FormField
                   control={form.control}
-                  name="profissionalId"
+                  name="professional_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Profissional</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Selecione o profissional" /></SelectTrigger></FormControl>
                         <SelectContent>
-                          {MOCK_PROFESSIONALS.map(prof => (
+                          <SelectItem value="">Nenhum (Empresa Inteira)</SelectItem>
+                          {professionals.map(prof => (
                             <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
                           ))}
                         </SelectContent>
@@ -183,7 +239,7 @@ export default function EditAgendaBlockPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="inicio"
+                  name="start_time"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Data/Hora de Início</FormLabel>
@@ -194,7 +250,7 @@ export default function EditAgendaBlockPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="fim"
+                  name="end_time"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Data/Hora de Fim</FormLabel>
@@ -207,7 +263,7 @@ export default function EditAgendaBlockPage() {
 
               <FormField
                 control={form.control}
-                name="motivo"
+                name="reason"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Motivo do Bloqueio</FormLabel>
@@ -220,7 +276,7 @@ export default function EditAgendaBlockPage() {
               <div className="space-y-3">
                 <FormField
                   control={form.control}
-                  name="repetirSemanalmente"
+                  name="repeats_weekly"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
                       <FormControl>
@@ -233,7 +289,7 @@ export default function EditAgendaBlockPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="ativo"
+                  name="active"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                       <div className="space-y-0.5">
@@ -249,7 +305,8 @@ export default function EditAgendaBlockPage() {
               </div>
               
               <div className="flex justify-end pt-4">
-                <Button type="submit" disabled={isSaving} size="lg">
+                <Button type="submit" disabled={isSaving || isLoadingPage} size="lg">
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   <Save className="mr-2 h-4 w-4" /> {isSaving ? "Verificando/Salvando..." : "Salvar Alterações"}
                 </Button>
               </div>
@@ -295,3 +352,5 @@ export default function EditAgendaBlockPage() {
     </div>
   );
 }
+
+    

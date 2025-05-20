@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, PlusCircle, Edit, Trash2, CalendarOff, Info } from "lucide-react";
+import { ArrowLeft, PlusCircle, Edit, Trash2, CalendarOff, Info, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { APP_NAME } from '@/lib/constants';
+import { APP_NAME, USER_ROLES } from '@/lib/constants';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,76 +20,86 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { AgendaBlock } from '@/lib/types';
+import { useAuth } from "@/contexts/AuthContext";
+import { getCompanyDetailsByOwner, getAgendaBlocksByCompany, deleteAgendaBlock, updateAgendaBlock, type AgendaBlockData } from "@/services/supabaseService";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
-// Mock data - Adicionar alguns exemplos
-const mockInitialBlocks: AgendaBlock[] = [
-    { id: "block1", targetType: "empresa", inicio: new Date(Date.now() + 86400000 * 2).toISOString(), fim: new Date(Date.now() + 86400000 * 2 + 3600000 * 3).toISOString(), motivo: "Feriado Nacional", repetirSemanalmente: false, ativo: true },
-    { id: "block2", targetType: "profissional", profissionalId: "prof1", profissionalNome: "Dr. João Silva", inicio: new Date(Date.now() + 86400000 * 5).toISOString(), fim: new Date(Date.now() + 86400000 * 5 + 3600000).toISOString(), motivo: "Almoço Dr. João", repetirSemanalmente: true, ativo: true },
-    { id: "block3", targetType: "empresa", inicio: new Date(Date.now() - 86400000 * 1).toISOString(), fim: new Date(Date.now() - 86400000 * 1 + 3600000 * 2).toISOString(), motivo: "Manutenção Sistema (Passado)", repetirSemanalmente: false, ativo: false },
-];
-
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AgendaBlocksListPage() {
   const { toast } = useToast();
-  const [blocks, setBlocks] = useState<AgendaBlock[]>([]);
+  const { user, role } = useAuth();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [blocks, setBlocks] = useState<AgendaBlockData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     document.title = `Bloqueios de Agenda - ${APP_NAME}`;
-    // Simular carregamento de dados
-    setIsLoading(true);
-    setTimeout(() => {
-      const storedBlocks = localStorage.getItem('tds_agenda_blocks_mock');
-      if (storedBlocks) {
-        setBlocks(JSON.parse(storedBlocks));
-      } else {
-        setBlocks(mockInitialBlocks);
-        localStorage.setItem('tds_agenda_blocks_mock', JSON.stringify(mockInitialBlocks));
-      }
+    if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      getCompanyDetailsByOwner(user.id).then(companyDetails => {
+        if (companyDetails && companyDetails.id) {
+          setCompanyId(companyDetails.id);
+          fetchAgendaBlocks(companyDetails.id);
+        } else {
+          toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
+          setIsLoading(false);
+        }
+      });
+    } else {
       setIsLoading(false);
-    }, 700);
-  }, []);
+    }
+  }, [user, role, toast]);
 
-  const updateLocalStorage = (updatedBlocks: AgendaBlock[]) => {
-    localStorage.setItem('tds_agenda_blocks_mock', JSON.stringify(updatedBlocks));
+  const fetchAgendaBlocks = async (currentCompanyId: string) => {
+    setIsLoading(true);
+    try {
+      const fetchedBlocks = await getAgendaBlocksByCompany(currentCompanyId);
+      setBlocks(fetchedBlocks);
+    } catch (error: any) {
+      toast({ title: "Erro ao buscar bloqueios", description: error.message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteBlock = (blockId: string) => {
+  const handleDeleteBlock = async (blockId: string) => {
     const blockToDelete = blocks.find(b => b.id === blockId);
     if (!blockToDelete) return;
 
-    console.log("BACKEND_SIM: Excluindo bloqueio ID:", blockId);
-    const updatedBlocks = blocks.filter(block => block.id !== blockId);
-    setBlocks(updatedBlocks);
-    updateLocalStorage(updatedBlocks);
-    toast({
-      title: "Bloqueio Excluído (Simulação)",
-      description: `O bloqueio "${blockToDelete.motivo}" foi removido.`,
-      variant: "destructive",
-    });
+    try {
+      await deleteAgendaBlock(blockId);
+      setBlocks(prevBlocks => prevBlocks.filter(block => block.id !== blockId));
+      toast({
+        title: "Bloqueio Excluído",
+        description: `O bloqueio "${blockToDelete.reason}" foi removido.`,
+      });
+    } catch (error: any) {
+      toast({ title: "Erro ao Excluir", description: error.message, variant: "destructive" });
+    }
   };
   
-  const toggleBlockStatus = (blockId: string) => {
+  const toggleBlockStatus = async (blockId: string) => {
     const blockToToggle = blocks.find(b => b.id === blockId);
     if (!blockToToggle) return;
 
-    const newStatus = !blockToToggle.ativo;
-    console.log(`BACKEND_SIM: Alterando status do bloqueio ID ${blockId} para ${newStatus ? 'ativo' : 'inativo'}`);
-    const updatedBlocks = blocks.map(b => b.id === blockId ? { ...b, ativo: newStatus } : b);
-    setBlocks(updatedBlocks);
-    updateLocalStorage(updatedBlocks);
-    toast({
-      title: `Status Alterado (Simulação)`,
-      description: `O bloqueio "${blockToToggle.motivo}" foi ${newStatus ? "ativado" : "desativado"}.`,
-    });
+    const newStatus = !blockToToggle.active;
+    try {
+      const updatedBlock = await updateAgendaBlock(blockId, { active: newStatus });
+      if (updatedBlock) {
+        setBlocks(prevBlocks => prevBlocks.map(b => b.id === blockId ? { ...b, active: newStatus } : b));
+        toast({
+          title: `Status Alterado`,
+          description: `O bloqueio "${blockToToggle.reason}" foi ${newStatus ? "ativado" : "desativado"}.`,
+        });
+      }
+    } catch (error: any) {
+      toast({ title: "Erro ao Alterar Status", description: error.message, variant: "destructive" });
+    }
   };
   
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Data inválida";
     try {
       return format(new Date(dateString), "dd/MM/yyyy HH:mm", { locale: ptBR });
     } catch (e) {
@@ -97,8 +107,25 @@ export default function AgendaBlocksListPage() {
     }
   };
 
-  if (isLoading) {
-    return <div className="text-center p-10">Carregando bloqueios de agenda...</div>;
+  if (isLoading && blocks.length === 0) {
+     return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-3/5" />
+          <Skeleton className="h-9 w-48" />
+        </div>
+        <Card className="shadow-lg">
+          <CardContent className="pt-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4 py-4 border-b">
+                <div className="space-y-2 flex-grow"> <Skeleton className="h-4 w-1/5" /> <Skeleton className="h-3 w-3/5" /></div>
+                <Skeleton className="h-6 w-20" /> <Skeleton className="h-8 w-24" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -139,7 +166,17 @@ export default function AgendaBlocksListPage() {
 
       <Card className="shadow-lg">
         <CardContent className="pt-6">
-          {blocks.length > 0 ? (
+          {isLoading && blocks.length > 0 && <div className="text-center my-4"><Loader2 className="h-6 w-6 animate-spin inline-block"/> Carregando mais...</div>}
+          {!isLoading && blocks.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">Nenhum bloqueio de agenda cadastrado.</p>
+              <Button asChild>
+                <Link href="/dashboard/company/agenda-blocks/add">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Primeiro Bloqueio
+                </Link>
+              </Button>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -156,18 +193,18 @@ export default function AgendaBlocksListPage() {
                 {blocks.map((block) => (
                   <TableRow key={block.id}>
                     <TableCell className="font-medium">
-                      {block.targetType === "empresa" ? "Empresa Inteira" : `Prof: ${block.profissionalNome || "N/A"}`}
+                      {block.target_type === "empresa" ? "Empresa Inteira" : `Prof: ${(block as any).professionalName || "N/A"}`}
                     </TableCell>
-                    <TableCell>{formatDate(block.inicio)}</TableCell>
-                    <TableCell>{formatDate(block.fim)}</TableCell>
-                    <TableCell className="max-w-xs truncate">{block.motivo}</TableCell>
-                    <TableCell className="text-center">{block.repetirSemanalmente ? <Badge variant="outline">Semanal</Badge> : "Não"}</TableCell>
+                    <TableCell>{formatDate(block.start_time)}</TableCell>
+                    <TableCell>{formatDate(block.end_time)}</TableCell>
+                    <TableCell className="max-w-xs truncate">{block.reason}</TableCell>
+                    <TableCell className="text-center">{block.repeats_weekly ? <Badge variant="outline">Semanal</Badge> : "Não"}</TableCell>
                     <TableCell className="text-center">
                       <Switch
                         id={`status-${block.id}`}
-                        checked={block.ativo}
-                        onCheckedChange={() => toggleBlockStatus(block.id)}
-                        aria-label={block.ativo ? "Desativar bloqueio" : "Ativar bloqueio"}
+                        checked={block.active}
+                        onCheckedChange={() => toggleBlockStatus(block.id!)}
+                        aria-label={block.active ? "Desativar bloqueio" : "Ativar bloqueio"}
                       />
                     </TableCell>
                     <TableCell className="text-right space-x-1">
@@ -186,13 +223,13 @@ export default function AgendaBlocksListPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Tem certeza que deseja excluir o bloqueio "{block.motivo}"? Esta ação não poderá ser desfeita.
+                              Tem certeza que deseja excluir o bloqueio "{block.reason}"? Esta ação não poderá ser desfeita.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleDeleteBlock(block.id)}
+                              onClick={() => handleDeleteBlock(block.id!)}
                               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                             >
                               Excluir
@@ -205,18 +242,11 @@ export default function AgendaBlocksListPage() {
                 ))}
               </TableBody>
             </Table>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">Nenhum bloqueio de agenda cadastrado.</p>
-              <Button asChild>
-                <Link href="/dashboard/company/agenda-blocks/add">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Primeiro Bloqueio
-                </Link>
-              </Button>
-            </div>
           )}
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    

@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { APP_NAME } from "@/lib/constants";
-import { ArrowLeft, Save, ListChecks, PlusCircle, XCircle } from "lucide-react";
+import { APP_NAME, USER_ROLES } from "@/lib/constants";
+import { ArrowLeft, Save, ListChecks, PlusCircle, XCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,6 +24,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCompanyDetailsByOwner, addAvailabilityType } from "@/services/supabaseService";
+import type { AvailabilityTypeData } from "@/services/supabaseService";
 
 const daysOfWeek = [
   { id: 'seg', label: 'Segunda-feira' },
@@ -83,23 +86,26 @@ const availabilityTypeSchema = z.object({
 }, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido (início e fim)." });
 
 
-type AvailabilityTypeFormData = z.infer<typeof availabilityTypeSchema>;
+type AvailabilityTypeFormZodData = z.infer<typeof availabilityTypeSchema>;
 
-const createInitialSchedule = (): AvailabilityTypeFormData['schedule'] => daysOfWeek.reduce((acc, day) => {
-  acc[day.id as keyof AvailabilityTypeFormData['schedule']] = {
+const createInitialSchedule = (): AvailabilityTypeFormZodData['schedule'] => daysOfWeek.reduce((acc, day) => {
+  acc[day.id as keyof AvailabilityTypeFormZodData['schedule']] = {
     active: day.id !== 'sab' && day.id !== 'dom', 
     intervals: [{ start: "09:00", end: "18:00" }] 
   };
   return acc;
-}, {} as AvailabilityTypeFormData['schedule']);
+}, {} as AvailabilityTypeFormZodData['schedule']);
 
 
 export default function AddAvailabilityTypePage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { user, role } = useAuth();
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingCompany, setIsLoadingCompany] = useState(true);
 
-  const form = useForm<AvailabilityTypeFormData>({
+  const form = useForm<AvailabilityTypeFormZodData>({
     resolver: zodResolver(availabilityTypeSchema),
     defaultValues: {
       name: "",
@@ -110,40 +116,67 @@ export default function AddAvailabilityTypePage() {
 
   useEffect(() => {
     document.title = `Adicionar Tipo de Disponibilidade - ${APP_NAME}`;
-  }, []);
+    if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      getCompanyDetailsByOwner(user.id).then(companyDetails => {
+        if (companyDetails && companyDetails.id) {
+          setCompanyId(companyDetails.id);
+        } else {
+          toast({ title: "Erro", description: "Empresa não encontrada. Cadastre os detalhes da empresa primeiro.", variant: "destructive" });
+        }
+        setIsLoadingCompany(false);
+      });
+    } else {
+        setIsLoadingCompany(false);
+    }
+  }, [user, role, toast]);
 
-  const onSubmit = async (data: AvailabilityTypeFormData) => {
+  const onSubmit = async (data: AvailabilityTypeFormZodData) => {
+    if (!companyId) {
+      toast({ title: "Erro", description: "ID da empresa não encontrado.", variant: "destructive" });
+      return;
+    }
     setIsSaving(true);
+    
     const scheduleWithFilteredIntervals = { ...data.schedule };
     for (const dayKey in scheduleWithFilteredIntervals) {
       const day = scheduleWithFilteredIntervals[dayKey as keyof typeof scheduleWithFilteredIntervals];
       if (day.active) {
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
-        if (day.intervals.length === 0) {
-          // This case should be caught by the global refine or individual interval validation.
-        }
       } else {
-        day.intervals = [{ start: "", end: "" }]; 
+        day.intervals = []; // Se inativo, não precisa de intervalos
       }
     }
-    const finalData = { ...data, schedule: scheduleWithFilteredIntervals };
+    const typeDataToSave: Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'> = {
+      name: data.name,
+      description: data.description,
+      schedule: scheduleWithFilteredIntervals,
+    };
 
-    console.log("BACKEND_SIM: Novo tipo de disponibilidade a ser salvo:", finalData);
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    toast({
-      title: "Tipo de Disponibilidade Adicionado (Simulação)",
-      description: `O tipo "${data.name}" foi cadastrado.`,
-    });
-    form.reset({ 
-      name: "",
-      description: "",
-      schedule: createInitialSchedule(),
-    });
-    setIsSaving(false);
-    router.push('/dashboard/company/availability-types');
+    try {
+      await addAvailabilityType(companyId, typeDataToSave);
+      toast({
+        title: "Tipo de Disponibilidade Adicionado",
+        description: `O tipo "${data.name}" foi cadastrado.`,
+      });
+      form.reset({ 
+        name: "",
+        description: "",
+        schedule: createInitialSchedule(),
+      });
+      router.push('/dashboard/company/availability-types');
+    } catch (error: any) {
+      toast({ title: "Erro ao Adicionar Tipo", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoadingCompany) {
+    return <div className="text-center p-10">Carregando dados da empresa...</div>;
+  }
+  if (!companyId && !isLoadingCompany) {
+     return <div className="text-center p-10 text-destructive">Não foi possível carregar os dados da empresa. Verifique se o perfil da empresa está completo.</div>;
+  }
 
   return (
     <Form {...form}>
@@ -161,7 +194,8 @@ export default function AddAvailabilityTypePage() {
               </CardTitle>
             </CardHeader>
           </div>
-          <Button type="submit" disabled={isSaving}>
+          <Button type="submit" disabled={isSaving || isLoadingCompany}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" /> {isSaving ? "Salvando..." : "Salvar Tipo"}
           </Button>
         </div>
@@ -203,7 +237,7 @@ export default function AddAvailabilityTypePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {daysOfWeek.map((day) => {
-                  const dayKey = day.id as keyof AvailabilityTypeFormData['schedule'];
+                  const dayKey = day.id as keyof AvailabilityTypeFormZodData['schedule'];
                   const { fields, append, remove } = useFieldArray({
                     control: form.control,
                     name: `schedule.${dayKey}.intervals`
@@ -265,7 +299,7 @@ export default function AddAvailabilityTypePage() {
                                 onClick={() => remove(index)}
                                 className="text-destructive hover:text-destructive"
                                 title="Remover horário"
-                                disabled={fields.length <= 1 && (!fields[0]?.start && !fields[0]?.end)}
+                                disabled={fields.length <= 1}
                               >
                                 <XCircle className="h-5 w-5" />
                               </Button>
@@ -289,7 +323,7 @@ export default function AddAvailabilityTypePage() {
                           <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.root?.message}</FormMessage>
                         </React.Fragment>
                        ))}
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage> {/* Corrected path */}
+                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage>
                        <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage> 
                     </div>
                   );

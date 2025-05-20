@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import Link from "next/link";
-import Image from "next/image";
+import NextImage from "next/image"; // Renomeado para evitar conflito
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -16,8 +16,8 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { APP_NAME } from "@/lib/constants";
-import { ArrowLeft, Save, Trash2, ImagePlus, XCircle, Copy } from "lucide-react";
+import { APP_NAME, USER_ROLES } from "@/lib/constants";
+import { ArrowLeft, Save, Trash2, ImagePlus, XCircle, Copy, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -28,7 +28,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -40,17 +39,16 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useAuth } from "@/contexts/AuthContext";
+import { getServiceById, updateService, deleteService, getAvailabilityTypesForSelect, getCompanyDetailsByOwner } from "@/services/supabaseService";
+import type { ServiceData } from "@/services/supabaseService";
+import { Skeleton } from "@/components/ui/skeleton";
 
+// Mantendo MOCK_PROFESSIONALS por enquanto
 const MOCK_PROFESSIONALS = [
-  { id: "prof1", name: "Dr. João Silva" },
-  { id: "prof2", name: "Dra. Maria Oliveira" },
-  { id: "prof3", name: "Carlos Souza (Esteticista)" },
-];
-
-const MOCK_AVAILABILITY_TYPES = [
-  { id: "type1", name: "Horário Comercial Padrão" },
-  { id: "type2", name: "Plantão Final de Semana" },
-  { id: "type3", name: "Horário Noturno Reduzido" },
+  { id: "prof1", name: "Dr. João Silva (Mock)" },
+  { id: "prof2", name: "Dra. Maria Oliveira (Mock)" },
+  { id: "prof3", name: "Carlos Souza (Esteticista Mock)" },
 ];
 
 const serviceCategories = [
@@ -66,139 +64,128 @@ const serviceCategories = [
 const serviceSchema = z.object({
   name: z.string().min(3, "O nome do serviço deve ter pelo menos 3 caracteres."),
   description: z.string().optional(),
-  professionals: z.array(z.string()).optional().default([]).describe("Profissionais que realizam este serviço"),
+  // professionals: z.array(z.string()).optional().default([]), // Mock
   category: z.string().min(1, "A categoria é obrigatória."),
-  image: z.string().optional(),
-  duration: z.coerce.number().int().positive("A duração deve ser um número positivo.").min(5, "Duração mínima de 5 minutos."),
-  displayDuration: z.boolean().default(true),
-  uniqueSchedulingLink: z.string().min(3, "O link deve ter pelo menos 3 caracteres.").regex(/^[a-z0-9-]+$/, { message: "O link pode conter apenas letras minúsculas, números e hífens." }),
-  price: z.string().min(1, "O preço é obrigatório.").regex(/^\d+(,\d{2})?$/, "Formato de preço inválido (ex: 50 ou 50,00)"),
-  commissionType: z.enum(["fixed", "percentage"]).optional(),
-  commissionValue: z.coerce.number().nonnegative("A comissão não pode ser negativa.").optional(),
-  hasBookingFee: z.boolean().default(false),
-  bookingFeeValue: z.coerce.number().nonnegative("A taxa não pode ser negativa.").optional(),
-  simultaneousAppointmentsPerUser: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por usuário.").default(1),
-  simultaneousAppointmentsPerSlot: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por horário.").default(1),
-  simultaneousAppointmentsPerSlotAutomatic: z.boolean().default(false),
-  blockAfter24Hours: z.boolean().default(false),
-  intervalBetweenSlots: z.coerce.number().int().min(0, "O intervalo não pode ser negativo.").default(0),
-  confirmationType: z.enum(["manual", "automatic"]).default("automatic"),
-  availabilityTypeId: z.string().optional().describe("Tipo de disponibilidade vinculado a este serviço."),
+  image_url: z.string().optional(),
+  duration_minutes: z.coerce.number().int().positive("A duração deve ser um número positivo.").min(5, "Duração mínima de 5 minutos."),
+  display_duration: z.boolean().default(true),
+  unique_scheduling_link_slug: z.string().min(3, "O link deve ter pelo menos 3 caracteres.").regex(/^[a-z0-9-]+$/, { message: "O link pode conter apenas letras minúsculas, números e hífens." }).optional().or(z.literal('')),
+  price: z.string().min(1, "O preço é obrigatório.").regex(/^\d+([,.]\d{1,2})?$/, "Formato de preço inválido (ex: 50 ou 50,00)"),
+  commission_type: z.enum(["fixed", "percentage"]).optional(),
+  commission_value: z.coerce.number().nonnegative("A comissão não pode ser negativa.").optional(),
+  has_booking_fee: z.boolean().default(false),
+  booking_fee_value: z.coerce.number().nonnegative("A taxa não pode ser negativa.").optional(),
+  simultaneous_appointments_per_user: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por usuário.").default(1),
+  simultaneous_appointments_per_slot: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por horário.").default(1),
+  simultaneous_appointments_per_slot_automatic: z.boolean().default(false),
+  block_after_24_hours: z.boolean().default(false),
+  interval_between_slots_minutes: z.coerce.number().int().min(0, "O intervalo não pode ser negativo.").default(0),
+  confirmation_type: z.enum(["manual", "automatic"]).default("automatic"),
+  availability_type_id: z.string().optional(),
   active: z.boolean().default(true),
 }).refine(data => {
-  if (data.hasBookingFee && (data.bookingFeeValue === undefined || data.bookingFeeValue < 0)) {
+  if (data.has_booking_fee && (data.booking_fee_value === undefined || data.booking_fee_value < 0)) {
     return false;
   }
   return true;
 }, {
   message: "O valor da taxa de agendamento é obrigatório e deve ser positivo se a taxa estiver habilitada.",
-  path: ["bookingFeeValue"],
+  path: ["booking_fee_value"],
 }).refine(data => {
-    if (data.commissionType && (data.commissionValue === undefined || data.commissionValue < 0)) {
+    if (data.commission_type && (data.commission_value === undefined || data.commission_value < 0)) {
         return false;
     }
     return true;
 }, {
     message: "O valor da comissão é obrigatório e deve ser positivo se um tipo de comissão for selecionado.",
-    path: ["commissionValue"],
+    path: ["commission_value"],
 });
 
-type ServiceFormData = z.infer<typeof serviceSchema>;
-
-// Mock data now includes all fields for services
-const mockExistingServices: { [key: string]: ServiceFormData } = {
-  "1": { 
-    name: "Corte de Cabelo Masculino", 
-    description: "Corte moderno e estiloso para homens. Inclui lavagem e finalização.", 
-    professionals: ["prof1", "prof3"], 
-    category: "Beleza e Estética", 
-    duration: 45, 
-    displayDuration: true, 
-    active: true, 
-    image: "https://placehold.co/300x200.png?text=Corte+Masc", 
-    price: "50,00", 
-    uniqueSchedulingLink: "corte-masculino", 
-    commissionType: "percentage", 
-    commissionValue: 10, 
-    hasBookingFee: false, 
-    bookingFeeValue: 0, 
-    simultaneousAppointmentsPerUser: 1, 
-    simultaneousAppointmentsPerSlot: 1, 
-    simultaneousAppointmentsPerSlotAutomatic: false, 
-    blockAfter24Hours: false, 
-    intervalBetweenSlots: 15, 
-    confirmationType: "automatic", 
-    availabilityTypeId: "type1" 
-  },
-  "2": { 
-    name: "Consulta Psicológica Online", 
-    description: "Sessão de terapia online com psicólogo qualificado. Atendimento focado em suas necessidades.", 
-    professionals: ["prof2"], 
-    category: "Saúde e Bem-estar", 
-    duration: 50, 
-    displayDuration: true, 
-    active: true, 
-    image: "https://placehold.co/300x200.png?text=Psico+Online", 
-    price: "120,00", 
-    uniqueSchedulingLink: "consulta-psico-online", 
-    commissionType: "fixed", 
-    commissionValue: 20, 
-    hasBookingFee: true, 
-    bookingFeeValue: 10, 
-    simultaneousAppointmentsPerUser: 1, 
-    simultaneousAppointmentsPerSlot: 1, 
-    simultaneousAppointmentsPerSlotAutomatic: true, 
-    blockAfter24Hours: true, 
-    intervalBetweenSlots: 0, 
-    confirmationType: "manual", 
-    availabilityTypeId: "" 
-  },
-};
-
+type ServiceFormZodData = z.infer<typeof serviceSchema>;
 
 export default function EditServicePage() {
   const { toast } = useToast();
   const params = useParams();
   const router = useRouter();
   const serviceId = params.serviceId as string;
+  const { user, role } = useAuth();
+  const [companyId, setCompanyId] = useState<string | null>(null);
   
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [availabilityTypes, setAvailabilityTypes] = useState<{ id: string; name: string }[]>([]);
 
-  const form = useForm<ServiceFormData>({
+  const form = useForm<ServiceFormZodData>({
     resolver: zodResolver(serviceSchema),
   });
   
   const serviceName = form.watch("name");
-  const watchHasBookingFee = form.watch("hasBookingFee");
+  const watchHasBookingFee = form.watch("has_booking_fee");
 
   useEffect(() => {
-    if (serviceId) {
-      console.log(`BACKEND_SIM: Buscando dados do serviço com ID: ${serviceId}`);
-      const existingService = mockExistingServices[serviceId];
+    if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      getCompanyDetailsByOwner(user.id).then(companyDetails => {
+        if (companyDetails && companyDetails.id) {
+          setCompanyId(companyDetails.id);
+          fetchAvailabilityTypes(companyDetails.id);
+          if (serviceId) {
+            fetchServiceData(serviceId);
+          } else {
+            setIsLoadingPage(false); // No serviceId, nothing to load for edit
+          }
+        } else {
+          toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
+          setIsLoadingPage(false);
+          router.push('/dashboard/company/services');
+        }
+      });
+    } else {
+      setIsLoadingPage(false); // No user or wrong role
+    }
+  }, [user, role, serviceId, toast, router]); // Adicionado serviceId e router
+
+  const fetchServiceData = async (currentServiceId: string) => {
+    setIsLoadingPage(true);
+    try {
+      const existingService = await getServiceById(currentServiceId);
       if (existingService) {
-        form.reset(existingService); 
-        setImagePreview(existingService.image || "https://placehold.co/300x200.png?text=Serviço");
-        setIsLoading(false);
+        form.reset({
+          ...existingService,
+          price: String(existingService.price).replace('.', ','),
+          image_url: existingService.image_url || "https://placehold.co/300x200.png?text=Serviço",
+          availability_type_id: existingService.availability_type_id || "", // Ensure it's a string for Select
+        });
+        setImagePreview(existingService.image_url || "https://placehold.co/300x200.png?text=Serviço");
       } else {
         toast({ title: "Erro", description: "Serviço não encontrado.", variant: "destructive" });
-        setIsLoading(false); 
-         router.push('/dashboard/company/services'); 
+        router.push('/dashboard/company/services');
       }
-    } else {
-        setIsLoading(false); 
+    } catch (error: any) {
+      toast({ title: "Erro ao Carregar Serviço", description: error.message, variant: "destructive" });
+      router.push('/dashboard/company/services');
+    } finally {
+      setIsLoadingPage(false);
     }
-  }, [serviceId, form, toast, router]);
+  };
+  
+  const fetchAvailabilityTypes = async (currentCompanyId: string) => {
+    try {
+      const types = await getAvailabilityTypesForSelect(currentCompanyId);
+      setAvailabilityTypes(types);
+    } catch (error: any) {
+      toast({ title: "Erro ao buscar tipos de disponibilidade", description: error.message, variant: "destructive" });
+    }
+  };
   
   useEffect(() => {
     if (serviceName) {
       document.title = `Editar: ${serviceName} - ${APP_NAME}`;
-    } else {
+    } else if (!isLoadingPage) {
       document.title = `Editar Serviço - ${APP_NAME}`;
     }
-  }, [serviceName]);
+  }, [serviceName, isLoadingPage]);
 
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,42 +195,61 @@ export default function EditServicePage() {
       reader.onloadend = () => {
         const result = reader.result as string;
         setImagePreview(result);
-        form.setValue("image", result, { shouldValidate: true });
+        form.setValue("image_url", result, { shouldValidate: true });
       };
       reader.readAsDataURL(file);
+      toast({title: "Simulação", description: "Imagem carregada para preview."});
     }
   };
   
   const removeImage = () => {
     const placeholder = "https://placehold.co/300x200.png?text=Serviço";
     setImagePreview(placeholder);
-    form.setValue("image", placeholder, { shouldValidate: true });
+    form.setValue("image_url", placeholder, { shouldValidate: true });
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; 
     }
   };
 
-  const onSubmit = async (data: ServiceFormData) => {
+  const onSubmit = async (data: ServiceFormZodData) => {
+    if (!serviceId) {
+        toast({ title: "Erro", description: "ID do serviço não encontrado para atualização.", variant: "destructive" });
+        return;
+    }
     setIsSaving(true);
-    console.log("BACKEND_SIM: Dados do serviço a serem atualizados:", { serviceId, data });
-    await new Promise(resolve => setTimeout(resolve, 1500)); 
-    toast({
-      title: "Serviço Atualizado! (Simulação)",
-      description: `O serviço "${data.name}" foi atualizado com sucesso (simulação frontend).`,
-    });
-    setIsSaving(false);
-    router.push('/dashboard/company/services');
+    const serviceDataToUpdate: Partial<Omit<ServiceData, 'id' | 'company_id' | 'created_at' | 'updated_at'>> = {
+      ...data,
+      price: parseFloat(data.price.replace(",", ".")),
+      availability_type_id: data.availability_type_id === "" ? null : data.availability_type_id,
+    };
+
+    try {
+      await updateService(serviceId, serviceDataToUpdate);
+      toast({
+        title: "Serviço Atualizado!",
+        description: `O serviço "${data.name}" foi atualizado com sucesso.`,
+      });
+      router.push('/dashboard/company/services');
+    } catch (error: any) {
+      toast({ title: "Erro ao Atualizar Serviço", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async () => {
     setIsSaving(true); 
-    console.log("BACKEND_SIM: Solicitação de exclusão para o serviço ID:", serviceId);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: "Serviço Excluído (Simulação)",
-      description: `O serviço "${form.getValues("name")}" foi excluído (simulação frontend).`,
-    });
-    router.push('/dashboard/company/services');
+    try {
+      await deleteService(serviceId);
+      toast({
+        title: "Serviço Excluído",
+        description: `O serviço "${form.getValues("name")}" foi excluído.`,
+      });
+      router.push('/dashboard/company/services');
+    } catch (error: any) {
+      toast({ title: "Erro ao Excluir", description: error.message, variant: "destructive" });
+      setIsSaving(false);
+    }
   };
 
   const handleDuplicate = () => {
@@ -251,10 +257,9 @@ export default function EditServicePage() {
     const duplicatedValues = { 
       ...currentValues, 
       name: `${currentValues.name} (Cópia)`, 
-      uniqueSchedulingLink: `${currentValues.uniqueSchedulingLink}-copia`
+      unique_scheduling_link_slug: `${currentValues.unique_scheduling_link_slug || currentValues.name.toLowerCase().replace(/\s+/g, '-')}-copia`
     };
     
-    console.log("BACKEND_SIM: Dados do serviço duplicado (frontend) para pré-preencher formulário de adição:", duplicatedValues);
     localStorage.setItem('duplicate_service_data', JSON.stringify(duplicatedValues));
     
     toast({
@@ -264,29 +269,31 @@ export default function EditServicePage() {
     router.push('/dashboard/company/services/add?fromDuplicate=true');
   };
   
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-64"><p>Carregando dados do serviço...</p></div>;
-  }
-  if (!isLoading && !mockExistingServices[serviceId] && serviceId) {
-     return (
-      <div className="flex flex-col justify-center items-center h-64 space-y-4">
-        <p className="text-xl text-destructive">Serviço com ID '{serviceId}' não encontrado.</p>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/company/services">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para Serviços
-          </Link>
-        </Button>
-      </div>
+  if (isLoadingPage) {
+    return (
+        <div className="space-y-8">
+            <div className="flex items-center justify-between">
+                <Skeleton className="h-10 w-3/5" />
+                <div className="flex gap-2"><Skeleton className="h-9 w-24" /><Skeleton className="h-9 w-24" /><Skeleton className="h-9 w-24" /></div>
+            </div>
+            <Tabs defaultValue="configurations" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+                    <Skeleton className="h-10 w-full" /> <Skeleton className="h-10 w-full" /> <Skeleton className="h-10 w-full" /> <Skeleton className="h-10 w-full" />
+                </TabsList>
+                <TabsContent value="configurations"><Card className="shadow-lg"><CardContent className="pt-6 space-y-6">
+                    {[...Array(5)].map((_,i) => <div key={i} className="space-y-2"><Skeleton className="h-5 w-1/4" /><Skeleton className="h-10 w-full" /></div>)}
+                </CardContent></Card></TabsContent>
+            </Tabs>
+        </div>
     );
   }
-
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="icon" asChild>
+            <Button variant="outline" size="icon" asChild type="button">
               <Link href="/dashboard/company/services">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
@@ -333,6 +340,7 @@ export default function EditServicePage() {
               </AlertDialogContent>
             </AlertDialog>
             <Button type="submit" disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Save className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{isSaving ? "Salvando..." : "Salvar Alterações"}</span>
             </Button>
           </div>
@@ -375,13 +383,13 @@ export default function EditServicePage() {
                         </FormItem>
                       )}
                     />
-                     <FormField
+                     {/* <FormField
                         control={form.control}
                         name="professionals"
                         render={() => (
                             <FormItem>
                             <div className="mb-2">
-                                <FormLabel className="text-base">Profissionais Responsáveis</FormLabel>
+                                <FormLabel className="text-base">Profissionais Responsáveis (Mock)</FormLabel>
                                 <FormDescription>Selecione os profissionais que podem realizar este serviço.</FormDescription>
                             </div>
                             <div className="space-y-2">
@@ -420,7 +428,7 @@ export default function EditServicePage() {
                             <FormMessage />
                             </FormItem>
                         )}
-                    />
+                    /> */}
                     <FormField
                       control={form.control}
                       name="category"
@@ -440,7 +448,7 @@ export default function EditServicePage() {
                     />
                     <FormField
                       control={form.control}
-                      name="image"
+                      name="image_url"
                       render={({ fieldState }) => ( 
                         <FormItem>
                           <FormLabel>Imagem Ilustrativa do Serviço</FormLabel>
@@ -449,8 +457,8 @@ export default function EditServicePage() {
                               <div className="flex items-center gap-4">
                                 {imagePreview && (
                                   <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px]">
-                                    <Image src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
-                                    {form.getValues("image") !== "https://placehold.co/300x200.png?text=Serviço" && (
+                                    <NextImage src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
+                                    {form.getValues("image_url") !== "https://placehold.co/300x200.png?text=Serviço" && (
                                       <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
                                         <XCircle className="h-4 w-4"/>
                                       </Button>
@@ -472,7 +480,7 @@ export default function EditServicePage() {
                     <div className="grid md:grid-cols-2 gap-6">
                       <FormField
                           control={form.control}
-                          name="duration"
+                          name="duration_minutes"
                           render={({ field }) => (
                           <FormItem>
                               <FormLabel>Duração (em minutos)</FormLabel>
@@ -499,10 +507,10 @@ export default function EditServicePage() {
                     </div>
                      <FormField
                       control={form.control}
-                      name="uniqueSchedulingLink"
+                      name="unique_scheduling_link_slug"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Link Único de Agendamento para o Serviço</FormLabel>
+                          <FormLabel>Link Único de Agendamento para o Serviço (Opcional)</FormLabel>
                           <FormControl>
                              <div className="flex items-center">
                                 <span className="px-3 py-2 bg-muted rounded-l-md border border-r-0 text-xs text-muted-foreground">
@@ -511,7 +519,7 @@ export default function EditServicePage() {
                                 <Input placeholder="meu-servico-incrivel" {...field} onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/\s+/g, '-'))} className="rounded-l-none"/>
                             </div>
                           </FormControl>
-                          <FormDescription>Será usado para: {`easyagenda.com/agendar/nome-empresa/servico/${field.value || "meu-servico"}`}</FormDescription>
+                          <FormDescription>Será usado para: {`tds.agenda/agendar/nome-empresa/servico/${field.value || "meu-servico"}`}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -522,7 +530,7 @@ export default function EditServicePage() {
                         <div className="grid md:grid-cols-2 gap-6">
                         <FormField
                             control={form.control}
-                            name="commissionType"
+                            name="commission_type"
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Tipo de Comissão</FormLabel>
@@ -539,7 +547,7 @@ export default function EditServicePage() {
                         />
                         <FormField
                             control={form.control}
-                            name="commissionValue"
+                            name="commission_value"
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Valor da Comissão</FormLabel>
@@ -556,7 +564,7 @@ export default function EditServicePage() {
                     <div className="space-y-3 p-4 border rounded-md">
                         <FormField
                         control={form.control}
-                        name="hasBookingFee"
+                        name="has_booking_fee"
                         render={({ field }) => (
                             <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                             <FormControl>
@@ -574,7 +582,7 @@ export default function EditServicePage() {
                         {watchHasBookingFee && (
                              <FormField
                                 control={form.control}
-                                name="bookingFeeValue"
+                                name="booking_fee_value"
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Valor da Taxa de Agendamento (R$)</FormLabel>
@@ -592,7 +600,7 @@ export default function EditServicePage() {
                     <div className="grid md:grid-cols-2 gap-6">
                         <FormField
                             control={form.control}
-                            name="simultaneousAppointmentsPerUser"
+                            name="simultaneous_appointments_per_user"
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Agend. Ativos por Usuário</FormLabel>
@@ -607,12 +615,12 @@ export default function EditServicePage() {
                         <div className="space-y-1">
                          <FormField
                             control={form.control}
-                            name="simultaneousAppointmentsPerSlot"
+                            name="simultaneous_appointments_per_slot"
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Agend. por Horário</FormLabel>
                                 <FormControl>
-                                <Input type="number" {...field} disabled={form.watch("simultaneousAppointmentsPerSlotAutomatic")} />
+                                <Input type="number" {...field} disabled={form.watch("simultaneous_appointments_per_slot_automatic")} />
                                 </FormControl>
                                 <FormDescription>Quantos clientes podem agendar no mesmo horário.</FormDescription>
                                 <FormMessage />
@@ -621,7 +629,7 @@ export default function EditServicePage() {
                         />
                         <FormField
                             control={form.control}
-                            name="simultaneousAppointmentsPerSlotAutomatic"
+                            name="simultaneous_appointments_per_slot_automatic"
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center space-x-3 space-y-0 mt-2">
                                 <FormControl>
@@ -635,7 +643,7 @@ export default function EditServicePage() {
                     </div>
                      <FormField
                       control={form.control}
-                      name="blockAfter24Hours"
+                      name="block_after_24_hours"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
                           <FormControl>
@@ -655,7 +663,7 @@ export default function EditServicePage() {
                     />
                     <FormField
                         control={form.control}
-                        name="intervalBetweenSlots"
+                        name="interval_between_slots_minutes"
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Intervalo entre Slots de Horários (minutos)</FormLabel>
@@ -669,7 +677,7 @@ export default function EditServicePage() {
                     />
                     <FormField
                         control={form.control}
-                        name="confirmationType"
+                        name="confirmation_type"
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Tipo de Confirmação</FormLabel>
@@ -687,7 +695,7 @@ export default function EditServicePage() {
                     />
                     <FormField
                         control={form.control}
-                        name="availabilityTypeId"
+                        name="availability_type_id"
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Tipo de Disponibilidade Vinculado</FormLabel>
@@ -695,7 +703,7 @@ export default function EditServicePage() {
                                 <FormControl><SelectTrigger><SelectValue placeholder="Selecione um tipo de disponibilidade" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                      <SelectItem value="">Nenhum (usar horários do profissional/empresa)</SelectItem>
-                                    {MOCK_AVAILABILITY_TYPES.map(type => (
+                                    {availabilityTypes.map(type => (
                                         <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
                                     ))}
                                 </SelectContent>
@@ -707,7 +715,7 @@ export default function EditServicePage() {
                     />
                     <FormField
                       control={form.control}
-                      name="displayDuration"
+                      name="display_duration"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
                           <FormControl>

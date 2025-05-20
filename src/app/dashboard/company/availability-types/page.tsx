@@ -5,10 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, Edit, Trash2, ListChecks } from "lucide-react";
+import { ArrowLeft, PlusCircle, Edit, Trash2, ListChecks, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -19,39 +19,102 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-interface AvailabilityType {
-  id: string;
-  name: string;
-  description: string;
-  ruleSummary: string; // Resumo das regras para exibição
-}
-
-const mockAvailabilityTypes: AvailabilityType[] = [
-  { id: "type1", name: "Horário Comercial Padrão", description: "Segunda a Sexta, das 9h às 18h, com pausa para almoço.", ruleSummary: "Seg-Sex 9-18h (Almoço 12-13h)" },
-  { id: "type2", name: "Plantão Final de Semana", description: "Sábados e Domingos, horários específicos sob demanda.", ruleSummary: "Sáb/Dom - Flexível" },
-  { id: "type3", name: "Horário Noturno Reduzido", description: "Segunda a Quinta, das 18h às 21h.", ruleSummary: "Seg-Qui 18-21h" },
-];
+import { useAuth } from "@/contexts/AuthContext";
+import { getCompanyDetailsByOwner, getAvailabilityTypesByCompany, deleteAvailabilityType, type AvailabilityTypeData } from "@/services/supabaseService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AvailabilityTypesPage() {
   const { toast } = useToast();
-  const [availabilityTypes, setAvailabilityTypes] = useState(mockAvailabilityTypes);
+  const { user, role } = useAuth();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [availabilityTypes, setAvailabilityTypes] = useState<AvailabilityTypeData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     document.title = `Tipos de Disponibilidade - ${APP_NAME}`;
-    console.log("BACKEND_SIM: Buscando lista de tipos de disponibilidade...");
-  }, []);
+    if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      getCompanyDetailsByOwner(user.id).then(companyDetails => {
+        if (companyDetails && companyDetails.id) {
+          setCompanyId(companyDetails.id);
+          fetchAvailabilityTypes(companyDetails.id);
+        } else {
+          toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
+          setIsLoading(false);
+        }
+      });
+    } else {
+        setIsLoading(false);
+    }
+  }, [user, role, toast]);
 
-  const handleDeleteType = (typeId: string) => {
-    console.log("BACKEND_SIM: Enviando solicitação para excluir tipo de disponibilidade ID:", typeId);
-    setAvailabilityTypes(prev => prev.filter(type => type.id !== typeId));
-    toast({
-      title: "Tipo de Disponibilidade Excluído (Simulação)",
-      description: "O tipo foi removido da sua lista (simulação frontend).",
-    });
+  const fetchAvailabilityTypes = async (currentCompanyId: string) => {
+    setIsLoading(true);
+    try {
+      const types = await getAvailabilityTypesByCompany(currentCompanyId);
+      setAvailabilityTypes(types);
+    } catch (error: any) {
+      toast({ title: "Erro ao buscar tipos de disponibilidade", description: error.message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleDeleteType = async (typeId: string) => {
+    const typeToDelete = availabilityTypes.find(t => t.id === typeId);
+    if (!typeToDelete) return;
+
+    try {
+      await deleteAvailabilityType(typeId);
+      setAvailabilityTypes(prev => prev.filter(type => type.id !== typeId));
+      toast({
+        title: "Tipo de Disponibilidade Excluído",
+        description: `O tipo "${typeToDelete.name}" foi removido.`,
+      });
+    } catch (error: any) {
+      toast({ title: "Erro ao Excluir", description: error.message, variant: "destructive" });
+    }
+  };
+  
+  const getRuleSummary = (schedule: any): string => {
+    if (!schedule) return "N/A";
+    const activeDays = Object.entries(schedule)
+      .filter(([_, dayDetails]) => (dayDetails as any).active && (dayDetails as any).intervals?.length > 0 && (dayDetails as any).intervals[0].start)
+      .map(([dayKey, dayDetails]) => {
+        const dayLabel = dayKey.substring(0,3).toUpperCase();
+        const intervals = (dayDetails as any).intervals
+          .map((int: any) => `${int.start}-${int.end}`)
+          .join(', ');
+        return `${dayLabel}: ${intervals}`;
+      });
+    return activeDays.length > 0 ? activeDays.slice(0, 2).join('; ') + (activeDays.length > 2 ? '...' : '') : "Nenhum horário definido";
+  };
+
+
+  if (isLoading && availabilityTypes.length === 0) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-3/5" />
+          <Skeleton className="h-9 w-48" />
+        </div>
+        <Card className="shadow-lg">
+          <CardContent className="pt-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4 py-4 border-b">
+                <div className="space-y-2 flex-grow">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -78,7 +141,17 @@ export default function AvailabilityTypesPage() {
 
       <Card className="shadow-lg">
         <CardContent className="pt-6">
-          {availabilityTypes.length > 0 ? (
+         {isLoading && availabilityTypes.length > 0 && <div className="text-center my-4"><Loader2 className="h-6 w-6 animate-spin inline-block"/> Carregando mais...</div>}
+          {!isLoading && availabilityTypes.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">Nenhum tipo de disponibilidade cadastrado.</p>
+              <Button asChild>
+                <Link href="/dashboard/company/availability-types/add">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Primeiro Tipo
+                </Link>
+              </Button>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -93,7 +166,7 @@ export default function AvailabilityTypesPage() {
                   <TableRow key={type.id}>
                     <TableCell className="font-medium">{type.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{type.description}</TableCell>
-                    <TableCell><Badge variant="secondary">{type.ruleSummary}</Badge></TableCell>
+                    <TableCell><Badge variant="secondary">{getRuleSummary(type.schedule)}</Badge></TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button variant="ghost" size="icon" asChild title="Editar tipo">
                         <Link href={`/dashboard/company/availability-types/edit/${type.id}`}>
@@ -116,7 +189,7 @@ export default function AvailabilityTypesPage() {
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleDeleteType(type.id)}
+                              onClick={() => handleDeleteType(type.id!)}
                               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                             >
                               Excluir
@@ -129,18 +202,11 @@ export default function AvailabilityTypesPage() {
                 ))}
               </TableBody>
             </Table>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">Nenhum tipo de disponibilidade cadastrado.</p>
-              <Button asChild>
-                <Link href="/dashboard/company/availability-types/add">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Primeiro Tipo
-                </Link>
-              </Button>
-            </div>
           )}
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    

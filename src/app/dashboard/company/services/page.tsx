@@ -5,13 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, PlusCircle, Edit, Trash2, ShoppingBag, Eye, EyeOff, Copy } from "lucide-react";
+import { ArrowLeft, PlusCircle, Edit, Trash2, ShoppingBag, Eye, EyeOff, Copy, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,158 +23,129 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-// Mock data for services now includes all fields for comprehensive testing
-const mockServicesData = [
-  { 
-    id: "1", 
-    name: "Corte de Cabelo Masculino", 
-    description: "Corte moderno e estiloso para homens.", 
-    professionals: ["prof1", "prof3"], 
-    category: "Beleza e Estética", 
-    duration: 45, 
-    displayDuration: true, 
-    active: true, 
-    image: "https://placehold.co/64x64.png?text=CM", 
-    price: "R$ 50,00", 
-    uniqueSchedulingLink: "corte-masculino", 
-    commissionType: "percentage", 
-    commissionValue: 10, 
-    hasBookingFee: false, 
-    bookingFeeValue: 0, 
-    simultaneousAppointmentsPerUser: 1, 
-    simultaneousAppointmentsPerSlot: 1, 
-    simultaneousAppointmentsPerSlotAutomatic: false, 
-    blockAfter24Hours: false, 
-    intervalBetweenSlots: 15, 
-    confirmationType: "automatic", 
-    specificAvailability: "seg 09:00-12:00" 
-  },
-  { 
-    id: "2", 
-    name: "Consulta Psicológica Online", 
-    description: "Sessão de terapia online com psicólogo.", 
-    professionals: ["prof2"], 
-    category: "Saúde e Bem-estar", 
-    duration: 50, 
-    displayDuration: true, 
-    active: true, 
-    image: "https://placehold.co/64x64.png?text=CP", 
-    price: "R$ 120,00", 
-    uniqueSchedulingLink: "consulta-psico", 
-    commissionType: "fixed", 
-    commissionValue: 20, 
-    hasBookingFee: true, 
-    bookingFeeValue: 10, 
-    simultaneousAppointmentsPerUser: 1, 
-    simultaneousAppointmentsPerSlot: 1, 
-    simultaneousAppointmentsPerSlotAutomatic: true, 
-    blockAfter24Hours: true, 
-    intervalBetweenSlots: 0, 
-    confirmationType: "manual", 
-    specificAvailability: "" 
-  },
-  { 
-    id: "3", 
-    name: "Manicure e Pedicure Completa", 
-    description: "Cuidado completo para suas mãos e pés.", 
-    professionals: ["prof3"], 
-    category: "Beleza e Estética", 
-    duration: 90, 
-    displayDuration: true, 
-    active: false, 
-    image: "https://placehold.co/64x64.png?text=MP", 
-    price: "R$ 75,00", 
-    uniqueSchedulingLink: "manicure-pedicure-completa", 
-    commissionType: "percentage", 
-    commissionValue: 15, 
-    hasBookingFee: false, 
-    bookingFeeValue: 0, 
-    simultaneousAppointmentsPerUser: 2, 
-    simultaneousAppointmentsPerSlot: 1, 
-    simultaneousAppointmentsPerSlotAutomatic: false, 
-    blockAfter24Hours: false, 
-    intervalBetweenSlots: 5, 
-    confirmationType: "automatic", 
-    specificAvailability: "qua 10:00-19:00; sex 10:00-19:00" 
-  },
-];
-
+import { useAuth } from "@/contexts/AuthContext";
+import { getCompanyDetailsByOwner } from "@/services/supabaseService";
+import { getServicesByCompany, deleteService, updateService, type ServiceData } from "@/services/supabaseService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CompanyServicesPage() {
   const { toast } = useToast();
   const router = useRouter(); 
-  const [services, setServices] = useState(mockServicesData);
+  const { user, role } = useAuth();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [services, setServices] = useState<ServiceData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     document.title = `Gerenciar Serviços - ${APP_NAME}`;
-    console.log("BACKEND_SIM: Buscando lista de serviços da empresa...");
-  }, []);
+    if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      getCompanyDetailsByOwner(user.id).then(companyDetails => {
+        if (companyDetails && companyDetails.id) {
+          setCompanyId(companyDetails.id);
+          fetchServices(companyDetails.id);
+        } else {
+          toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
+          setIsLoading(false);
+        }
+      });
+    } else {
+      setIsLoading(false);
+    }
+  }, [user, role, toast]);
 
-  const handleDeleteService = (serviceId: string) => {
-    console.log("BACKEND_SIM: Enviando solicitação para excluir serviço ID:", serviceId);
-    // SIMULAÇÃO DE CHAMADA DE API PARA EXCLUIR
-    // Em um app real:
-    // try {
-    //   await api.deleteService(serviceId);
-    //   setServices(prevServices => prevServices.filter(service => service.id !== serviceId));
-    //   toast({ title: "Serviço Excluído", description: "O serviço foi removido do servidor." });
-    // } catch (error) {
-    //   toast({ title: "Erro no Servidor", description: "Não foi possível excluir o serviço.", variant: "destructive" });
-    // }
-    setServices(prevServices => prevServices.filter(service => service.id !== serviceId));
-    toast({
-      title: "Serviço Excluído (Simulação)",
-      description: "O serviço foi removido da sua lista (simulação frontend).",
-    });
+  const fetchServices = async (currentCompanyId: string) => {
+    setIsLoading(true);
+    try {
+      const fetchedServices = await getServicesByCompany(currentCompanyId);
+      setServices(fetchedServices);
+    } catch (error: any) {
+      toast({ title: "Erro ao buscar serviços", description: error.message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteService = async (serviceId: string) => {
+    const serviceToDelete = services.find(s => s.id === serviceId);
+    if (!serviceToDelete) return;
+
+    try {
+      await deleteService(serviceId);
+      setServices(prevServices => prevServices.filter(service => service.id !== serviceId));
+      toast({
+        title: "Serviço Excluído",
+        description: `O serviço "${serviceToDelete.name}" foi removido.`,
+      });
+    } catch (error: any) {
+      toast({ title: "Erro ao Excluir", description: error.message, variant: "destructive" });
+    }
   };
 
   const handleDuplicateService = (serviceId: string) => {
     const serviceToDuplicate = services.find(s => s.id === serviceId);
     if (serviceToDuplicate) {
-      console.log("BACKEND_SIM: Preparando para duplicar serviço (frontend) ID:", serviceId, serviceToDuplicate);
-      // Armazena os dados do serviço a ser duplicado para a página de adicionar pegar
       localStorage.setItem('duplicate_service_data', JSON.stringify({
         ...serviceToDuplicate,
-        name: `${serviceToDuplicate.name} (Cópia)`, // Sugere um novo nome
-        uniqueSchedulingLink: `${serviceToDuplicate.uniqueSchedulingLink}-copia` // Sugere um novo link
+        name: `${serviceToDuplicate.name} (Cópia)`,
+        unique_scheduling_link_slug: `${serviceToDuplicate.unique_scheduling_link_slug || serviceToDuplicate.name.toLowerCase().replace(/\s+/g, '-')}-copia`
       }));
       toast({
-        title: "Preparando Duplicação (Simulação)",
+        title: "Preparando Duplicação",
         description: `Você será redirecionado para adicionar um novo serviço com os dados de "${serviceToDuplicate.name}" pré-preenchidos.`,
       });
       router.push(`/dashboard/company/services/add?fromDuplicate=true`);
     }
   };
 
-  const toggleServiceStatus = (serviceId: string) => {
+  const toggleServiceStatus = async (serviceId: string) => {
     const service = services.find(s => s.id === serviceId);
-    if (!service) return;
+    if (!service || !companyId) return;
 
     const newStatus = !service.active;
-    console.log(`BACKEND_SIM: Enviando solicitação para alterar status do serviço ID ${serviceId} para ${newStatus ? 'ativo' : 'inativo'}`);
-    // SIMULAÇÃO DE CHAMADA DE API PARA ATUALIZAR STATUS
-    // try {
-    //   await api.updateServiceStatus(serviceId, newStatus);
-    //   setServices(prevServices =>
-    //     prevServices.map(s =>
-    //       s.id === serviceId ? { ...s, active: newStatus } : s
-    //     )
-    //   );
-    //   toast({ title: "Status Alterado", description: `O serviço "${service.name}" foi ${newStatus ? "ativado" : "desativado"} no servidor.` });
-    // } catch (error) {
-    //   toast({ title: "Erro no Servidor", description: "Não foi possível alterar o status do serviço.", variant: "destructive" });
-    // }
-    setServices(prevServices =>
-      prevServices.map(s =>
-        s.id === serviceId ? { ...s, active: newStatus } : s
-      )
-    );
-    toast({
-      title: `Status Alterado (Simulação)`,
-      description: `O serviço "${service.name}" foi ${newStatus ? "ativado" : "desativado"} (simulação frontend).`,
-    });
+    try {
+      const updatedService = await updateService(serviceId, { active: newStatus });
+      if (updatedService) {
+        setServices(prevServices =>
+          prevServices.map(s =>
+            s.id === serviceId ? { ...s, active: newStatus } : s
+          )
+        );
+        toast({
+          title: `Status Alterado`,
+          description: `O serviço "${service.name}" foi ${newStatus ? "ativado" : "desativado"}.`,
+        });
+      }
+    } catch (error: any) {
+      toast({ title: "Erro ao Alterar Status", description: error.message, variant: "destructive" });
+    }
   };
+
+  if (isLoading && services.length === 0) { // Mostrar skeleton apenas no carregamento inicial
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-3/5" />
+          <Skeleton className="h-9 w-48" />
+        </div>
+        <Card className="shadow-lg">
+          <CardContent className="pt-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4 py-4 border-b">
+                <Skeleton className="h-10 w-10 rounded-md" />
+                <div className="space-y-2 flex-grow">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="h-6 w-20" />
+                <Skeleton className="h-8 w-24" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
 
   return (
     <div className="space-y-8">
@@ -201,7 +172,17 @@ export default function CompanyServicesPage() {
 
       <Card className="shadow-lg">
         <CardContent className="pt-6">
-          {services.length > 0 ? (
+          {isLoading && services.length > 0 && <div className="text-center my-4"><Loader2 className="h-6 w-6 animate-spin inline-block"/> Carregando mais...</div>}
+          {!isLoading && services.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">Nenhum serviço cadastrado ainda.</p>
+              <Button asChild>
+                <Link href="/dashboard/company/services/add">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Primeiro Serviço
+                </Link>
+              </Button>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -217,21 +198,27 @@ export default function CompanyServicesPage() {
                 {services.map((service) => (
                   <TableRow key={service.id}>
                     <TableCell>
-                      <Image src={service.image} alt={service.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint="ilustração serviço" />
+                      <Image 
+                        src={service.image_url || "https://placehold.co/64x64.png?text=Serv"} 
+                        alt={service.name} 
+                        width={40} height={40} 
+                        className="rounded-md object-cover" 
+                        data-ai-hint="ilustração serviço"
+                      />
                     </TableCell>
                     <TableCell className="font-medium">{service.name}</TableCell>
                     <TableCell>{service.category}</TableCell>
-                    <TableCell>{service.price}</TableCell>
+                    <TableCell>R$ {service.price.toFixed(2).replace('.', ',')}</TableCell>
                     <TableCell>
                       <Badge variant={service.active ? "default" : "outline"} className={service.active ? "bg-green-500 hover:bg-green-600" : "bg-red-100 text-red-700 hover:bg-red-200"}>
                         {service.active ? "Ativo" : "Inativo"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="icon" onClick={() => toggleServiceStatus(service.id)} title={service.active ? "Desativar serviço" : "Ativar serviço"}>
+                      <Button variant="ghost" size="icon" onClick={() => toggleServiceStatus(service.id!)} title={service.active ? "Desativar serviço" : "Ativar serviço"}>
                         {service.active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
-                       <Button variant="ghost" size="icon" onClick={() => handleDuplicateService(service.id)} title="Duplicar serviço">
+                       <Button variant="ghost" size="icon" onClick={() => handleDuplicateService(service.id!)} title="Duplicar serviço">
                         <Copy className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" asChild title="Editar serviço">
@@ -255,7 +242,7 @@ export default function CompanyServicesPage() {
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleDeleteService(service.id)}
+                              onClick={() => handleDeleteService(service.id!)}
                               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                             >
                               Excluir
@@ -268,15 +255,6 @@ export default function CompanyServicesPage() {
                 ))}
               </TableBody>
             </Table>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">Nenhum serviço cadastrado ainda.</p>
-              <Button asChild>
-                <Link href="/dashboard/company/services/add">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Primeiro Serviço
-                </Link>
-              </Button>
-            </div>
           )}
         </CardContent>
       </Card>
