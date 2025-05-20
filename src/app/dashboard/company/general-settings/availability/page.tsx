@@ -6,11 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import Link from "next/link";
-import { ArrowLeft, Clock, Save } from "lucide-react";
+import { ArrowLeft, Clock, Save, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCompanyDetailsByOwner, updateCompanyDetails, type CompanyData } from "@/services/supabaseService";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
 
 const daysOfWeek = [
     { id: 'seg', label: 'Segunda-feira' },
@@ -35,21 +39,73 @@ type CompanyOperatingHours = {
 };
 
 const initialOperatingHours: CompanyOperatingHours = daysOfWeek.reduce((acc, day) => {
-    acc[day.id] = { active: day.id !== 'sab' && day.id !== 'dom', startTime: '09:00', endTime: '18:00', breakStartTime: '12:00', breakEndTime: '13:00' };
+    acc[day.id] = { 
+        active: day.id !== 'sab' && day.id !== 'dom', 
+        startTime: '09:00', 
+        endTime: '18:00', 
+        breakStartTime: '12:00', 
+        breakEndTime: '13:00' 
+    };
     return acc;
 }, {} as CompanyOperatingHours);
 
 
 export default function CompanyOperatingHoursPage() {
   const { toast } = useToast();
+  const { user, role, loading: authLoading } = useAuth();
+  const router = useRouter();
+
   const [operatingHours, setOperatingHours] = useState<CompanyOperatingHours>(initialOperatingHours);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
 
   useEffect(() => {
     document.title = `Horário de Funcionamento - ${APP_NAME}`;
-    // Em um app real, buscar horário de funcionamento existente aqui
-    console.log("BACKEND_SIM: Buscando configurações de horário de funcionamento da empresa...");
   }, []);
+
+  useEffect(() => {
+    if (!authLoading && user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      setIsLoadingPage(true);
+      getCompanyDetailsByOwner(user.id)
+        .then(companyData => {
+          if (companyData && companyData.id) {
+            setCompanyId(companyData.id);
+            if (companyData.operating_hours) {
+              // Validar e mesclar com initialOperatingHours para garantir que todos os dias estão presentes
+              const loadedHours = companyData.operating_hours as CompanyOperatingHours;
+              const completeHours: CompanyOperatingHours = { ...initialOperatingHours };
+              for (const dayId of daysOfWeek.map(d => d.id)) {
+                if (loadedHours[dayId]) {
+                  completeHours[dayId] = {
+                    active: loadedHours[dayId].active !== undefined ? loadedHours[dayId].active : initialOperatingHours[dayId].active,
+                    startTime: loadedHours[dayId].startTime || initialOperatingHours[dayId].startTime,
+                    endTime: loadedHours[dayId].endTime || initialOperatingHours[dayId].endTime,
+                    breakStartTime: loadedHours[dayId].breakStartTime || initialOperatingHours[dayId].breakStartTime,
+                    breakEndTime: loadedHours[dayId].breakEndTime || initialOperatingHours[dayId].breakEndTime,
+                  };
+                }
+              }
+              setOperatingHours(completeHours);
+            } else {
+              setOperatingHours(initialOperatingHours);
+            }
+          } else {
+            toast({ title: "Erro", description: "Empresa não encontrada. Cadastre os detalhes da empresa primeiro.", variant: "destructive" });
+            router.push("/dashboard/company/edit-profile");
+          }
+        })
+        .catch(error => {
+          console.error("Erro ao buscar horários da empresa:", error);
+          toast({ title: "Erro ao Carregar", description: "Não foi possível carregar os horários de funcionamento.", variant: "destructive" });
+        })
+        .finally(() => {
+          setIsLoadingPage(false);
+        });
+    } else if (!authLoading && (!user || role !== USER_ROLES.COMPANY_ADMIN)) {
+      router.push(user ? '/dashboard' : '/login');
+    }
+  }, [user, role, authLoading, router, toast]);
 
   const handleHoursChange = (dayId: string, field: keyof DayAvailability, value: any) => {
     setOperatingHours(prev => ({
@@ -59,14 +115,36 @@ export default function CompanyOperatingHoursPage() {
   };
 
   const handleSaveChanges = async () => {
+    if (!companyId) {
+      toast({ title: "Erro", description: "ID da empresa não encontrado para salvar os horários.", variant: "destructive" });
+      return;
+    }
     setIsSaving(true);
-    console.log("BACKEND_SIM: Salvando horário de funcionamento da empresa:", { operatingHours });
-    // SIMULAÇÃO DE CHAMADA DE API
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    toast({ title: "Horário de Funcionamento Atualizado (Simulação)", description: "O horário de funcionamento da empresa foi salvo." });
-    setIsSaving(false);
+    try {
+      await updateCompanyDetails(companyId, { operating_hours: operatingHours });
+      toast({ title: "Horário de Funcionamento Atualizado", description: "O horário de funcionamento da empresa foi salvo com sucesso." });
+    } catch (error: any) {
+      console.error("Erro ao salvar horário de funcionamento:", error);
+      toast({ title: "Falha ao Salvar", description: error.message || "Não foi possível salvar o horário de funcionamento.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (authLoading || isLoadingPage) {
+    return (
+        <div className="space-y-8">
+            <div className="flex items-center justify-between">
+                <Skeleton className="h-10 w-3/5" />
+                <Skeleton className="h-9 w-32" />
+            </div>
+            <Card className="shadow-lg"><CardHeader><Skeleton className="h-6 w-1/2" /></CardHeader><CardContent className="pt-6 space-y-6">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+                <div className="flex justify-end"><Skeleton className="h-10 w-28" /></div>
+            </CardContent></Card>
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -84,10 +162,21 @@ export default function CompanyOperatingHoursPage() {
         </Button>
       </div>
 
+      <Card className="shadow-sm border-blue-500/50 bg-blue-500/5">
+        <CardContent className="pt-6">
+            <div className="flex items-start space-x-3">
+                <Info className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
+                <p className="text-sm text-blue-700">
+                    Estes são os limites máximos de horário para agendamentos na sua empresa.
+                    Profissionais individuais podem ter seus próprios horários configurados, desde que respeitem estes limites.
+                </p>
+            </div>
+        </CardContent>
+      </Card>
+
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-xl">Horário Semanal de Funcionamento</CardTitle>
-          <CardDescription>Estes são os limites máximos de horário para agendamentos na sua empresa.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {daysOfWeek.map(day => (
@@ -152,7 +241,7 @@ export default function CompanyOperatingHoursPage() {
       </Card>
       
       <div className="flex justify-end">
-        <Button onClick={handleSaveChanges} disabled={isSaving} size="lg">
+        <Button onClick={handleSaveChanges} disabled={isSaving || isLoadingPage} size="lg">
           <Save className="mr-2 h-4 w-4" /> {isSaving ? "Salvando..." : "Salvar Horário de Funcionamento"}
         </Button>
       </div>
