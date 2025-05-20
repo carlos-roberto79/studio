@@ -42,8 +42,7 @@ const timeIntervalSchema = z.object({
   start: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
   end: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
 }).refine(data => {
-  if (data.start && !data.end) return false; 
-  if (!data.start && data.end) return false; 
+  if ((data.start && !data.end) || (!data.start && data.end)) return false; 
   if (data.start && data.end) {
     return data.start < data.end;
   }
@@ -56,7 +55,7 @@ const timeIntervalSchema = z.object({
 const dayScheduleSchema = z.object({
   active: z.boolean().default(false),
   intervals: z.array(timeIntervalSchema)
-    .min(1, "Deve haver pelo menos um bloco de horário (pode estar vazio).")
+    .min(1, "Deve haver pelo menos um bloco de horário (pode estar vazio se o dia estiver inativo).")
     .default([{start: "", end: ""}]),
 });
 
@@ -76,22 +75,23 @@ const availabilityTypeSchema = z.object({
   for (const dayKey in data.schedule) {
     const day = data.schedule[dayKey as keyof typeof data.schedule];
     if (day.active) {
-      const hasValidInterval = day.intervals.some(interval => interval.start && interval.end);
+      const hasValidInterval = day.intervals.some(interval => interval.start && interval.end && interval.start < interval.end);
       if (!hasValidInterval) {
         return false;
       }
     }
   }
   return true;
-}, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido (início e fim)." });
+}, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido (início e fim, com início antes do fim)." });
 
 
 type AvailabilityTypeFormZodData = z.infer<typeof availabilityTypeSchema>;
 
 const createInitialSchedule = (): AvailabilityTypeFormZodData['schedule'] => daysOfWeek.reduce((acc, day) => {
+  const isActive = day.id !== 'sab' && day.id !== 'dom';
   acc[day.id as keyof AvailabilityTypeFormZodData['schedule']] = {
-    active: day.id !== 'sab' && day.id !== 'dom', 
-    intervals: [{ start: "09:00", end: "18:00" }] 
+    active: isActive, 
+    intervals: isActive ? [{ start: "09:00", end: "18:00" }] : [{ start: "", end: "" }]
   };
   return acc;
 }, {} as AvailabilityTypeFormZodData['schedule']);
@@ -142,8 +142,11 @@ export default function AddAvailabilityTypePage() {
       const day = scheduleWithFilteredIntervals[dayKey as keyof typeof scheduleWithFilteredIntervals];
       if (day.active) {
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
+         if (day.intervals.length === 0) { // Ensure at least one empty interval if active but all cleared
+            day.intervals.push({start: "", end: ""});
+        }
       } else {
-        day.intervals = []; // Se inativo, não precisa de intervalos
+        day.intervals = [{ start: "", end: "" }]; // Reset to one empty if not active
       }
     }
     const typeDataToSave: Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'> = {
@@ -257,6 +260,13 @@ export default function AddAvailabilityTypePage() {
                                   field.onChange(checked);
                                   if (checked && fields.length === 0) {
                                     append({ start: "09:00", end: "18:00" });
+                                  } else if (!checked && fields.length > 1) {
+                                    // Ao desativar, se houver múltiplos intervalos, reseta para um intervalo vazio
+                                    // fields.forEach((_, index) => remove(index)); // Causa erro de "too many re-renders"
+                                    form.setValue(`schedule.${dayKey}.intervals`, [{start: "", end: ""}]);
+                                  } else if (!checked && fields.length === 1) {
+                                    form.setValue(`schedule.${dayKey}.intervals.0.start`, "");
+                                    form.setValue(`schedule.${dayKey}.intervals.0.end`, "");
                                   }
                                 }}
                               />
