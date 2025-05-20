@@ -28,6 +28,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 
+// TODO: Substituir este mock por chamadas ao SupabaseService
+// Para buscar: detalhes do cliente, agendamentos (passados/futuros), anotações, arquivos e imagens.
 interface ClientNote {
   id: string;
   dateTime: string;
@@ -175,7 +177,9 @@ export default function ClientProfilePage() {
   useEffect(() => {
     if (clientId) {
       setLoadingData(true);
-      // Simulate fetching data
+      // TODO: Em uma implementação real, buscar os dados do cliente (e seus relacionamentos) do Supabase
+      // usando o supabaseService e o clientId.
+      // Ex: getClientDetails(clientId), getClientAppointments(clientId), getClientNotes(clientId), etc.
       setTimeout(() => {
         const data = mockClientDatabase[clientId];
         if (data) {
@@ -191,6 +195,7 @@ export default function ClientProfilePage() {
   }, [clientId]);
 
   const handleAddNote = () => {
+    // TODO: Substituir por chamada ao supabaseService para adicionar nota.
     if (!clientData || !newNoteTitle || !newNoteContent) {
       toast({ title: "Erro", description: "Título e conteúdo da nota são obrigatórios.", variant: "destructive"});
       return;
@@ -212,6 +217,7 @@ export default function ClientProfilePage() {
   };
   
   const toggleNoteVisibility = (noteId: string) => {
+    // TODO: Substituir por chamada ao supabaseService para atualizar visibilidade da nota.
     setClientData(prev => {
       if (!prev) return null;
       return {
@@ -231,6 +237,7 @@ export default function ClientProfilePage() {
   };
 
   const handleAddFile = () => {
+    // TODO: Substituir por chamada ao supabaseService para fazer upload do arquivo e salvar metadados.
     if (!clientData || !selectedFile || !customFileName) {
         toast({ title: "Erro", description: "Selecione um arquivo e forneça um nome.", variant: "destructive"});
         return;
@@ -255,6 +262,7 @@ export default function ClientProfilePage() {
   };
 
   const toggleFileVisibility = (fileId: string) => {
+    // TODO: Substituir por chamada ao supabaseService para atualizar visibilidade do arquivo.
      setClientData(prev => {
       if (!prev) return null;
       return {
@@ -281,6 +289,7 @@ export default function ClientProfilePage() {
   };
 
   const handleAddImage = () => {
+    // TODO: Substituir por chamada ao supabaseService para fazer upload da imagem e salvar metadados.
      if (!clientData || !selectedImageFile || !imageTitle) {
         toast({ title: "Erro", description: "Selecione uma imagem e forneça um título.", variant: "destructive"});
         return;
@@ -292,7 +301,7 @@ export default function ClientProfilePage() {
         imageUrl: imagePreview || "https://placehold.co/150x100.png?text=IMG",
         visibleToClient: imageVisibleToClient,
         fileData: selectedImageFile,
-        dataAiHint: "imagem cliente" // Adicionado data-ai-hint genérico
+        dataAiHint: "imagem cliente" 
     };
     setClientData(prev => prev ? { ...prev, images: [...prev.images, newImage] } : null);
     setSelectedImageFile(null);
@@ -307,6 +316,7 @@ export default function ClientProfilePage() {
   };
 
   const toggleImageVisibility = (imageId: string) => {
+    // TODO: Substituir por chamada ao supabaseService para atualizar visibilidade da imagem.
     setClientData(prev => {
       if (!prev) return null;
       return {
@@ -456,7 +466,7 @@ export default function ClientProfilePage() {
               </PopoverContent>
             </Popover>
           </div>
-          <CardDescription>Painel de acompanhamento completo do cliente.</CardDescription>
+          <CardDescription>Painel de acompanhamento completo do cliente. <span className="text-xs text-muted-foreground">(Dados mockados. Integração com Supabase pendente)</span></CardDescription>
         </CardHeader>
         <CardContent>
             <div className="grid md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
@@ -685,5 +695,3 @@ export default function ClientProfilePage() {
     </div>
   );
 }
-
-    

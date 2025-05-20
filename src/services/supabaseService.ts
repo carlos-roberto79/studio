@@ -72,7 +72,10 @@ export interface ProfessionalData {
   email?: string;
   phone?: string;
   specialty?: string;
-  // Adicionar outros campos do profissional conforme necessário (bio, profilePictureUrl, etc.)
+  bio?: string;
+  profile_picture_url?: string;
+  services_offered_text?: string; // Campo de texto para serviços
+  availability?: any; // JSONB para horários padrão
   created_at?: string;
   updated_at?: string;
 }
@@ -113,12 +116,12 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       .eq('id', userId)
       .single();
 
-    if (error && status !== 406) { 
-      console.error('SupabaseService: Erro ao buscar perfil do usuário:', error);
+    if (error && status !== 406) { // 406 significa "Not Acceptable", mas o Supabase usa para "No rows found" com .single()
+      console.error('SupabaseService: Erro ao buscar perfil do usuário:', error.message);
       return null;
     }
      if (!data) {
-        console.warn(`SupabaseService: Nenhum perfil encontrado para UID: ${userId}.`);
+        // console.warn(`SupabaseService: Nenhum perfil encontrado para UID: ${userId}. Isso é normal para um novo usuário que ainda não teve o perfil criado.`);
         return null;
     }
     return data as UserProfile;
@@ -152,14 +155,13 @@ export async function createUserProfile(userId: string, email: string, role: Use
     return data as UserProfile;
   } catch (err: any) {
     console.error('SupabaseService: Exceção em createUserProfile:', err);
-    // Re-lançar o erro para que o chamador possa tratá-lo
-    // O chamador (AuthContext) já tem um log para "Falha ao criar perfil..."
+    // console.error('Detalhes do Erro em createUserProfile:', JSON.stringify(err, null, 2));
     throw err;
   }
 }
 
 export async function addCompanyDetails(companyData: Omit<CompanyData, 'id' | 'created_at' | 'updated_at'>): Promise<string | null> {
-  console.log(`SupabaseService: Adicionando detalhes da empresa para o proprietário ${companyData.owner_uid}:`, companyData);
+  console.log(`SupabaseService: Adicionando detalhes da empresa para o proprietário ${companyData.owner_uid}:`);
   try {
     const companyDataToInsert = {
         owner_uid: companyData.owner_uid,
@@ -169,9 +171,9 @@ export async function addCompanyDetails(companyData: Omit<CompanyData, 'id' | 'c
         phone: companyData.phone,
         email: companyData.email,
         public_link_slug: companyData.public_link_slug,
-        profile_complete: true, 
         description: companyData.description || null,
         logo_url: companyData.logo_url || null,
+        profile_complete: true, 
         operating_hours: companyData.operating_hours || null,
         plan_id: companyData.plan_id || null,
         customization: companyData.customization || null,
@@ -196,7 +198,7 @@ export async function addCompanyDetails(companyData: Omit<CompanyData, 'id' | 'c
 }
 
 export async function updateCompanyDetails(companyId: string, companyData: Partial<Omit<CompanyData, 'id' | 'owner_uid' | 'created_at'>>): Promise<CompanyData | null> {
-  console.log(`SupabaseService: Atualizando detalhes da empresa ID ${companyId}:`, companyData);
+  console.log(`SupabaseService: Atualizando detalhes da empresa ID ${companyId}:`);
   try {
     const dataToUpdate = {
       ...companyData,
@@ -245,7 +247,7 @@ export async function getCompanyDetailsByOwner(ownerUid: string): Promise<Compan
 
 // --- Funções CRUD para Serviços ---
 export async function addService(companyId: string, serviceData: Omit<ServiceData, 'id' | 'company_id' | 'created_at' | 'updated_at'>): Promise<ServiceData | null> {
-  console.log(`SupabaseService: Adicionando serviço para empresa ID ${companyId}:`, serviceData);
+  console.log(`SupabaseService: Adicionando serviço para empresa ID ${companyId}:`);
   try {
     const dataToInsert = {
       ...serviceData,
@@ -262,6 +264,7 @@ export async function addService(companyId: string, serviceData: Omit<ServiceDat
       console.error('SupabaseService: Erro ao adicionar serviço:', error);
       throw error;
     }
+    console.log('SupabaseService: Serviço adicionado:', data);
     return data as ServiceData;
   } catch (err) {
     console.error('SupabaseService: Exceção em addService:', err);
@@ -297,8 +300,9 @@ export async function getServiceById(serviceId: string): Promise<ServiceData | n
       .eq('id', serviceId)
       .single();
     if (error) {
-      console.error('SupabaseService: Erro ao buscar serviço por ID:', error);
-      throw error; // Pode ser 406 se não encontrado, tratar no componente
+      console.error('SupabaseService: Erro ao buscar serviço por ID:', error.message);
+      if (error.code === 'PGRST116') return null; // "Not Found"
+      throw error; 
     }
     return data as ServiceData;
   } catch (err) {
@@ -308,15 +312,16 @@ export async function getServiceById(serviceId: string): Promise<ServiceData | n
 }
 
 export async function updateService(serviceId: string, serviceData: Partial<Omit<ServiceData, 'id' | 'company_id' | 'created_at' | 'updated_at'>>): Promise<ServiceData | null> {
-  console.log(`SupabaseService: Atualizando serviço ID ${serviceId}:`, serviceData);
+  console.log(`SupabaseService: Atualizando serviço ID ${serviceId}:`);
   try {
-    const dataToUpdate = { ...serviceData };
+    const dataToUpdate = { ...serviceData, updated_at: new Date().toISOString() };
     if (serviceData.price !== undefined) {
       dataToUpdate.price = parseFloat(String(serviceData.price).replace(",", "."));
     }
-    if (serviceData.availability_type_id === "") {
+    if (serviceData.availability_type_id === "") { // Explicitly set to null if cleared
         dataToUpdate.availability_type_id = null;
     }
+
 
     const { data, error } = await supabase
       .from('services')
@@ -328,6 +333,7 @@ export async function updateService(serviceId: string, serviceData: Partial<Omit
       console.error('SupabaseService: Erro ao atualizar serviço:', error);
       throw error;
     }
+    console.log('SupabaseService: Serviço atualizado:', data);
     return data as ServiceData;
   } catch (err) {
     console.error('SupabaseService: Exceção em updateService:', err);
@@ -346,6 +352,7 @@ export async function deleteService(serviceId: string): Promise<boolean> {
       console.error('SupabaseService: Erro ao deletar serviço:', error);
       throw error;
     }
+    console.log('SupabaseService: Serviço deletado com sucesso.');
     return true;
   } catch (err) {
     console.error('SupabaseService: Exceção em deleteService:', err);
@@ -367,6 +374,7 @@ export async function addProfessional(companyId: string, professionalData: Omit<
       console.error('SupabaseService: Erro ao adicionar profissional:', error);
       throw error;
     }
+    console.log('SupabaseService: Profissional adicionado:', data);
     return data as ProfessionalData;
   } catch (err) {
     console.error('SupabaseService: Exceção em addProfessional:', err);
@@ -392,11 +400,53 @@ export async function getProfessionalsByCompany(companyId: string): Promise<Prof
     throw err;
   }
 }
-// Adicionar updateProfessional e deleteProfessional se necessário
+
+export async function getProfessionalByUserId(userId: string): Promise<ProfessionalData | null> {
+  console.log(`SupabaseService: Buscando profissional por user_id: ${userId}`);
+  try {
+    const { data, error } = await supabase
+      .from('professionals')
+      .select('*, companies ( company_name )') // Exemplo de join para pegar nome da empresa
+      .eq('user_id', userId)
+      .maybeSingle(); // Use maybeSingle se um usuário pode não ser um profissional
+
+    if (error) {
+      console.error('SupabaseService: Erro ao buscar profissional por user_id:', error.message);
+      throw error;
+    }
+    return data as ProfessionalData | null;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em getProfessionalByUserId:', err);
+    throw err;
+  }
+}
+
+export async function updateProfessional(professionalId: string, professionalData: Partial<Omit<ProfessionalData, 'id' | 'company_id' | 'created_at' | 'updated_at'>>): Promise<ProfessionalData | null> {
+  console.log(`SupabaseService: Atualizando profissional ID ${professionalId}:`, professionalData);
+  try {
+    const dataToUpdate = { ...professionalData, updated_at: new Date().toISOString() };
+    const { data, error } = await supabase
+      .from('professionals')
+      .update(dataToUpdate)
+      .eq('id', professionalId)
+      .select()
+      .single();
+    if (error) {
+      console.error('SupabaseService: Erro ao atualizar profissional:', error);
+      throw error;
+    }
+    console.log('SupabaseService: Profissional atualizado:', data);
+    return data as ProfessionalData;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em updateProfessional:', err);
+    throw err;
+  }
+}
+
 
 // --- Funções CRUD para Tipos de Disponibilidade ---
 export async function addAvailabilityType(companyId: string, availabilityTypeData: Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'>): Promise<AvailabilityTypeData | null> {
-  console.log(`SupabaseService: Adicionando tipo de disponibilidade para empresa ID ${companyId}:`, availabilityTypeData);
+  console.log(`SupabaseService: Adicionando tipo de disponibilidade para empresa ID ${companyId}:`);
   try {
     const dataToInsert = { ...availabilityTypeData, company_id: companyId };
     const { data, error } = await supabase
@@ -408,6 +458,7 @@ export async function addAvailabilityType(companyId: string, availabilityTypeDat
       console.error('SupabaseService: Erro ao adicionar tipo de disponibilidade:', error);
       throw error;
     }
+    console.log('SupabaseService: Tipo de disponibilidade adicionado:', data);
     return data as AvailabilityTypeData;
   } catch (err) {
     console.error('SupabaseService: Exceção em addAvailabilityType:', err);
@@ -456,11 +507,12 @@ export async function getAvailabilityTypeById(typeId: string): Promise<Availabil
 
 
 export async function updateAvailabilityType(typeId: string, availabilityTypeData: Partial<Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'>>): Promise<AvailabilityTypeData | null> {
-  console.log(`SupabaseService: Atualizando tipo de disponibilidade ID ${typeId}:`, availabilityTypeData);
+  console.log(`SupabaseService: Atualizando tipo de disponibilidade ID ${typeId}:`);
   try {
+    const dataToUpdate = { ...availabilityTypeData, updated_at: new Date().toISOString() };
     const { data, error } = await supabase
       .from('availability_types')
-      .update(availabilityTypeData)
+      .update(dataToUpdate)
       .eq('id', typeId)
       .select()
       .single();
@@ -468,6 +520,7 @@ export async function updateAvailabilityType(typeId: string, availabilityTypeDat
       console.error('SupabaseService: Erro ao atualizar tipo de disponibilidade:', error);
       throw error;
     }
+    console.log('SupabaseService: Tipo de disponibilidade atualizado:', data);
     return data as AvailabilityTypeData;
   } catch (err) {
     console.error('SupabaseService: Exceção em updateAvailabilityType:', err);
@@ -486,6 +539,7 @@ export async function deleteAvailabilityType(typeId: string): Promise<boolean> {
       console.error('SupabaseService: Erro ao deletar tipo de disponibilidade:', error);
       throw error;
     }
+    console.log('SupabaseService: Tipo de disponibilidade deletado.');
     return true;
   } catch (err) {
     console.error('SupabaseService: Exceção em deleteAvailabilityType:', err);
@@ -495,7 +549,7 @@ export async function deleteAvailabilityType(typeId: string): Promise<boolean> {
 
 // --- Funções CRUD para Bloqueios de Agenda ---
 export async function addAgendaBlock(companyId: string, agendaBlockData: Omit<AgendaBlockData, 'id' | 'company_id' | 'created_at' | 'updated_at'>): Promise<AgendaBlockData | null> {
-  console.log(`SupabaseService: Adicionando bloqueio de agenda para empresa ID ${companyId}:`, agendaBlockData);
+  console.log(`SupabaseService: Adicionando bloqueio de agenda para empresa ID ${companyId}:`);
   try {
     const dataToInsert = { 
       ...agendaBlockData, 
@@ -513,6 +567,7 @@ export async function addAgendaBlock(companyId: string, agendaBlockData: Omit<Ag
       console.error('SupabaseService: Erro ao adicionar bloqueio de agenda:', error);
       throw error;
     }
+    console.log('SupabaseService: Bloqueio de agenda adicionado:', data);
     return data as AgendaBlockData;
   } catch (err) {
     console.error('SupabaseService: Exceção em addAgendaBlock:', err);
@@ -525,7 +580,7 @@ export async function getAgendaBlocksByCompany(companyId: string): Promise<Agend
   try {
     const { data, error } = await supabase
       .from('agenda_blocks')
-      .select('*, professionals ( name )') // Exemplo de join se professional_id referencia 'professionals.id'
+      .select('*, professionals ( name )') // Tenta fazer join com professionals para pegar o nome
       .eq('company_id', companyId)
       .order('start_time', { ascending: false });
     if (error) {
@@ -533,10 +588,14 @@ export async function getAgendaBlocksByCompany(companyId: string): Promise<Agend
       throw error;
     }
     // Mapear para incluir professionalName se o join funcionar
-    return (data?.map(block => ({
-        ...block,
-        professionalName: (block.professionals as any)?.name || undefined
-    })) as AgendaBlockData[]) || [];
+    return (data?.map(block => {
+        const professionalRelation = block.professionals as { name: string } | null; // Type assertion
+        return {
+            ...block,
+            professionals: undefined, // Remove o objeto aninhado 'professionals'
+            professionalName: professionalRelation?.name || undefined
+        };
+    }) as AgendaBlockData[]) || [];
   } catch (err) {
     console.error('SupabaseService: Exceção em getAgendaBlocksByCompany:', err);
     throw err;
@@ -564,12 +623,13 @@ export async function getAgendaBlockById(blockId: string): Promise<AgendaBlockDa
 }
 
 export async function updateAgendaBlock(blockId: string, agendaBlockData: Partial<Omit<AgendaBlockData, 'id' | 'company_id' | 'created_at' | 'updated_at'>>): Promise<AgendaBlockData | null> {
-  console.log(`SupabaseService: Atualizando bloqueio de agenda ID ${blockId}:`, agendaBlockData);
+  console.log(`SupabaseService: Atualizando bloqueio de agenda ID ${blockId}:`);
   try {
-    const dataToUpdate = { 
-        ...agendaBlockData,
-        professional_id: agendaBlockData.professional_id === "" ? null : agendaBlockData.professional_id,
-    };
+    const dataToUpdate: any = { ...agendaBlockData, updated_at: new Date().toISOString() };
+    
+    if (agendaBlockData.professional_id === "") {
+        dataToUpdate.professional_id = null;
+    }
     if (dataToUpdate.start_time) dataToUpdate.start_time = new Date(dataToUpdate.start_time).toISOString();
     if (dataToUpdate.end_time) dataToUpdate.end_time = new Date(dataToUpdate.end_time).toISOString();
     
@@ -583,6 +643,7 @@ export async function updateAgendaBlock(blockId: string, agendaBlockData: Partia
       console.error('SupabaseService: Erro ao atualizar bloqueio de agenda:', error);
       throw error;
     }
+    console.log('SupabaseService: Bloqueio de agenda atualizado:', data);
     return data as AgendaBlockData;
   } catch (err) {
     console.error('SupabaseService: Exceção em updateAgendaBlock:', err);
@@ -601,6 +662,7 @@ export async function deleteAgendaBlock(blockId: string): Promise<boolean> {
       console.error('SupabaseService: Erro ao deletar bloqueio de agenda:', error);
       throw error;
     }
+    console.log('SupabaseService: Bloqueio de agenda deletado.');
     return true;
   } catch (err) {
     console.error('SupabaseService: Exceção em deleteAgendaBlock:', err);
@@ -608,8 +670,7 @@ export async function deleteAgendaBlock(blockId: string): Promise<boolean> {
   }
 }
 
-// Função para buscar profissionais para o Select no formulário de AgendaBlock
-// (Reutiliza getProfessionalsByCompany, mas pode ser específica se necessário)
+// Função para buscar profissionais para o Select (ex: no formulário de AgendaBlock)
 export async function getProfessionalsForSelect(companyId: string): Promise<{ id: string; name: string }[]> {
     const professionals = await getProfessionalsByCompany(companyId);
     return professionals.map(prof => ({ id: prof.id!, name: prof.name }));
@@ -619,5 +680,3 @@ export async function getAvailabilityTypesForSelect(companyId: string): Promise<
     const availabilityTypes = await getAvailabilityTypesByCompany(companyId);
     return availabilityTypes.map(type => ({ id: type.id!, name: type.name }));
 }
-
-    

@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 
 
 // Mock data for appointments - adjusted for relative dates
+// TODO: Em uma implementação real, buscaria agendamentos do Supabase filtrados por professional_id e data.
 const today = new Date();
 const tomorrow = new Date(today);
 tomorrow.setDate(today.getDate() + 1);
@@ -41,6 +42,7 @@ export default function ProfessionalCalendarPage() {
   
   useEffect(() => {
     document.title = `Meu Calendário - ${APP_NAME}`;
+    // TODO: Em uma implementação real, buscar os agendamentos do profissional aqui.
   }, []);
 
   const appointmentsForSelectedDate = selectedDate 
@@ -56,6 +58,7 @@ export default function ProfessionalCalendarPage() {
         toast({ title: "Erro", description: "Data, título e hora do evento são obrigatórios.", variant: "destructive" });
         return;
     }
+    // TODO: Em uma implementação real, esta função chamaria o supabaseService para criar um agenda_block.
     console.log("BACKEND_SIM: Adicionando novo evento/bloqueio:", { date: selectedDate, title: eventTitle, time: eventTime });
     toast({ title: "Evento Adicionado (Simulação)", description: `O evento "${eventTitle}" foi adicionado para ${selectedDate.toLocaleDateString('pt-BR')} às ${eventTime}.` });
     setIsEventModalOpen(false);
@@ -72,7 +75,7 @@ export default function ProfessionalCalendarPage() {
           <CardTitle className="text-3xl font-bold flex items-center">
             <CalendarDays className="mr-3 h-8 w-8 text-primary" /> Meu Calendário Completo
           </CardTitle>
-          <CardDescription>Visualize e gerencie todos os seus agendamentos.</CardDescription>
+          <CardDescription>Visualize e gerencie todos os seus agendamentos. <span className="text-xs text-muted-foreground">(Dados mockados)</span></CardDescription>
         </CardHeader>
         <div className="flex space-x-2 items-center">
             <div className="relative">
@@ -145,7 +148,7 @@ export default function ProfessionalCalendarPage() {
                                 <DialogHeader>
                                     <DialogTitle>Adicionar Bloqueio/Evento para {selectedDate?.toLocaleDateString('pt-BR')}</DialogTitle>
                                     <DialogDescription>
-                                        Insira os detalhes para bloquear um horário ou adicionar um evento pessoal.
+                                        Insira os detalhes para bloquear um horário ou adicionar um evento pessoal. (Simulação)
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
@@ -206,5 +209,3 @@ export default function ProfessionalCalendarPage() {
     </div>
   );
 }
-
-    

@@ -6,54 +6,159 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { APP_NAME } from "@/lib/constants";
-import React, { useEffect, useState } from 'react';
+import { APP_NAME, USER_ROLES } from "@/lib/constants";
+import React, { useEffect, useState, useRef } from 'react';
 import Link from "next/link";
-import { ArrowLeft, UserCog, Save, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, UserCog, Save, Image as ImageIcon, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import Image from "next/image"; // Next.js Image
-
-// Mock existing professional data
-const mockProfessionalData = {
-  name: "Dr. Alice Silva",
-  email: "alice.silva@example.com", // Should come from auth context
-  phone: "(21) 91234-5678",
-  specialty: "Dentista",
-  bio: "Especialista em ortodontia com mais de 10 anos de experiência, dedicada a criar sorrisos bonitos e saudáveis. Membro da Associação Brasileira de Odontologia.",
-  profilePictureUrl: "https://placehold.co/120x120.png?text=AS",
-  servicesOffered: ["Check-up Odontológico", "Clareamento Dental", "Aparelhos Ortodônticos"]
-};
+import NextImage from "next/image"; // Next.js Image
+import { useAuth } from "@/contexts/AuthContext";
+import { getProfessionalByUserId, updateProfessional, type ProfessionalData } from "@/services/supabaseService";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
 
 export default function ProfessionalProfilePage() {
   const { toast } = useToast();
-  // In a real app, user email would come from useAuth()
-  // const { user } = useAuth(); 
-  const [name, setName] = useState(mockProfessionalData.name);
-  const [email, setEmail] = useState(mockProfessionalData.email); // Could be disabled if fetched from auth
-  const [phone, setPhone] = useState(mockProfessionalData.phone);
-  const [specialty, setSpecialty] = useState(mockProfessionalData.specialty);
-  const [bio, setBio] = useState(mockProfessionalData.bio);
-  const [profilePictureUrl, setProfilePictureUrl] = useState(mockProfessionalData.profilePictureUrl);
-  // For services, a more complex multi-select or tag input would be needed. Simplified for now.
-  const [services, setServices] = useState(mockProfessionalData.servicesOffered.join(', '));
+  const { user, role, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [professionalId, setProfessionalId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<Partial<ProfessionalData>>({
+    name: "",
+    phone: "",
+    specialty: "",
+    bio: "",
+    profile_picture_url: "https://placehold.co/120x120.png?text=Perfil",
+    services_offered_text: "",
+  });
+  const [imagePreview, setImagePreview] = useState<string | null>(formData.profile_picture_url || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
   
   useEffect(() => {
     document.title = `Editar Meu Perfil - ${APP_NAME}`;
-    // In a real app, fetch professional's data here using user.uid or similar
   }, []);
+
+  useEffect(() => {
+    if (!authLoading && user && user.id && role === USER_ROLES.PROFESSIONAL) {
+      setIsLoadingPage(true);
+      getProfessionalByUserId(user.id)
+        .then(profData => {
+          if (profData && profData.id) {
+            setProfessionalId(profData.id);
+            setFormData({
+              name: profData.name || "",
+              phone: profData.phone || "",
+              specialty: profData.specialty || "",
+              bio: profData.bio || "",
+              profile_picture_url: profData.profile_picture_url || "https://placehold.co/120x120.png?text=Perfil",
+              services_offered_text: profData.services_offered_text || "",
+            });
+            setImagePreview(profData.profile_picture_url || "https://placehold.co/120x120.png?text=Perfil");
+          } else {
+            toast({ title: "Erro", description: "Perfil profissional não encontrado. Contate o administrador da sua empresa.", variant: "destructive" });
+          }
+        })
+        .catch(error => {
+          console.error("Erro ao buscar dados do perfil profissional:", error);
+          toast({ title: "Erro ao Carregar", description: "Não foi possível carregar os dados do seu perfil.", variant: "destructive" });
+        })
+        .finally(() => {
+          setIsLoadingPage(false);
+        });
+    } else if (!authLoading && (!user || role !== USER_ROLES.PROFESSIONAL)) {
+      router.push(user ? '/dashboard' : '/login');
+    } else if (!authLoading && !user) {
+      setIsLoadingPage(false);
+    }
+  }, [user, role, authLoading, router, toast]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!professionalId) {
+      toast({ title: "Erro", description: "ID do profissional não encontrado.", variant: "destructive" });
+      return;
+    }
     setIsSaving(true);
     
-    console.log("Updating professional profile:", { name, email, phone, specialty, bio, profilePictureUrl, services: services.split(',').map(s=>s.trim()) });
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    toast({ title: "Perfil Atualizado", description: "Suas informações de perfil foram salvas." });
-    setIsSaving(false);
+    const dataToUpdate: Partial<Omit<ProfessionalData, 'id' | 'company_id' | 'created_at' | 'updated_at' | 'user_id' | 'email' | 'availability'>> = {
+      name: formData.name,
+      phone: formData.phone,
+      specialty: formData.specialty,
+      bio: formData.bio,
+      profile_picture_url: formData.profile_picture_url, // Manter URL, upload real seria separado
+      services_offered_text: formData.services_offered_text,
+    };
+
+    try {
+      await updateProfessional(professionalId, dataToUpdate);
+      toast({ title: "Perfil Atualizado", description: "Suas informações de perfil foram salvas." });
+    } catch (error: any) {
+      console.error("Erro ao atualizar perfil profissional:", error);
+      toast({ title: "Falha ao Salvar", description: error.message || "Não foi possível salvar suas informações.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
+  
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setImagePreview(result);
+        setFormData(prev => ({ ...prev, profile_picture_url: result })); // Salva como Data URL para simulação de preview
+        // Em um app real, aqui você faria o upload para o Supabase Storage e salvaria a URL pública.
+      };
+      reader.readAsDataURL(file);
+      toast({ title: "Simulação", description: "Foto carregada para preview. Em um app real, seria enviada ao servidor."});
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  if (authLoading || isLoadingPage) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-3/5" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <Card className="shadow-lg">
+          <CardContent className="pt-6 space-y-6">
+            <div className="flex flex-col items-center space-y-4 md:flex-row md:space-y-0 md:space-x-6">
+              <Skeleton className="h-[120px] w-[120px] rounded-full" />
+              <div className="flex-grow w-full space-y-2">
+                <Skeleton className="h-6 w-1/3" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+            {[1, 2, 3].map(i => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-5 w-1/4" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+             <div className="space-y-2">
+                <Skeleton className="h-5 w-1/4" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            <div className="flex justify-end"><Skeleton className="h-10 w-36" /></div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -76,48 +181,62 @@ export default function ProfessionalProfilePage() {
           <CardContent className="pt-6 space-y-6">
             <div className="flex flex-col items-center space-y-4 md:flex-row md:space-y-0 md:space-x-6">
               <div className="relative">
-                <Image src={profilePictureUrl} alt="Foto do Profissional" width={120} height={120} className="rounded-full border object-cover" data-ai-hint="avatar pessoa" />
-                <Button size="sm" variant="outline" className="absolute -bottom-2 -right-2" onClick={() => alert("Funcionalidade de upload de foto a ser implementada.")}>
+                <NextImage 
+                  src={imagePreview || "https://placehold.co/120x120.png?text=Perfil"} 
+                  alt="Foto do Profissional" 
+                  width={120} height={120} 
+                  className="rounded-full border object-cover" 
+                  data-ai-hint="avatar pessoa" 
+                />
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleImageChange} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+                <Button type="button" size="sm" variant="outline" className="absolute -bottom-2 -right-2" onClick={triggerFileInput}>
                   <ImageIcon className="mr-1 h-3 w-3" /> Alterar
                 </Button>
               </div>
               <div className="flex-grow w-full">
-                <Label htmlFor="prof-name">Seu Nome Completo</Label>
-                <Input id="prof-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 text-lg font-semibold" />
+                <Label htmlFor="name">Seu Nome Completo</Label>
+                <Input id="name" name="name" value={formData.name || ""} onChange={handleInputChange} className="mt-1 text-lg font-semibold" />
               </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="prof-email">E-mail de Contato (Login)</Label>
-                <Input id="prof-email" type="email" value={email} disabled className="mt-1 bg-muted/50" />
+                <Input id="prof-email" type="email" value={user?.email || ""} disabled className="mt-1 bg-muted/50" />
                  <p className="text-xs text-muted-foreground mt-1">Para alterar o e-mail de login, contate o administrador da empresa.</p>
               </div>
               <div>
-                <Label htmlFor="prof-phone">Telefone de Contato (Visível para clientes)</Label>
-                <Input id="prof-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(XX) XXXXX-XXXX" className="mt-1" />
+                <Label htmlFor="phone">Telefone de Contato (Visível para clientes)</Label>
+                <Input id="phone" name="phone" type="tel" value={formData.phone || ""} onChange={handleInputChange} placeholder="(XX) XXXXX-XXXX" className="mt-1" />
               </div>
             </div>
             
             <div>
-              <Label htmlFor="prof-specialty">Sua Especialidade Principal</Label>
-              <Input id="prof-specialty" value={specialty} onChange={(e) => setSpecialty(e.target.value)} placeholder="Ex: Ortodontista, Terapeuta Holístico" className="mt-1" />
+              <Label htmlFor="specialty">Sua Especialidade Principal</Label>
+              <Input id="specialty" name="specialty" value={formData.specialty || ""} onChange={handleInputChange} placeholder="Ex: Ortodontista, Terapeuta Holístico" className="mt-1" />
             </div>
 
             <div>
-              <Label htmlFor="prof-bio">Sua Biografia / Sobre Você (Visível na página de agendamento)</Label>
-              <Textarea id="prof-bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Descreva sua experiência, abordagem, paixões, etc." className="mt-1" rows={5} />
+              <Label htmlFor="bio">Sua Biografia / Sobre Você (Visível na página de agendamento)</Label>
+              <Textarea id="bio" name="bio" value={formData.bio || ""} onChange={handleInputChange} placeholder="Descreva sua experiência, abordagem, paixões, etc." className="mt-1" rows={5} />
             </div>
 
             <div>
-              <Label htmlFor="prof-services">Serviços que Você Oferece (separados por vírgula)</Label>
-              <Input id="prof-services" value={services} onChange={(e) => setServices(e.target.value)} placeholder="Ex: Clareamento Dental, Terapia de Casal, Corte Masculino" className="mt-1" />
+              <Label htmlFor="services_offered_text">Serviços que Você Oferece (separados por vírgula)</Label>
+              <Input id="services_offered_text" name="services_offered_text" value={formData.services_offered_text || ""} onChange={handleInputChange} placeholder="Ex: Clareamento Dental, Terapia de Casal, Corte Masculino" className="mt-1" />
               <p className="text-xs text-muted-foreground mt-1">Estes serviços estarão disponíveis para agendamento. Detalhes como duração e preço são configurados pelo administrador da empresa.</p>
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={isSaving}>
-                <Save className="mr-2 h-4 w-4" /> {isSaving ? "Salvando..." : "Salvar Alterações no Perfil"}
+              <Button type="submit" disabled={isSaving || authLoading || isLoadingPage}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {isSaving ? "Salvando..." : "Salvar Alterações no Perfil"}
               </Button>
             </div>
           </CardContent>
