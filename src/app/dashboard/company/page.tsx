@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star, Award, LineChart, Timer, Bell, Loader2 } from "lucide-react";
 import Link from "next/link";
-import NextImage from "next/image"; // Renomeado para evitar conflito
+import NextImage from "next/image"; 
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +18,6 @@ import { getCompanyDetailsByOwner, type CompanyData, getProfessionalsByCompany, 
 
 const companyStats = [
     { title: "Total de Agendamentos (Mock)", value: "256", icon: <CalendarDays className="h-6 w-6 text-primary" /> },
-    // { title: "Profissionais Ativos (Mock)", value: "3", icon: <Users className="h-6 w-6 text-primary" /> }, // Será dinâmico
     { title: "Receita Mensal Estimada (Mock)", value: "R$12.500", icon: <BarChart3 className="h-6 w-6 text-primary" /> },
 ];
 
@@ -56,9 +55,6 @@ export default function CompanyAdminPage() {
             } else if (typeof window !== "undefined") {
                setPublicLink(`${window.location.origin}/schedule/configure-seu-slug`);
             }
-          } else {
-             // Se não há companyData, pode ser que o perfil precise ser completado.
-             // O card condicional abaixo tratará disso.
           }
         })
         .catch(error => {
@@ -71,7 +67,7 @@ export default function CompanyAdminPage() {
     } else if (!authLoading && (!user || role !== USER_ROLES.COMPANY_ADMIN)) {
       router.push(user ? '/dashboard' : '/login');
     } else if (!authLoading && !user) {
-      setIsLoadingPage(false); // Se não há usuário, para o loading
+      setIsLoadingPage(false);
     }
   }, [user, role, authLoading, router, toast]);
 
@@ -106,7 +102,7 @@ export default function CompanyAdminPage() {
           <Skeleton className="h-8 w-3/4 mb-2" />
           <Skeleton className="h-6 w-1/2" />
         </CardHeader>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {[1,2,3].map(i => (
             <Card key={i} className="shadow-md">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -126,7 +122,7 @@ export default function CompanyAdminPage() {
               <Skeleton className="h-6 w-1/2 mb-1" />
               <Skeleton className="h-4 w-3/4" />
             </div>
-            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-10 w-full md:w-48" />
           </CardHeader>
           <CardContent>
             <Skeleton className="h-32 w-full" />
@@ -141,13 +137,13 @@ export default function CompanyAdminPage() {
   return (
     <div className="space-y-8">
       <CardHeader className="px-0">
-        <CardTitle className="text-3xl font-bold">{companyData?.company_name || "Painel da Empresa"}</CardTitle>
+        <CardTitle className="text-2xl sm:text-3xl font-bold">{companyData?.company_name || "Painel da Empresa"}</CardTitle>
         <CardDescription>Supervisione as operações, profissionais, serviços e desempenho da sua empresa.</CardDescription>
       </CardHeader>
 
       {showCompleteProfileCard && (
         <Card className="mb-8 shadow-lg border-primary bg-primary/5">
-         <CardHeader className="flex flex-row items-center space-x-3">
+         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
             <Info className="h-8 w-8 text-primary flex-shrink-0" />
             <div>
               <CardTitle className="text-xl text-primary">Complete o Perfil da Sua Empresa!</CardTitle>
@@ -175,7 +171,7 @@ export default function CompanyAdminPage() {
         </Card>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {companyStats.map(stat => (
           <Card key={stat.title} className="shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -221,18 +217,17 @@ export default function CompanyAdminPage() {
             <CardTitle>Gerenciar Profissionais</CardTitle>
             <CardDescription>Veja, adicione ou edite profissionais em sua empresa.</CardDescription>
           </div>
-          <Button asChild>
+          <Button asChild className="w-full md:w-auto">
             <Link href="/dashboard/company/add-professional">
               <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Profissional
             </Link>
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           {professionals.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  {/* <TableHead>Avatar</TableHead> */}
                   <TableHead>Nome</TableHead>
                   <TableHead>Especialidade</TableHead>
                   <TableHead>Email</TableHead>
@@ -242,13 +237,10 @@ export default function CompanyAdminPage() {
               <TableBody>
                 {professionals.map((prof) => (
                   <TableRow key={prof.id}>
-                    {/* <TableCell>
-                      <NextImage src={prof.profilePictureUrl || "https://placehold.co/40x40.png?text=P"} alt={prof.name} width={40} height={40} className="rounded-full" data-ai-hint="avatar pessoa" />
-                    </TableCell> */}
                     <TableCell className="font-medium">{prof.name}</TableCell>
                     <TableCell>{prof.specialty}</TableCell>
                     <TableCell>{prof.email}</TableCell>
-                    <TableCell className="text-right space-x-2">
+                    <TableCell className="text-right space-x-1 sm:space-x-2">
                       <Button variant="outline" size="icon" aria-label="Editar profissional" onClick={() => toast({title: "Em breve", description: "Edição de profissional."})}>
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -270,7 +262,7 @@ export default function CompanyAdminPage() {
         <CardHeader>
             <CardTitle>Gestão de Serviços e Agendas</CardTitle>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
              <Button asChild>
               <Link href="/dashboard/company/services">
                 <ShoppingBag className="mr-2 h-4 w-4" /> Configurar Serviços
@@ -404,9 +396,9 @@ export default function CompanyAdminPage() {
         <CardContent className="space-y-6">
             <div>
                 <h4 className="font-medium mb-2">Link Público de Agendamento</h4>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                     <Input type="text" value={publicLink} readOnly className="bg-muted flex-grow" />
-                    <Button onClick={copyPublicLink} variant="outline" disabled={!publicLink || publicLink.includes("configure-seu-slug")}>
+                    <Button onClick={copyPublicLink} variant="outline" disabled={!publicLink || publicLink.includes("configure-seu-slug")} className="w-full sm:w-auto">
                         <LinkIcon className="mr-2 h-4 w-4" /> Copiar Link
                     </Button>
                 </div>
@@ -429,7 +421,7 @@ export default function CompanyAdminPage() {
             <CardTitle>Configurações da Empresa</CardTitle>
             <CardDescription>Defina as configurações gerais e de perfil da sua empresa.</CardDescription>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Button asChild>
               <Link href="/dashboard/company/edit-profile">
                 <Edit className="mr-2 h-4 w-4" /> Editar Perfil da Empresa
@@ -455,5 +447,3 @@ export default function CompanyAdminPage() {
     </div>
   );
 }
-
-    

@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar as ShadCalendar } from "@/components/ui/calendar"; // Full page calendar
+import { Calendar as ShadCalendar } from "@/components/ui/calendar"; 
 import { APP_NAME } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import Link from "next/link";
@@ -16,8 +16,6 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
 
-// Mock data for appointments - adjusted for relative dates
-// TODO: Em uma implementação real, buscaria agendamentos do Supabase filtrados por professional_id e data.
 const today = new Date();
 const tomorrow = new Date(today);
 tomorrow.setDate(today.getDate() + 1);
@@ -42,7 +40,6 @@ export default function ProfessionalCalendarPage() {
   
   useEffect(() => {
     document.title = `Meu Calendário - ${APP_NAME}`;
-    // TODO: Em uma implementação real, buscar os agendamentos do profissional aqui.
   }, []);
 
   const appointmentsForSelectedDate = selectedDate 
@@ -58,7 +55,6 @@ export default function ProfessionalCalendarPage() {
         toast({ title: "Erro", description: "Data, título e hora do evento são obrigatórios.", variant: "destructive" });
         return;
     }
-    // TODO: Em uma implementação real, esta função chamaria o supabaseService para criar um agenda_block.
     console.log("BACKEND_SIM: Adicionando novo evento/bloqueio:", { date: selectedDate, title: eventTitle, time: eventTime });
     toast({ title: "Evento Adicionado (Simulação)", description: `O evento "${eventTitle}" foi adicionado para ${selectedDate.toLocaleDateString('pt-BR')} às ${eventTime}.` });
     setIsEventModalOpen(false);
@@ -70,24 +66,24 @@ export default function ProfessionalCalendarPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <CardHeader className="px-0">
-          <CardTitle className="text-3xl font-bold flex items-center">
-            <CalendarDays className="mr-3 h-8 w-8 text-primary" /> Meu Calendário Completo
+          <CardTitle className="text-2xl sm:text-3xl font-bold flex items-center">
+            <CalendarDays className="mr-3 h-7 w-7 sm:h-8 sm:w-8 text-primary" /> Meu Calendário Completo
           </CardTitle>
           <CardDescription>Visualize e gerencie todos os seus agendamentos. <span className="text-xs text-muted-foreground">(Dados mockados)</span></CardDescription>
         </CardHeader>
-        <div className="flex space-x-2 items-center">
-            <div className="relative">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 items-stretch sm:items-center w-full sm:w-auto">
+            <div className="relative self-end sm:self-center mb-2 sm:mb-0">
                 <Bell className="h-6 w-6 text-muted-foreground hover:text-primary cursor-pointer" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span> {/* Mocked notification count */}
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
             </div>
-            <Button variant="outline" asChild>
+            <Button variant="outline" asChild className="w-full sm:w-auto">
                 <Link href="/dashboard/professional/availability">
                     <Clock className="mr-2 h-4 w-4" /> Definir Disponibilidade
                 </Link>
             </Button>
-            <Button variant="outline" asChild>
+            <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href="/dashboard/professional">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao Painel
             </Link>
@@ -95,10 +91,10 @@ export default function ProfessionalCalendarPage() {
         </div>
       </div>
 
-      <div className="mb-6 flex items-center space-x-2">
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
             <Label className="text-sm font-medium">Visualizar por:</Label>
             <Select value={viewMode} onValueChange={(value) => setViewMode(value as "day" | "week" | "month")}>
-                <SelectTrigger className="w-[120px]">
+                <SelectTrigger className="w-full sm:w-[120px]">
                     <SelectValue placeholder="Dia"/>
                 </SelectTrigger>
                 <SelectContent>
@@ -110,13 +106,13 @@ export default function ProfessionalCalendarPage() {
             <span className="text-sm text-muted-foreground">(Funcionalidade de visualização por semana/mês é um placeholder)</span>
         </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-1">
              <Card className="shadow-lg">
                 <CardHeader>
                     <CardTitle className="text-lg">Selecione uma Data</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex justify-center">
                     <ShadCalendar
                         mode="single"
                         selected={selectedDate}
@@ -124,7 +120,7 @@ export default function ProfessionalCalendarPage() {
                         className="rounded-md border p-0"
                         locale={{
                             localize: { month: n => ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][n], day: n => ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'][n]},
-                            formatLong: { date: () => 'dd/MM/yyyy' }, // Simplificado para evitar erros de tipo complexo
+                            formatLong: { date: () => 'dd/MM/yyyy' }, 
                         }}
                         modifiers={{ booked: bookedDays }}
                         modifiersClassNames={{ booked: 'text-primary font-bold relative after:content-["•"] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:text-lg' }}
@@ -136,13 +132,13 @@ export default function ProfessionalCalendarPage() {
         <div className="md:col-span-2">
             <Card className="shadow-lg min-h-[400px]">
                 <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="text-xl">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <CardTitle className="text-lg sm:text-xl">
                             Agendamentos para {selectedDate ? selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) : "Nenhuma data selecionada"}
                         </CardTitle>
                         <Dialog open={isEventModalOpen} onOpenChange={setIsEventModalOpen}>
                             <DialogTrigger asChild>
-                                <Button size="sm"> <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Bloqueio/Evento</Button>
+                                <Button size="sm" className="w-full sm:w-auto"> <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Bloqueio/Evento</Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
@@ -174,23 +170,23 @@ export default function ProfessionalCalendarPage() {
                         <ul className="space-y-4">
                         {appointmentsForSelectedDate.map(appt => (
                             <li key={appt.id} className="p-4 border rounded-lg hover:bg-secondary/50">
-                                <div className="flex items-start justify-between">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                                     <div>
-                                        <p className="font-semibold text-lg">{appt.title}</p>
+                                        <p className="font-semibold text-base sm:text-lg">{appt.title}</p>
                                         <p className="text-sm text-muted-foreground">{appt.service}</p>
                                         <p className="text-sm text-muted-foreground">
                                             {appt.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(appt.date.getTime() + appt.duration * 60000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-left sm:text-right">
                                         <Badge variant={appt.status === "Confirmado" ? "default" : "outline"} 
                                                className={
                                                 appt.status === "Confirmado" ? "bg-green-500 hover:bg-green-600 text-white" : 
                                                 appt.status === "Pendente" ? "bg-yellow-400 hover:bg-yellow-500 text-black" : 
                                                 appt.status === "Bloqueio" ? "bg-slate-500 hover:bg-slate-600 text-white" : ""
                                                } >{appt.status}</Badge>
-                                        <Button variant="link" size="sm" className="p-0 h-auto text-primary mt-1">
-                                            Ver Detalhes <ExternalLink className="ml-1 h-3 w-3" />
+                                        <Button variant="link" size="sm" className="p-0 h-auto text-primary mt-1 block">
+                                            Ver Detalhes <ExternalLink className="ml-1 h-3 w-3 inline-block" />
                                         </Button>
                                     </div>
                                 </div>

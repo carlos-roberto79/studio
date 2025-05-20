@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight, Briefcase, CalendarCheck, UserCircle, Settings, ShoppingBag, Clock, Package } from "lucide-react"; // Adicionando Package
+import { ArrowRight, Briefcase, CalendarCheck, UserCircle, Settings, ShoppingBag, Clock, Package } from "lucide-react"; 
 import { APP_NAME } from "@/lib/constants";
 import React, { useEffect } from 'react'; 
 
@@ -52,7 +52,7 @@ export default function DashboardPage() {
           description: "Veja sua agenda, gerencie agendamentos e atualize sua disponibilidade.",
            cta: {
             text: "Ver Minha Agenda Completa",
-            href: "/dashboard/professional/calendar", // Alterado para calendário completo
+            href: "/dashboard/professional/calendar", 
             icon: <CalendarCheck className="mr-2 h-4 w-4" />
           },
            stats: [
@@ -106,8 +106,8 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold">{roleInfo.title}</CardTitle>
-          <CardDescription className="text-lg">{roleInfo.description}</CardDescription>
+          <CardTitle className="text-2xl sm:text-3xl font-bold">{roleInfo.title}</CardTitle>
+          <CardDescription className="text-base sm:text-lg">{roleInfo.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="mb-6 text-muted-foreground">
@@ -124,14 +124,13 @@ export default function DashboardPage() {
       </Card>
 
       {roleInfo.stats.length > 0 && (
-         <div className="grid gap-6 md:grid-cols-3">
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
           {roleInfo.stats.map(stat => (
             <Card key={stat.label} className="shadow-md">
               <CardHeader>
                 <CardDescription>{stat.label}</CardDescription>
-                <CardTitle className="text-4xl font-bold">{stat.value}</CardTitle>
+                <CardTitle className="text-3xl md:text-4xl font-bold">{stat.value}</CardTitle>
               </CardHeader>
-              {/* Pode adicionar um CardFooter com um link "Ver detalhes" se aplicável */}
             </Card>
           ))}
         </div>
@@ -141,7 +140,7 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle>Ações Rápidas</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <CardContent className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {roleInfo.quickActions.map(action => (
             <Button key={action.href} variant="outline" asChild className="justify-start text-left h-auto py-3">
               <Link href={action.href} className="flex items-center space-x-3">

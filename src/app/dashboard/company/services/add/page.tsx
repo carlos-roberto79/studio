@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import Link from "next/link";
-import NextImage from "next/image"; // Renomeado para evitar conflito
+import NextImage from "next/image"; 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -33,7 +33,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getCompanyDetailsByOwner, addService, getAvailabilityTypesForSelect } from "@/services/supabaseService";
 import type { ServiceData } from "@/services/supabaseService";
 
-// Mantendo MOCK_PROFESSIONALS por enquanto, pois a relação M-M é complexa
 const MOCK_PROFESSIONALS = [
   { id: "prof1", name: "Dr. João Silva (Mock)" },
   { id: "prof2", name: "Dra. Maria Oliveira (Mock)" },
@@ -53,7 +52,6 @@ const serviceCategories = [
 const serviceSchema = z.object({
   name: z.string().min(3, "O nome do serviço deve ter pelo menos 3 caracteres."),
   description: z.string().optional(),
-  // professionals: z.array(z.string()).optional().default([]), // Mantendo mockado por enquanto
   category: z.string().min(1, "A categoria é obrigatória."),
   image_url: z.string().optional(),
   duration_minutes: z.coerce.number().int().positive("A duração deve ser um número positivo.").min(5, "Duração mínima de 5 minutos."),
@@ -149,9 +147,7 @@ export default function AddServicePage() {
                 const duplicatedData = JSON.parse(duplicatedDataString) as ServiceData;
                 form.reset({
                     ...duplicatedData,
-                    price: String(duplicatedData.price).replace('.',','), // Formatar para string no input
-                    // @ts-ignore - professionals is not in ServiceData but was in localStorage mock
-                    professionals: duplicatedData.professionals || [], // Ensure professionals is an array
+                    price: String(duplicatedData.price).replace('.',','), 
                     image_url: duplicatedData.image_url || "https://placehold.co/300x200.png?text=Serviço"
                 }); 
                 setImagePreview(duplicatedData.image_url || "https://placehold.co/300x200.png?text=Serviço");
@@ -184,10 +180,9 @@ export default function AddServicePage() {
       reader.onloadend = () => {
         const result = reader.result as string;
         setImagePreview(result);
-        form.setValue("image_url", result, { shouldValidate: true }); // Salvar como Data URL para simulação/preview
+        form.setValue("image_url", result, { shouldValidate: true }); 
       };
       reader.readAsDataURL(file);
-      // Em um app real, aqui você faria o upload para o Supabase Storage e salvaria a URL pública.
       toast({title: "Simulação", description: "Imagem carregada para preview. Em um app real, seria enviada ao servidor."});
     }
   };
@@ -212,7 +207,6 @@ export default function AddServicePage() {
       ...data,
       price: parseFloat(data.price.replace(",", ".")),
       availability_type_id: data.availability_type_id === "" ? null : data.availability_type_id,
-      // professionalIds: data.professionals, // Se for implementar relação M-M
     };
 
     try {
@@ -236,7 +230,7 @@ export default function AddServicePage() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button variant="outline" size="icon" asChild type="button">
               <Link href="/dashboard/company/services">
@@ -244,10 +238,10 @@ export default function AddServicePage() {
               </Link>
             </Button>
             <CardHeader className="p-0">
-              <CardTitle className="text-2xl md:text-3xl font-bold">Adicionar Novo Serviço</CardTitle>
+              <CardTitle className="text-xl md:text-2xl lg:text-3xl font-bold">Adicionar Novo Serviço</CardTitle>
             </CardHeader>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
              <FormField
                 control={form.control}
                 name="active"
@@ -264,7 +258,7 @@ export default function AddServicePage() {
                   </FormItem>
                 )}
               />
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" disabled={isSaving} className="flex-grow sm:flex-grow-0">
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Save className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{isSaving ? "Salvando..." : "Salvar"}</span>
             </Button>
@@ -308,53 +302,6 @@ export default function AddServicePage() {
                         </FormItem>
                       )}
                     />
-                    {/* <FormField
-                        control={form.control}
-                        name="professionals"
-                        render={() => (
-                            <FormItem>
-                            <div className="mb-2">
-                                <FormLabel className="text-base">Profissionais Responsáveis (Mock)</FormLabel>
-                                <FormDescription>Selecione os profissionais que podem realizar este serviço.</FormDescription>
-                            </div>
-                            <div className="space-y-2">
-                                {MOCK_PROFESSIONALS.map((prof) => (
-                                <FormField
-                                    key={prof.id}
-                                    control={form.control}
-                                    name="professionals"
-                                    render={({ field }) => {
-                                    return (
-                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-2 border rounded-md hover:bg-secondary/50">
-                                        <FormControl>
-                                            <Checkbox
-                                            checked={field.value?.includes(prof.id)}
-                                            onCheckedChange={(checked) => {
-                                                const currentValue = field.value || [];
-                                                return checked
-                                                ? field.onChange([...currentValue, prof.id])
-                                                : field.onChange(
-                                                    currentValue.filter(
-                                                    (value) => value !== prof.id
-                                                    )
-                                                );
-                                            }}
-                                            />
-                                        </FormControl>
-                                        <FormLabel className="font-normal text-sm">
-                                            {prof.name}
-                                        </FormLabel>
-                                        </FormItem>
-                                    );
-                                    }}
-                                />
-                                ))}
-                            </div>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    /> */}
-
                     <FormField
                       control={form.control}
                       name="category"
@@ -380,9 +327,9 @@ export default function AddServicePage() {
                           <FormLabel>Imagem Ilustrativa do Serviço</FormLabel>
                           <FormControl>
                             <>
-                              <div className="flex items-center gap-4">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                                 {imagePreview && (
-                                  <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px]">
+                                  <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px] flex-shrink-0">
                                     <NextImage src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
                                     {form.getValues("image_url") !== "https://placehold.co/300x200.png?text=Serviço" && (
                                       <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
@@ -392,7 +339,7 @@ export default function AddServicePage() {
                                   </div>
                                 )}
                                 <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload-add" />
-                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
                                   <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
                                 </Button>
                               </div>
@@ -403,7 +350,7 @@ export default function AddServicePage() {
                       )}
                     />
 
-                   <div className="grid md:grid-cols-2 gap-6">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
                           control={form.control}
                           name="duration_minutes"
@@ -453,7 +400,7 @@ export default function AddServicePage() {
                     
                     <div className="space-y-2 p-4 border rounded-md">
                         <h4 className="font-medium text-md">Comissão do Profissional</h4>
-                        <div className="grid md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField
                             control={form.control}
                             name="commission_type"
@@ -523,7 +470,7 @@ export default function AddServicePage() {
                         )}
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField
                             control={form.control}
                             name="simultaneous_appointments_per_user"
@@ -661,7 +608,6 @@ export default function AddServicePage() {
               </CardContent>
             </Card>
           </TabsContent>
-          {/* Placeholder Tabs */}
           <TabsContent value="availability">
             <Card>
               <CardHeader><CardTitle>Disponibilidade Avançada</CardTitle><CardDescription>Configure regras detalhadas de disponibilidade para este serviço (em breve).</CardDescription></CardHeader>
@@ -685,5 +631,3 @@ export default function AddServicePage() {
     </Form>
   );
 }
-
-    

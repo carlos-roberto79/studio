@@ -11,15 +11,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { APP_NAME } from "@/lib/constants";
-import { ArrowLeft, BarChart3, Filter, FileDown, CalendarIcon, Percent, PieChart, CheckCircle } from "lucide-react"; // Adicionado CheckCircle
+import { ArrowLeft, BarChart3, Filter, FileDown, CalendarIcon, Percent, PieChart, CheckCircle } from "lucide-react"; 
 import { useToast } from "@/hooks/use-toast";
 import type { DateRange } from "react-day-picker";
 import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
-import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts"; // Renomeado para RechartsBarChart
+import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts"; 
 
-// Mock data for occupancy report
 const mockOccupancyStats = {
   totalSlots: 200,
   occupiedSlots: 150,
@@ -61,7 +60,6 @@ export default function OccupancyReportPage() {
   const handleApplyFilters = () => {
     toast({ title: "Filtros Aplicados (Simulação)", description: "Os dados de ocupação seriam atualizados." });
     console.log("BACKEND_SIM: Aplicar filtros de ocupação:", { dateRange, selectedProfessional });
-    // Em um app real, buscaria dados com base nos filtros
   };
   
   const handleExport = (format: "pdf" | "excel") => {
@@ -83,14 +81,14 @@ export default function OccupancyReportPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <CardHeader className="px-0">
-          <CardTitle className="text-3xl font-bold flex items-center">
-            <BarChart3 className="mr-3 h-8 w-8 text-primary" /> Relatório de Agenda e Ocupação
+          <CardTitle className="text-2xl sm:text-3xl font-bold flex items-center">
+            <BarChart3 className="mr-3 h-7 w-7 sm:h-8 sm:w-8 text-primary" /> Relatório de Agenda e Ocupação
           </CardTitle>
           <CardDescription>Analise a utilização dos horários e o desempenho da sua equipe.</CardDescription>
         </CardHeader>
-        <Button variant="outline" asChild>
+        <Button variant="outline" asChild className="w-full sm:w-auto">
           <Link href="/dashboard/company">
             <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao Painel
           </Link>
@@ -102,7 +100,7 @@ export default function OccupancyReportPage() {
           <CardTitle className="text-xl flex items-center"><Filter className="mr-2 h-5 w-5"/> Filtros</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div>
               <Label htmlFor="date-range-occupancy">Período</Label>
               <Popover>
@@ -138,20 +136,20 @@ export default function OccupancyReportPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end"> {/* Contêiner para alinhar o botão */}
+            <div className="flex items-end"> 
                 <Button onClick={handleApplyFilters} className="w-full mt-1 md:mt-0">
                     <Filter className="mr-2 h-4 w-4"/> Aplicar Filtros
                 </Button>
             </div>
           </div>
-           <div className="flex justify-end space-x-3 pt-2">
-            <Button onClick={() => handleExport("excel")}><FileDown className="mr-2 h-4 w-4"/> Exportar Excel</Button>
-            <Button onClick={() => handleExport("pdf")}><FileDown className="mr-2 h-4 w-4"/> Exportar PDF</Button>
+           <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-2">
+            <Button onClick={() => handleExport("excel")} className="w-full sm:w-auto"><FileDown className="mr-2 h-4 w-4"/> Exportar Excel</Button>
+            <Button onClick={() => handleExport("pdf")} className="w-full sm:w-auto"><FileDown className="mr-2 h-4 w-4"/> Exportar PDF</Button>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total de Horários Disponíveis</CardTitle>
@@ -180,7 +178,7 @@ export default function OccupancyReportPage() {
             <CardTitle className="text-xl flex items-center"><PieChart className="mr-2 h-5 w-5"/> Ocupação por Dia da Semana (Exemplo)</CardTitle>
             <CardDescription>Visualização da distribuição de horários ocupados e disponíveis.</CardDescription>
         </CardHeader>
-        <CardContent className="h-[350px]">
+        <CardContent className="h-[300px] md:h-[350px]">
              <ChartContainer config={chartConfig} className="w-full h-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <RechartsBarChart data={mockDailyOccupancyChartData} margin={{ top: 20, right: 20, left: -20, bottom: 5 }}>
@@ -201,7 +199,7 @@ export default function OccupancyReportPage() {
         <CardHeader>
             <CardTitle>Ocupação por Profissional</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
             {professionalOccupancy.length > 0 ? (
                 <Table>
                     <TableHeader>

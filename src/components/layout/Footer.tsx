@@ -6,7 +6,7 @@ import { APP_NAME, USER_ROLES } from '@/lib/constants';
 import { Copyright } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
-import { getCompanyDetailsByOwner, type CompanyData } from '@/services/supabaseService'; // Importar
+import { getCompanyDetailsByOwner, type CompanyData } from '@/services/supabaseService';
 
 const quickLinks = [
   { href: '/#features', label: 'Recursos' },
@@ -30,13 +30,12 @@ export function Footer() {
         })
         .catch(error => {
           console.error("Footer: Erro ao buscar dados da empresa:", error);
-          // Não precisa de toast aqui, apenas não mostra dados da empresa
         })
         .finally(() => {
           setIsLoadingCompanyData(false);
         });
     } else {
-      setCompanyData(null); // Limpa se não for admin ou não estiver logado
+      setCompanyData(null); 
       setIsLoadingCompanyData(false);
     }
   }, [user, role, authLoading]);
@@ -53,7 +52,6 @@ export function Footer() {
                 <h3 className="text-lg font-semibold text-foreground">{companyData.company_name}</h3>
                 {companyData.email && <p className="text-sm text-muted-foreground mt-1">Contato: {companyData.email}</p>}
               </div>
-              {/* Você pode adicionar links específicos da empresa aqui se desejar */}
             </div>
             <div className="mt-8 border-t pt-8 text-center">
               <p className="flex items-center justify-center text-sm text-muted-foreground">
@@ -66,11 +64,9 @@ export function Footer() {
             <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
               <div className="md:col-span-1">
                 <h3 className="text-lg font-semibold text-foreground">{APP_NAME}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Simplificando seus agendamentos, sem esforço.
-                </p>
+                {/* Tagline removida conforme solicitação anterior */}
               </div>
-              <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-8">
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8"> {/* Ajustado para sm:grid-cols-2 md:grid-cols-3 */}
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-2">Links Rápidos</h4>
                   <ul className="space-y-1">
@@ -84,9 +80,9 @@ export function Footer() {
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-2 opacity-0 md:opacity-100">.</h4> {/* Spacer for alignment */}
-                  <ul className="space-y-1">
-                    {quickLinks.slice(3).map(link => (
+                  <h4 className="text-sm font-semibold text-foreground mb-2 hidden md:block">.</h4> {/* Spacer for alignment */}
+                  <ul className="space-y-1 mt-0 md:mt-0"> {/* Ajustado para sm na segunda coluna */}
+                     {quickLinks.slice(3).map(link => (
                       <li key={link.href}>
                         <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary">
                           {link.label}
