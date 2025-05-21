@@ -91,7 +91,7 @@ type ServiceFormZodData = z.infer<typeof serviceSchema>;
 export default function AddServicePage() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, role } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -107,9 +107,9 @@ export default function AddServicePage() {
     duration_minutes: 60,
     display_duration: true,
     unique_scheduling_link_slug: "",
-    price: "", // User will type with comma, we parse on submit
+    price: "", 
     commission_type: undefined, 
-    commission_value: NaN, // Use NaN for optional number coercion to avoid "0"
+    commission_value: NaN, 
     has_booking_fee: false,
     booking_fee_value: NaN,
     simultaneous_appointments_per_user: 1,
@@ -118,7 +118,7 @@ export default function AddServicePage() {
     block_after_24_hours: false,
     interval_between_slots_minutes: 10,
     confirmation_type: "automatic",
-    availability_type_id: "none", // Represent null/empty as a non-empty string for select
+    availability_type_id: "none", 
     active: true,
     image_url: "https://placehold.co/300x200.png?text=Serviço",
   };
@@ -150,12 +150,12 @@ export default function AddServicePage() {
       }).finally(() => {
         if (isMounted) setIsLoadingPage(false);
       });
-    } else if(user && role !== USER_ROLES.COMPANY_ADMIN) {
+    } else if(!authLoading && user && role !== USER_ROLES.COMPANY_ADMIN) { // Adicionado !authLoading
         toast({ title: "Acesso Negado", description: "Você não tem permissão para adicionar serviços.", variant: "destructive" });
         router.push('/dashboard');
         if (isMounted) setIsLoadingPage(false);
-    } else if (!user) {
-        // router.push('/login'); // Redirecionar se não estiver logado (após carregamento do auth)
+    } else if (!authLoading && !user) { // Adicionado !authLoading
+        router.push('/login'); 
         if (isMounted) setIsLoadingPage(false);
     }
 
@@ -193,7 +193,8 @@ export default function AddServicePage() {
         }
     }
     return () => { isMounted = false; }
-  }, [user, role, form, toast, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, role, authLoading, router, toast]); // form foi removido das dependências
 
   const fetchAvailabilityTypes = async (currentCompanyId: string) => {
     try {
@@ -250,7 +251,7 @@ export default function AddServicePage() {
         description: `O serviço "${data.name}" foi cadastrado com sucesso.`,
       });
       form.reset(defaultServiceValues); 
-      setImagePreview(defaultServiceValues.image_url); // Reset image preview
+      setImagePreview(defaultServiceValues.image_url); 
       router.push('/dashboard/company/services');
     } catch (error: any) {
       toast({ title: "Erro ao Adicionar Serviço", description: error.message, variant: "destructive" });
@@ -264,8 +265,8 @@ export default function AddServicePage() {
   if (isLoadingPage) {
       return <div className="text-center p-10">Carregando formulário de serviço...</div>;
   }
-  if (!companyId && !isLoadingPage) {
-      return <div className="text-center p-10 text-destructive">Não foi possível carregar os dados da empresa para associar ao serviço.</div>;
+  if (!companyId && !isLoadingPage && !authLoading) { // Adicionado !authLoading para evitar renderização prematura
+      return <div className="text-center p-10 text-destructive">Não foi possível carregar os dados da empresa para associar ao serviço. Verifique se você está logado e se a empresa foi registrada.</div>;
   }
 
 
@@ -368,24 +369,22 @@ export default function AddServicePage() {
                         <FormItem>
                           <FormLabel>Imagem Ilustrativa do Serviço</FormLabel>
                           <FormControl>
-                            <>
-                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                                {imagePreview && (
-                                  <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px] flex-shrink-0">
-                                    <NextImage src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
-                                    {form.getValues("image_url") !== "https://placehold.co/300x200.png?text=Serviço" && (
-                                      <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
-                                        <XCircle className="h-4 w-4"/>
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
-                                <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload-add" />
-                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
-                                  <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
-                                </Button>
-                              </div>
-                            </>
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                              {imagePreview && (
+                                <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px] flex-shrink-0">
+                                  <NextImage src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
+                                  {form.getValues("image_url") !== "https://placehold.co/300x200.png?text=Serviço" && (
+                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
+                                      <XCircle className="h-4 w-4"/>
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                              <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload-add" />
+                              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
+                                <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
+                              </Button>
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
