@@ -1,4 +1,6 @@
 
+"use client";
+
 import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_NAME } from "@/lib/constants";
@@ -82,8 +84,7 @@ export default function TermsPage() {
             fornecedores ou afiliados, serão responsáveis por quaisquer danos indiretos, incidentais,
             especiais, consequenciais ou punitivos, incluindo, sem limitação, perda de lucros, dados,
             uso, goodwill ou outras perdas intangíveis, resultantes de (i) seu acesso ou uso ou incapacidade
-            de acessar ou usar a Plataforma; (ii) qualquer conduta ou conteúdo de terceiros na Plataforma;
-            (iii) qualquer conteúdo obtido da Plataforma; e (iv) acesso não autorizado, uso ou alteração
+            de acessar ou usar a Plataforma; (iv) qualquer acesso não autorizado, uso ou alteração
             de suas transmissões ou conteúdo, seja com base em garantia, contrato, ato ilícito (incluindo
             negligência) ou qualquer outra teoria legal, quer tenhamos sido informados ou não da
             possibilidade de tais danos.
@@ -113,4 +114,3 @@ export default function TermsPage() {
     </div>
   );
 }
-

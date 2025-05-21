@@ -38,7 +38,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getAvailabilityTypeById, updateAvailabilityType, deleteAvailabilityType } from "@/services/supabaseService";
 import type { AvailabilityTypeData } from "@/services/supabaseService";
 import { Skeleton } from "@/components/ui/skeleton";
-import { availabilityTypeSchema, type AvailabilityTypeFormZodData } from './../add/page'; // Importar de add/page.tsx
+import { availabilityTypeSchema, type AvailabilityTypeFormZodData } from '../add/page'; // Importar de add/page.tsx
 import { DayScheduleForm } from '@/components/company/DayScheduleForm'; // Importar o novo componente
 import { Input } from '@/components/ui/input'; // Importar Input para nome
 import { Textarea } from '@/components/ui/textarea'; // Importar Textarea para descrição
