@@ -2,23 +2,23 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form"; // Removido useFieldArray
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+// import { Checkbox } from "@/components/ui/checkbox"; // Checkbox será usado no DayScheduleForm
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
-import { ArrowLeft, Save, ListChecks, PlusCircle, XCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, ListChecks, Loader2 } from "lucide-react"; // Removido PlusCircle, XCircle
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Form,
   FormControl,
-  FormDescription,
+  // FormDescription, // Pode ser usado no DayScheduleForm se necessário
   FormField,
   FormItem,
   FormLabel,
@@ -27,6 +27,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { getCompanyDetailsByOwner, addAvailabilityType } from "@/services/supabaseService";
 import type { AvailabilityTypeData } from "@/services/supabaseService";
+import { DayScheduleForm } from '@/components/company/DayScheduleForm'; // Importar o novo componente
 
 const daysOfWeek = [
   { id: 'seg', label: 'Segunda-feira' },
@@ -38,19 +39,16 @@ const daysOfWeek = [
   { id: 'dom', label: 'Domingo' },
 ];
 
+// Schema Zod (mantido como antes, mas pode ser simplificado se a validação fina for no DayScheduleForm)
 const timeIntervalSchema = z.object({
   start: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
   end: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
 }).refine(data => {
-  if (data.start && data.end) { // Se ambos estão preenchidos, start deve ser menor que end
+  if (data.start && data.end) {
     return data.start < data.end;
   }
-  if (!data.start && !data.end) { // Ambos vazios é ok
-    return true;
-  }
-  // Se apenas um está preenchido, é inválido (a menos que a lógica de validação geral do dia ativo cuide disso)
-  // Para o refinamento do intervalo individual, consideramos inválido se um está preenchido e outro não.
-  return !(data.start && !data.end) && !(!data.start && data.end);
+  if (!data.start && !data.end) return true; // Ambos vazios é ok
+  return !(data.start && !data.end) && !(!data.start && data.end); // Se um está preenchido, o outro também deve ser.
 }, {
   message: "Se um horário (início ou fim) for preenchido, o outro também deve ser. Início deve ser antes do Fim.",
   path: ["end"], 
@@ -59,11 +57,11 @@ const timeIntervalSchema = z.object({
 const dayScheduleSchema = z.object({
   active: z.boolean().default(false),
   intervals: z.array(timeIntervalSchema)
-    .min(1, "Deve haver pelo menos um bloco de horário (mesmo que vazio se o dia estiver inativo).")
+    .min(1, "Deve haver pelo menos um bloco de horário.") // Garantido pelo default [{start:"", end:""}]
     .default([{start: "", end: ""}]),
 });
 
-const availabilityTypeSchema = z.object({
+export const availabilityTypeSchema = z.object({ // Exportar para DayScheduleForm
   name: z.string().min(3, "O nome do tipo deve ter pelo menos 3 caracteres."),
   description: z.string().optional(),
   schedule: z.object({
@@ -91,7 +89,7 @@ const availabilityTypeSchema = z.object({
 }, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido e válido (Início < Fim)." });
 
 
-type AvailabilityTypeFormZodData = z.infer<typeof availabilityTypeSchema>;
+export type AvailabilityTypeFormZodData = z.infer<typeof availabilityTypeSchema>; // Exportar para DayScheduleForm
 
 const createInitialSchedule = (): AvailabilityTypeFormZodData['schedule'] => daysOfWeek.reduce((acc, day) => {
   const isActive = day.id !== 'sab' && day.id !== 'dom';
@@ -148,14 +146,8 @@ export default function AddAvailabilityTypePage() {
       const day = scheduleWithFilteredIntervals[dayKey as keyof typeof scheduleWithFilteredIntervals];
       if (day.active) {
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
-        if (day.intervals.length === 0) {
-           // O refine do Zod já deve pegar isso, mas para ser explícito:
-           // um dia ativo precisa de pelo menos um intervalo válido.
-           // Se chegou aqui, significa que a validação do Zod falhou ou não foi acionada como esperado
-           // para este caso. A validação do Zod `.refine` no schema principal deve tratar isso.
-        }
       } else {
-        day.intervals = [{ start: "", end: "" }]; // Dia inativo, normaliza para um intervalo vazio
+        day.intervals = [{ start: "", end: "" }]; 
       }
     }
     const typeDataToSave: Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'> = {
@@ -191,7 +183,7 @@ export default function AddAvailabilityTypePage() {
   }
 
   return (
-    <Form {...form}>
+    <Form {...form}> {/* FormProvider envolve tudo */}
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -223,7 +215,6 @@ export default function AddAvailabilityTypePage() {
                   <FormControl>
                     <Input placeholder="Ex: Horário Comercial, Plantão de Sábado" {...field} />
                   </FormControl>
-                  <FormDescription>Um nome claro para identificar este modelo de horário.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -248,90 +239,13 @@ export default function AddAvailabilityTypePage() {
                 <CardDescription>Defina os horários para cada dia da semana para este tipo de disponibilidade.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {daysOfWeek.map((day) => {
-                  const dayKey = day.id as keyof AvailabilityTypeFormZodData['schedule'];
-                  const { fields, append, remove } = useFieldArray({ // removido 'update'
-                    control: form.control,
-                    name: `schedule.${dayKey}.intervals`
-                  });
-
-                  return (
-                    <div key={day.id} className="p-4 border rounded-md space-y-3">
-                      <FormField
-                        control={form.control}
-                        name={`schedule.${dayKey}.active`}
-                        render={({ field: dayActiveField }) => (
-                          <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={dayActiveField.value}
-                                onCheckedChange={(checked) => {
-                                  dayActiveField.onChange(checked);
-                                  // Lógica simplificada: não tenta mais preencher valores aqui
-                                  // A validação do Zod cuidará de exigir preenchimento se ativo.
-                                }}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-semibold text-md">{day.label}</FormLabel>
-                          </FormItem>
-                        )}
-                      />
-
-                      {form.watch(`schedule.${dayKey}.active`) && (
-                        <div className="space-y-2 pl-6">
-                          {fields.map((intervalField, index) => (
-                            <div key={intervalField.id} className="flex items-end gap-2">
-                              <FormField
-                                control={form.control}
-                                name={`schedule.${dayKey}.intervals.${index}.start`}
-                                render={({ field }) => (
-                                  <FormItem className="flex-1">
-                                    <FormLabel className="text-xs">Início</FormLabel>
-                                    <FormControl><Input type="time" {...field} /></FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name={`schedule.${dayKey}.intervals.${index}.end`}
-                                render={({ field }) => (
-                                  <FormItem className="flex-1">
-                                    <FormLabel className="text-xs">Fim</FormLabel>
-                                    <FormControl><Input type="time" {...field} /></FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => remove(index)}
-                                className="text-destructive hover:text-destructive"
-                                title="Remover horário"
-                                disabled={fields.length <= 1} // Mantém desabilitado se for o último
-                              >
-                                <XCircle className="h-5 w-5" />
-                              </Button>
-                            </div>
-                          ))}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => append({ start: "", end: "" })}
-                          >
-                            <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Horário
-                          </Button>
-                        </div>
-                      )}
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.root?.message}</FormMessage>
-                       <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage>
-                       {dayKey === 'seg' && <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage>}
-                    </div>
-                  );
-                })}
+                {daysOfWeek.map((day) => (
+                  <DayScheduleForm
+                    key={day.id}
+                    dayKey={day.id as keyof AvailabilityTypeFormZodData['schedule']}
+                    dayLabel={day.label}
+                  />
+                ))}
               </CardContent>
             </Card>
           </CardContent>
@@ -340,4 +254,3 @@ export default function AddAvailabilityTypePage() {
     </Form>
   );
 }
-    

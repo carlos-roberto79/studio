@@ -2,16 +2,16 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form"; // Removido useFieldArray
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+// * as z from "zod"; // Removido, pois availabilityTypeSchema é importado
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+// import { Input } from "@/components/ui/input"; // Input será usado no DayScheduleForm
+// import { Textarea } from "@/components/ui/textarea"; // Textarea será usado no DayScheduleForm
+// import { Checkbox } from "@/components/ui/checkbox"; // Checkbox será usado no DayScheduleForm
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
-import { ArrowLeft, Save, ListChecks, Trash2, PlusCircle, XCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, ListChecks, Trash2, Loader2 } from "lucide-react"; // Removido PlusCircle, XCircle
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -38,6 +38,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getAvailabilityTypeById, updateAvailabilityType, deleteAvailabilityType } from "@/services/supabaseService";
 import type { AvailabilityTypeData } from "@/services/supabaseService";
 import { Skeleton } from "@/components/ui/skeleton";
+import { availabilityTypeSchema, type AvailabilityTypeFormZodData } from './../add/page'; // Importar de add/page.tsx
+import { DayScheduleForm } from '@/components/company/DayScheduleForm'; // Importar o novo componente
+import { Input } from '@/components/ui/input'; // Importar Input para nome
+import { Textarea } from '@/components/ui/textarea'; // Importar Textarea para descrição
 
 
 const daysOfWeek = [
@@ -50,63 +54,11 @@ const daysOfWeek = [
   { id: 'dom', label: 'Domingo' },
 ];
 
-const timeIntervalSchema = z.object({
-  start: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
-  end: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
-}).refine(data => {
-  if (data.start && data.end) { 
-    return data.start < data.end;
-  }
-  if (!data.start && !data.end) {
-    return true;
-  }
-  return !(data.start && !data.end) && !(!data.start && data.end);
-}, {
-  message: "Se um horário (início ou fim) for preenchido, o outro também deve ser. Início deve ser antes do Fim.",
-  path: ["end"],
-});
-
-const dayScheduleSchema = z.object({
-  active: z.boolean().default(false),
-  intervals: z.array(timeIntervalSchema)
-    .min(1, "Deve haver pelo menos um bloco de horário (mesmo que vazio se o dia estiver inativo).")
-    .default([{start: "", end: ""}]),
-});
-
-const availabilityTypeSchema = z.object({
-  name: z.string().min(3, "O nome do tipo deve ter pelo menos 3 caracteres."),
-  description: z.string().optional(),
-  schedule: z.object({
-    seg: dayScheduleSchema,
-    ter: dayScheduleSchema,
-    qua: dayScheduleSchema,
-    qui: dayScheduleSchema,
-    sex: dayScheduleSchema,
-    sab: dayScheduleSchema,
-    dom: dayScheduleSchema,
-  }),
-}).refine(data => {
-  for (const dayKey in data.schedule) {
-    const day = data.schedule[dayKey as keyof typeof data.schedule];
-    if (day.active) {
-      const hasValidInterval = day.intervals.some(interval => 
-        interval.start && interval.end && interval.start < interval.end
-      );
-      if (!hasValidInterval) {
-        return false;
-      }
-    }
-  }
-  return true;
-}, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido e válido (Início < Fim)." });
-
-
-type AvailabilityTypeFormZodData = z.infer<typeof availabilityTypeSchema>;
-
+// Função para criar a estrutura inicial do schedule para edição, garantindo a estrutura correta para useFieldArray
 const createInitialScheduleForEdit = (): AvailabilityTypeFormZodData['schedule'] => daysOfWeek.reduce((acc, day) => {
   acc[day.id as keyof AvailabilityTypeFormZodData['schedule']] = {
     active: false, 
-    intervals: [{ start: "", end: "" }] 
+    intervals: [{ start: "", end: "" }] // Sempre iniciar com pelo menos um intervalo
   };
   return acc;
 }, {} as AvailabilityTypeFormZodData['schedule']);
@@ -121,31 +73,34 @@ export default function EditAvailabilityTypePage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingPage, setIsLoadingPage] = useState(true);
-  const [isDataProcessed, setIsDataProcessed] = useState(false);
+  const [isDataProcessed, setIsDataProcessed] = useState(false); // Flag para controlar renderização do formulário
   const [pageTitle, setPageTitle] = useState("Editar Tipo de Disponibilidade");
+
 
   const form = useForm<AvailabilityTypeFormZodData>({
     resolver: zodResolver(availabilityTypeSchema),
     defaultValues: { // Inicializa com uma estrutura válida, mas vazia/inativa.
       name: "",
       description: "",
-      schedule: createInitialScheduleForEdit(),
+      schedule: createInitialScheduleForEdit(), // Usa a função para garantir estrutura
     }
   });
-  const formReset = form.reset;
+  const formReset = form.reset; // Referência estável para form.reset
 
   useEffect(() => {
     let isMounted = true;
     if (user && user.id && role === USER_ROLES.COMPANY_ADMIN && typeId) {
       setIsLoadingPage(true);
+      setIsDataProcessed(false); // Resetar flag ao iniciar busca
       getAvailabilityTypeById(typeId)
         .then(dataFromDb => {
           if (!isMounted) return;
           if (dataFromDb) {
             setPageTitle(dataFromDb.name || "Editar Tipo de Disponibilidade");
             
+            // Prepara o schedule para o form, garantindo que cada dia tenha 'intervals' como array com pelo menos um item
             const scheduleForForm: AvailabilityTypeFormZodData['schedule'] = createInitialScheduleForEdit();
-            const dbSchedule = dataFromDb.schedule as any; 
+            const dbSchedule = dataFromDb.schedule as any; // Cast para any para acesso flexível
 
             (Object.keys(scheduleForForm) as Array<keyof AvailabilityTypeFormZodData['schedule']>).forEach(dayKey => {
               const dbDaySchedule = dbSchedule?.[dayKey];
@@ -156,19 +111,20 @@ export default function EditAvailabilityTypePage() {
                       start: interval.start || "", 
                       end: interval.end || "" 
                     }))
-                  : [{ start: "", end: "" }]; 
+                  : [{ start: "", end: "" }]; // Se não houver intervalos ou for inválido, usa um padrão
               } else {
+                 // Se o dia não existir nos dados do DB (improvável se createInitialScheduleForEdit já foi usado), inicializa
                  scheduleForForm[dayKey].active = false;
                  scheduleForForm[dayKey].intervals = [{ start: "", end: "" }];
               }
             });
             
-            formReset({ 
+            formReset({ // Usa a referência estável
               name: dataFromDb.name || "",
               description: dataFromDb.description || "",
               schedule: scheduleForForm,
             });
-            setIsDataProcessed(true); 
+            setIsDataProcessed(true); // Sinaliza que os dados foram processados e o form pode ser renderizado
           } else {
             toast({ title: "Erro", description: `Tipo de disponibilidade com ID '${typeId}' não encontrado.`, variant: "destructive" });
             router.push('/dashboard/company/availability-types');
@@ -187,17 +143,19 @@ export default function EditAvailabilityTypePage() {
         router.push('/dashboard/company/availability-types');
         if (isMounted) setIsLoadingPage(false);
     } else {
-        if (isMounted) setIsLoadingPage(false);
+        if (isMounted) setIsLoadingPage(false); // Se não for admin ou não tiver usuário
     }
+
     return () => { isMounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeId, user, role, router, toast, formReset]); 
+  }, [typeId, user, role, router, toast, formReset]); // formReset é estável
 
   useEffect(() => {
     if (pageTitle && !isLoadingPage) {
       document.title = `Editar: ${pageTitle} - ${APP_NAME}`;
     }
   }, [pageTitle, isLoadingPage]);
+
 
   const onSubmit = async (data: AvailabilityTypeFormZodData) => {
     setIsSaving(true);
@@ -206,9 +164,6 @@ export default function EditAvailabilityTypePage() {
       const day = scheduleWithFilteredIntervals[dayKey as keyof typeof scheduleWithFilteredIntervals];
       if (day.active) {
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
-         if (day.intervals.length === 0) {
-            // Validação Zod deve pegar isso
-        }
       } else {
         day.intervals = [{ start: "", end: "" }]; 
       }
@@ -262,7 +217,7 @@ export default function EditAvailabilityTypePage() {
     );
   }
 
-  if (!isDataProcessed && !isLoadingPage) { 
+  if (!isDataProcessed && !isLoadingPage) { // Mostrar mensagem se dados não puderam ser processados
      return (
       <div className="flex flex-col justify-center items-center h-64 space-y-4">
         <p className="text-xl text-destructive">Não foi possível carregar os dados do tipo de disponibilidade.</p>
@@ -276,7 +231,7 @@ export default function EditAvailabilityTypePage() {
   }
 
   return (
-    <Form {...form}>
+    <Form {...form}> {/* FormProvider envolve tudo */}
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
            <div className="flex items-center gap-3">
@@ -318,7 +273,7 @@ export default function EditAvailabilityTypePage() {
           </div>
         </div>
 
-        {isDataProcessed && (
+        {isDataProcessed && ( // Renderizar o formulário somente após os dados serem processados
             <Card className="shadow-lg">
             <CardContent className="pt-6 space-y-6">
                 <FormField
@@ -330,7 +285,6 @@ export default function EditAvailabilityTypePage() {
                     <FormControl>
                         <Input {...field} />
                     </FormControl>
-                    <FormDescription>Um nome claro para identificar este modelo de horário.</FormDescription>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -355,89 +309,13 @@ export default function EditAvailabilityTypePage() {
                     <CardDescription>Defina os horários para cada dia da semana para este tipo de disponibilidade.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {daysOfWeek.map((day) => {
-                    const dayKey = day.id as keyof AvailabilityTypeFormZodData['schedule'];
-                    const { fields, append, remove } = useFieldArray({
-                        control: form.control,
-                        name: `schedule.${dayKey}.intervals`
-                    });
-
-                    return (
-                        <div key={day.id} className="p-4 border rounded-md space-y-3">
-                        <FormField
-                            control={form.control}
-                            name={`schedule.${dayKey}.active`}
-                            render={({ field: dayActiveField }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                <FormControl>
-                                <Checkbox
-                                    checked={dayActiveField.value}
-                                    onCheckedChange={(checked) => {
-                                        dayActiveField.onChange(checked);
-                                        // Lógica simplificada
-                                    }}
-                                />
-                                </FormControl>
-                                <FormLabel className="font-semibold text-md">{day.label}</FormLabel>
-                            </FormItem>
-                            )}
-                        />
-
-                        {form.watch(`schedule.${dayKey}.active`) && (
-                            <div className="space-y-2 pl-6">
-                            {fields.map((intervalField, index) => (
-                                <div key={intervalField.id} className="flex items-end gap-2">
-                                <FormField
-                                    control={form.control}
-                                    name={`schedule.${dayKey}.intervals.${index}.start`}
-                                    render={({ field }) => (
-                                    <FormItem className="flex-1">
-                                        <FormLabel className="text-xs">Início</FormLabel>
-                                        <FormControl><Input type="time" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name={`schedule.${dayKey}.intervals.${index}.end`}
-                                    render={({ field }) => (
-                                    <FormItem className="flex-1">
-                                        <FormLabel className="text-xs">Fim</FormLabel>
-                                        <FormControl><Input type="time" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => remove(index)}
-                                    className="text-destructive hover:text-destructive"
-                                    title="Remover horário"
-                                    disabled={fields.length <= 1}
-                                >
-                                    <XCircle className="h-5 w-5" />
-                                </Button>
-                                </div>
-                            ))}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => append({ start: "", end: "" })}
-                            >
-                                <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Horário
-                            </Button>
-                            </div>
-                        )}
-                        <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.root?.message}</FormMessage>
-                        <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage>
-                        {dayKey === 'seg' && <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage>}
-                        </div>
-                    );
-                    })}
+                    {daysOfWeek.map((day) => (
+                      <DayScheduleForm
+                        key={day.id}
+                        dayKey={day.id as keyof AvailabilityTypeFormZodData['schedule']}
+                        dayLabel={day.label}
+                      />
+                    ))}
                 </CardContent>
                 </Card>
             </CardContent>
@@ -447,4 +325,3 @@ export default function EditAvailabilityTypePage() {
     </Form>
   );
 }
-    

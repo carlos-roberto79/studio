@@ -54,6 +54,7 @@ const serviceCategories = [
   "Outros",
 ];
 
+// Zod schema for service form data
 const serviceSchema = z.object({
   name: z.string().min(3, "O nome do serviço deve ter pelo menos 3 caracteres."),
   description: z.string().optional(),
@@ -106,7 +107,7 @@ const defaultServiceEditValues: Partial<ServiceFormZodData> = {
   duration_minutes: 60,
   display_duration: true,
   unique_scheduling_link_slug: "",
-  price: "0,00",
+  price: "0,00", // Sera convertido para numero no submit
   commission_type: undefined,
   commission_value: NaN,
   has_booking_fee: false,
@@ -117,7 +118,7 @@ const defaultServiceEditValues: Partial<ServiceFormZodData> = {
   block_after_24_hours: false,
   interval_between_slots_minutes: 10,
   confirmation_type: "automatic",
-  availability_type_id: "",
+  availability_type_id: "", // string vazia para o select
   active: true,
 };
 
@@ -126,10 +127,11 @@ export default function EditServicePage() {
   const params = useParams();
   const router = useRouter();
   const serviceId = params.serviceId as string;
-  const { user, role } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingPage, setIsLoadingPage] = useState(true);
+  const [isDataProcessed, setIsDataProcessed] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [availabilityTypes, setAvailabilityTypes] = useState<{ id: string; name: string }[]>([]);
@@ -137,15 +139,30 @@ export default function EditServicePage() {
 
   const form = useForm<ServiceFormZodData>({
     resolver: zodResolver(serviceSchema),
-    defaultValues: defaultServiceEditValues as ServiceFormZodData, // Cast as default values will be overwritten
+    defaultValues: defaultServiceEditValues as ServiceFormZodData,
   });
   
   const serviceName = form.watch("name");
   const watchHasBookingFee = form.watch("has_booking_fee");
+  const formReset = form.reset; // Estabilizar referência
 
   useEffect(() => {
     let isMounted = true;
+    if (authLoading) {
+      // Ainda aguardando dados de autenticação, não fazer nada
+      return;
+    }
+
+    if (!user || role !== USER_ROLES.COMPANY_ADMIN) {
+      toast({ title: "Acesso Negado", description: "Você não tem permissão para editar serviços.", variant: "destructive" });
+      router.push('/dashboard');
+      if (isMounted) setIsLoadingPage(false);
+      return;
+    }
+
     if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+      setIsLoadingPage(true);
+      setIsDataProcessed(false);
       getCompanyDetailsByOwner(user.id).then(companyDetails => {
         if (!isMounted) return;
         if (companyDetails && companyDetails.id) {
@@ -159,36 +176,42 @@ export default function EditServicePage() {
             setIsLoadingPage(false);
           }
         } else {
-          toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
+          toast({ title: "Erro", description: "Empresa não encontrada. Cadastre os detalhes da empresa primeiro.", variant: "destructive" });
+          router.push('/dashboard/company');
           setIsLoadingPage(false);
-          router.push('/dashboard/company/services');
+        }
+      }).catch(() => { // Adicionado catch para getCompanyDetailsByOwner
+        if(isMounted) {
+          toast({ title: "Erro ao buscar empresa", description: "Não foi possível verificar os dados da sua empresa.", variant: "destructive" });
+          router.push('/dashboard/company');
+          setIsLoadingPage(false);
         }
       });
-    } else {
-      if (isMounted) setIsLoadingPage(false); 
     }
     return () => { isMounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, role, serviceId, router, toast]); 
+  }, [user, role, serviceId, router, toast, authLoading]); // formReset foi removido das dependências
 
   const fetchServiceData = async (currentServiceId: string) => {
-    // setIsLoadingPage(true) is already set by the parent useEffect
     try {
       const existingService = await getServiceById(currentServiceId);
       if (existingService) {
-        form.reset({
-          ...defaultServiceEditValues, // Start with defaults
+        formReset({ // Usar a referência estável
+          ...defaultServiceEditValues,
           ...existingService,
-          price: String(existingService.price).replace('.', ','),
+          price: String(existingService.price || "0").replace('.', ','), // Garantir que price é string e formatado
           image_url: existingService.image_url || defaultServiceEditValues.image_url,
           availability_type_id: existingService.availability_type_id || "",
           description: existingService.description || "",
           unique_scheduling_link_slug: existingService.unique_scheduling_link_slug || "",
           commission_type: existingService.commission_type || undefined,
-          commission_value: existingService.commission_value || NaN,
-          booking_fee_value: existingService.booking_fee_value || NaN,
+          commission_value: existingService.commission_value ?? NaN,
+          booking_fee_value: existingService.booking_fee_value ?? NaN,
+          duration_minutes: existingService.duration_minutes || 60, // Add default if missing
+          // Adicionar outros campos que podem ser null/undefined do DB para seus defaults
         });
         setImagePreview(existingService.image_url || defaultServiceEditValues.image_url);
+        setIsDataProcessed(true);
       } else {
         toast({ title: "Erro", description: "Serviço não encontrado.", variant: "destructive" });
         router.push('/dashboard/company/services');
@@ -197,7 +220,7 @@ export default function EditServicePage() {
       toast({ title: "Erro ao Carregar Serviço", description: error.message, variant: "destructive" });
       router.push('/dashboard/company/services');
     } finally {
-      // setIsLoadingPage(false) is handled by the parent useEffect's finally block
+      setIsLoadingPage(false); // Movido para o finally da função de fetch principal ou do useEffect
     }
   };
   
@@ -282,7 +305,8 @@ export default function EditServicePage() {
       router.push('/dashboard/company/services');
     } catch (error: any) {
       toast({ title: "Erro ao Excluir", description: error.message, variant: "destructive" });
-      setIsSaving(false);
+    } finally {
+      setIsSaving(false); // Resetar isSaving mesmo em caso de erro
     }
   };
 
@@ -303,7 +327,7 @@ export default function EditServicePage() {
     router.push('/dashboard/company/services/add?fromDuplicate=true');
   };
   
-  if (isLoadingPage) {
+  if (isLoadingPage && !isDataProcessed) {
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-between">
@@ -319,6 +343,19 @@ export default function EditServicePage() {
                 </CardContent></Card></TabsContent>
             </Tabs>
         </div>
+    );
+  }
+  
+  if (!isDataProcessed && !isLoadingPage) { // Se terminou de carregar mas dados não foram processados (ex: serviço não encontrado)
+     return (
+      <div className="flex flex-col justify-center items-center h-64 space-y-4">
+        <p className="text-xl text-destructive">Não foi possível carregar os dados do serviço para edição.</p>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/company/services">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para Lista
+          </Link>
+        </Button>
+      </div>
     );
   }
 
@@ -380,138 +417,139 @@ export default function EditServicePage() {
           </div>
         </div>
 
-        <Tabs defaultValue="configurations" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
-            <TabsTrigger value="configurations">Configurações</TabsTrigger>
-            <TabsTrigger value="availability" disabled>Disponibilidade Avançada</TabsTrigger> 
-            <TabsTrigger value="professionalsTab" disabled>Profissionais (Detalhes)</TabsTrigger> 
-            <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger> 
-          </TabsList>
+        {isDataProcessed && ( // Renderizar o formulário somente após os dados serem processados
+            <Tabs defaultValue="configurations" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+                <TabsTrigger value="configurations">Configurações</TabsTrigger>
+                <TabsTrigger value="availability" disabled>Disponibilidade Avançada</TabsTrigger> 
+                <TabsTrigger value="professionalsTab" disabled>Profissionais (Detalhes)</TabsTrigger> 
+                <TabsTrigger value="bling" disabled>Bling (Integração)</TabsTrigger> 
+            </TabsList>
 
-          <TabsContent value="configurations">
-            <Card className="shadow-lg">
-              <CardContent className="pt-6 space-y-6">
+            <TabsContent value="configurations">
+                <Card className="shadow-lg">
+                <CardContent className="pt-6 space-y-6">
                     <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome do Serviço</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Nome do Serviço</FormLabel>
+                            <FormControl>
+                                <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                     <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição Detalhada</FormLabel>
-                          <FormControl>
-                            <Textarea rows={4} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Descrição Detalhada</FormLabel>
+                            <FormControl>
+                                <Textarea rows={4} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                     <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Categoria do Serviço</FormLabel>
-                           <FormControl>
-                            <Input placeholder="Ex: Beleza, Saúde, Consultoria" {...field} list="service-categories-datalist-edit" />
-                          </FormControl>
-                          <datalist id="service-categories-datalist-edit">
-                            {serviceCategories.map(cat => <option key={cat} value={cat} />)}
-                          </datalist>
-                          <FormDescription>Digite uma categoria existente ou crie uma nova.</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Categoria do Serviço</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Ex: Beleza, Saúde, Consultoria" {...field} list="service-categories-datalist-edit" />
+                            </FormControl>
+                            <datalist id="service-categories-datalist-edit">
+                                {serviceCategories.map(cat => <option key={cat} value={cat} />)}
+                            </datalist>
+                            <FormDescription>Digite uma categoria existente ou crie uma nova.</FormDescription>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                     <FormField
-                      control={form.control}
-                      name="image_url"
-                      render={({ fieldState }) => ( 
-                        <FormItem>
-                          <FormLabel>Imagem Ilustrativa do Serviço</FormLabel>
-                          <FormControl>
-                            <>
-                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                                {imagePreview && (
-                                  <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px] flex-shrink-0">
-                                    <NextImage src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
-                                    {form.getValues("image_url") !== "https://placehold.co/300x200.png?text=Serviço" && (
-                                      <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
-                                        <XCircle className="h-4 w-4"/>
-                                      </Button>
+                        control={form.control}
+                        name="image_url"
+                        render={({ fieldState }) => ( 
+                            <FormItem>
+                            <FormLabel>Imagem Ilustrativa do Serviço</FormLabel>
+                            <FormControl>
+                                <>
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                    {imagePreview && (
+                                    <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px] flex-shrink-0">
+                                        <NextImage src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
+                                        {form.getValues("image_url") !== "https://placehold.co/300x200.png?text=Serviço" && (
+                                        <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
+                                            <XCircle className="h-4 w-4"/>
+                                        </Button>
+                                        )}
+                                    </div>
                                     )}
-                                  </div>
-                                )}
-                                <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload-edit" />
-                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
-                                  <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
-                                </Button>
-                              </div>
-                            </>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                                    <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload-edit" />
+                                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
+                                    <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
+                                    </Button>
+                                </div>
+                                </>
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
 
                     <div className="grid md:grid-cols-2 gap-6">
-                      <FormField
-                          control={form.control}
-                          name="duration_minutes"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Duração (em minutos)</FormLabel>
-                              <FormControl>
-                                <Input type="number" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                      />
-                      <FormField
-                          control={form.control}
-                          name="price"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Preço (R$)</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                      />
+                        <FormField
+                            control={form.control}
+                            name="duration_minutes"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Duração (em minutos)</FormLabel>
+                                <FormControl>
+                                    <Input type="number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="price"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Preço (R$)</FormLabel>
+                                <FormControl>
+                                    <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
                     </div>
-                     <FormField
-                      control={form.control}
-                      name="unique_scheduling_link_slug"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Link Único de Agendamento para o Serviço (Opcional)</FormLabel>
-                          <FormControl>
-                             <div className="flex items-center">
-                                <span className="px-3 py-2 bg-muted rounded-l-md border border-r-0 text-xs text-muted-foreground">
-                                /agendar/empresa/servico/
-                                </span>
-                                <Input placeholder="meu-servico-incrivel" {...field} onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/\s+/g, '-'))} className="rounded-l-none"/>
-                            </div>
-                          </FormControl>
-                          <FormDescription>Será usado para: {`${typeof window !== 'undefined' ? window.location.origin : 'https://tds.agenda'}/agendar/nome-empresa/servico/${field.value || "meu-servico"}`}</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <FormField
+                        control={form.control}
+                        name="unique_scheduling_link_slug"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Link Único de Agendamento para o Serviço (Opcional)</FormLabel>
+                            <FormControl>
+                                <div className="flex items-center">
+                                    <span className="px-3 py-2 bg-muted rounded-l-md border border-r-0 text-xs text-muted-foreground">
+                                    /agendar/empresa/servico/
+                                    </span>
+                                    <Input placeholder="meu-servico-incrivel" {...field} onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/\s+/g, '-'))} className="rounded-l-none"/>
+                                </div>
+                            </FormControl>
+                            <FormDescription>Será usado para: {`${typeof window !== 'undefined' ? window.location.origin : 'https://tds.agenda'}/agendar/nome-empresa/servico/${field.value || "meu-servico"}`}</FormDescription>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                     
                     <div className="space-y-2 p-4 border rounded-md">
                         <h4 className="font-medium text-md">Comissão do Profissional</h4>
@@ -568,7 +606,7 @@ export default function EditServicePage() {
                         )}
                         />
                         {watchHasBookingFee && (
-                             <FormField
+                            <FormField
                                 control={form.control}
                                 name="booking_fee_value"
                                 render={({ field }) => (
@@ -601,7 +639,7 @@ export default function EditServicePage() {
                             )}
                         />
                         <div className="space-y-1">
-                         <FormField
+                        <FormField
                             control={form.control}
                             name="simultaneous_appointments_per_slot"
                             render={({ field }) => (
@@ -629,26 +667,26 @@ export default function EditServicePage() {
                             />
                         </div>
                     </div>
-                     <FormField
-                      control={form.control}
-                      name="block_after_24_hours"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              id="block-24h-edit"
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel htmlFor="block-24h-edit">Bloquear novo agendamento por 24h</FormLabel>
-                             <FormDescription className="text-xs">Cliente só poderá reagendar este serviço após 24h do último agendamento feito.</FormDescription>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <FormField
+                        control={form.control}
+                        name="block_after_24_hours"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
+                            <FormControl>
+                                <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                id="block-24h-edit"
+                                />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel htmlFor="block-24h-edit">Bloquear novo agendamento por 24h</FormLabel>
+                                <FormDescription className="text-xs">Cliente só poderá reagendar este serviço após 24h do último agendamento feito.</FormDescription>
+                            </div>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                     <FormField
                         control={form.control}
                         name="interval_between_slots_minutes"
@@ -658,7 +696,7 @@ export default function EditServicePage() {
                             <FormControl>
                             <Input type="number" placeholder="Ex: 10" {...field} />
                             </FormControl>
-                             <FormDescription>Define um intervalo em minutos após a conclusão de um horário antes que o próximo possa ser agendado.</FormDescription>
+                            <FormDescription>Define um intervalo em minutos após a conclusão de um horário antes que o próximo possa ser agendado.</FormDescription>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -690,7 +728,7 @@ export default function EditServicePage() {
                             <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Selecione um tipo de disponibilidade" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                     <SelectItem value="">Nenhum (usar horários do profissional/empresa)</SelectItem>
+                                    <SelectItem value="">Nenhum (usar horários do profissional/empresa)</SelectItem>
                                     {availabilityTypes.map(type => (
                                         <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
                                     ))}
@@ -702,27 +740,27 @@ export default function EditServicePage() {
                         )}
                     />
                     <FormField
-                      control={form.control}
-                      name="display_duration"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              id="display-duration-edit"
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel htmlFor="display-duration-edit">Exibir duração na página de agendamento</FormLabel>
-                          </div>
-                          <FormMessage/>
-                        </FormItem>
-                      )}
-                    />
-              </CardContent>
-            </Card>
-          </TabsContent>
+                        control={form.control}
+                        name="display_duration"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
+                            <FormControl>
+                                <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                id="display-duration-edit"
+                                />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel htmlFor="display-duration-edit">Exibir duração na página de agendamento</FormLabel>
+                            </div>
+                            <FormMessage/>
+                            </FormItem>
+                        )}
+                        />
+                </CardContent>
+                </Card>
+            </TabsContent>
            {/* Placeholder Tabs */}
            <TabsContent value="availability">
             <Card>
@@ -743,8 +781,8 @@ export default function EditServicePage() {
             </Card>
           </TabsContent>
         </Tabs>
+        )}
       </form>
     </Form>
   );
 }
-    

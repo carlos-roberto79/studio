@@ -43,6 +43,7 @@ const serviceCategories = [
   "Outros",
 ];
 
+// Zod schema for service form data
 const serviceSchema = z.object({
   name: z.string().min(3, "O nome do serviço deve ter pelo menos 3 caracteres."),
   description: z.string().optional(),
@@ -56,7 +57,7 @@ const serviceSchema = z.object({
     .optional().or(z.literal('')),
   price: z.string().min(1, "O preço é obrigatório.").regex(/^\d+([,.]\d{1,2})?$/, "Formato de preço inválido (ex: 50 ou 50,00)"),
   commission_type: z.enum(["fixed", "percentage"]).optional(),
-  commission_value: z.coerce.number().nonnegative("A comissão não pode ser negativa.").optional().or(z.literal(NaN)), // Allow NaN for optional coercion
+  commission_value: z.coerce.number().nonnegative("A comissão não pode ser negativa.").optional().or(z.literal(NaN)), 
   has_booking_fee: z.boolean().default(false),
   booking_fee_value: z.coerce.number().nonnegative("A taxa não pode ser negativa.").optional().or(z.literal(NaN)),
   simultaneous_appointments_per_user: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por usuário.").default(1),
@@ -96,6 +97,8 @@ export default function AddServicePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [availabilityTypes, setAvailabilityTypes] = useState<{ id: string; name: string }[]>([]);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
+
 
   const defaultServiceValues: ServiceFormZodData = {
     name: "",
@@ -104,9 +107,9 @@ export default function AddServicePage() {
     duration_minutes: 60,
     display_duration: true,
     unique_scheduling_link_slug: "",
-    price: "",
-    commission_type: undefined, // Explicitly undefined for optional enum
-    commission_value: NaN,
+    price: "", // User will type with comma, we parse on submit
+    commission_type: undefined, 
+    commission_value: NaN, // Use NaN for optional number coercion to avoid "0"
     has_booking_fee: false,
     booking_fee_value: NaN,
     simultaneous_appointments_per_user: 1,
@@ -128,17 +131,30 @@ export default function AddServicePage() {
   useEffect(() => {
     document.title = `Adicionar Novo Serviço - ${APP_NAME}`;
     let isMounted = true;
+    setIsLoadingPage(true);
 
     if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
       getCompanyDetailsByOwner(user.id).then(companyDetails => {
-        if (isMounted && companyDetails && companyDetails.id) {
+        if (!isMounted) return;
+        if (companyDetails && companyDetails.id) {
           setCompanyId(companyDetails.id);
           fetchAvailabilityTypes(companyDetails.id);
-        } else if (isMounted) {
-          toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
+        } else {
+          toast({ title: "Erro", description: "Empresa não encontrada. Cadastre os detalhes da empresa primeiro.", variant: "destructive" });
+           router.push('/dashboard/company');
         }
+      }).finally(() => {
+        if (isMounted) setIsLoadingPage(false);
       });
+    } else if(user && role !== USER_ROLES.COMPANY_ADMIN) {
+        toast({ title: "Acesso Negado", description: "Você não tem permissão para adicionar serviços.", variant: "destructive" });
+        router.push('/dashboard');
+        if (isMounted) setIsLoadingPage(false);
+    } else if (!user) {
+        // router.push('/login'); // Redirecionar se não estiver logado (após carregamento do auth)
+        if (isMounted) setIsLoadingPage(false);
     }
+
 
     if (typeof window !== "undefined") {
         const params = new URLSearchParams(window.location.search);
@@ -149,13 +165,14 @@ export default function AddServicePage() {
                     const duplicatedData = JSON.parse(duplicatedDataString) as Partial<ServiceFormZodData>;
                     if (isMounted) {
                         form.reset({
-                            ...defaultServiceValues, // Start with defaults
+                            ...defaultServiceValues,
                             ...duplicatedData,
+                            name: duplicatedData.name || "", // Garantir que nome seja string
                             price: String(duplicatedData.price || "").replace('.',','), 
                             image_url: duplicatedData.image_url || defaultServiceValues.image_url,
                             availability_type_id: duplicatedData.availability_type_id || "",
-                            commission_value: duplicatedData.commission_value || NaN,
-                            booking_fee_value: duplicatedData.booking_fee_value || NaN,
+                            commission_value: duplicatedData.commission_value ?? NaN,
+                            booking_fee_value: duplicatedData.booking_fee_value ?? NaN,
                         }); 
                         setImagePreview(duplicatedData.image_url || defaultServiceValues.image_url);
                         toast({ title: "Duplicando Serviço", description: "Dados do serviço anterior carregados. Ajuste e salve." });
@@ -173,7 +190,7 @@ export default function AddServicePage() {
     }
     return () => { isMounted = false; }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, role, toast]); 
+  }, [user, role]); // form, toast, router não precisam ser dependências aqui se forem estáveis
 
   const fetchAvailabilityTypes = async (currentCompanyId: string) => {
     try {
@@ -230,7 +247,7 @@ export default function AddServicePage() {
         description: `O serviço "${data.name}" foi cadastrado com sucesso.`,
       });
       form.reset(defaultServiceValues); 
-      removeImage(); 
+      setImagePreview(defaultServiceValues.image_url); // Reset image preview
       router.push('/dashboard/company/services');
     } catch (error: any) {
       toast({ title: "Erro ao Adicionar Serviço", description: error.message, variant: "destructive" });
@@ -240,6 +257,14 @@ export default function AddServicePage() {
   };
 
   const watchHasBookingFee = form.watch("has_booking_fee");
+
+  if (isLoadingPage) {
+      return <div className="text-center p-10">Carregando formulário de serviço...</div>;
+  }
+  if (!companyId && !isLoadingPage) {
+      return <div className="text-center p-10 text-destructive">Não foi possível carregar os dados da empresa para associar ao serviço.</div>;
+  }
+
 
   return (
     <Form {...form}>
@@ -645,4 +670,3 @@ export default function AddServicePage() {
     </Form>
   );
 }
-    
