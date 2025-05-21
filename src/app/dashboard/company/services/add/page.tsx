@@ -118,7 +118,7 @@ export default function AddServicePage() {
     block_after_24_hours: false,
     interval_between_slots_minutes: 10,
     confirmation_type: "automatic",
-    availability_type_id: "", // Represent null/empty as empty string for select
+    availability_type_id: "none", // Represent null/empty as a non-empty string for select
     active: true,
     image_url: "https://placehold.co/300x200.png?text=Serviço",
   };
@@ -143,6 +143,10 @@ export default function AddServicePage() {
           toast({ title: "Erro", description: "Empresa não encontrada. Cadastre os detalhes da empresa primeiro.", variant: "destructive" });
            router.push('/dashboard/company');
         }
+      }).catch(error => {
+        if (!isMounted) return;
+        console.error("Erro ao buscar detalhes da empresa:", error);
+        toast({ title: "Erro ao buscar empresa", description: "Não foi possível obter detalhes da sua empresa.", variant: "destructive" });
       }).finally(() => {
         if (isMounted) setIsLoadingPage(false);
       });
@@ -167,10 +171,10 @@ export default function AddServicePage() {
                         form.reset({
                             ...defaultServiceValues,
                             ...duplicatedData,
-                            name: duplicatedData.name || "", // Garantir que nome seja string
+                            name: duplicatedData.name || "", 
                             price: String(duplicatedData.price || "").replace('.',','), 
                             image_url: duplicatedData.image_url || defaultServiceValues.image_url,
-                            availability_type_id: duplicatedData.availability_type_id || "",
+                            availability_type_id: duplicatedData.availability_type_id || "none",
                             commission_value: duplicatedData.commission_value ?? NaN,
                             booking_fee_value: duplicatedData.booking_fee_value ?? NaN,
                         }); 
@@ -189,8 +193,7 @@ export default function AddServicePage() {
         }
     }
     return () => { isMounted = false; }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, role]); // form, toast, router não precisam ser dependências aqui se forem estáveis
+  }, [user, role, form, toast, router]);
 
   const fetchAvailabilityTypes = async (currentCompanyId: string) => {
     try {
@@ -234,7 +237,7 @@ export default function AddServicePage() {
     const serviceDataToSave: Omit<ServiceData, 'id' | 'company_id' | 'created_at' | 'updated_at'> = {
       ...data,
       price: parseFloat(data.price.replace(",", ".")),
-      availability_type_id: data.availability_type_id === "" ? null : data.availability_type_id,
+      availability_type_id: data.availability_type_id === "none" ? null : data.availability_type_id,
       image_url: data.image_url === "https://placehold.co/300x200.png?text=Serviço" ? undefined : data.image_url,
       commission_value: isNaN(data.commission_value as number) ? undefined : data.commission_value,
       booking_fee_value: isNaN(data.booking_fee_value as number) ? undefined : data.booking_fee_value,
@@ -611,10 +614,10 @@ export default function AddServicePage() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Tipo de Disponibilidade Vinculado</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                            <Select onValueChange={field.onChange} value={field.value ?? "none"}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Selecione um tipo de disponibilidade" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    <SelectItem value="">Nenhum (usar horários do profissional/empresa)</SelectItem>
+                                    <SelectItem value="none">Nenhum (usar horários do profissional/empresa)</SelectItem>
                                     {availabilityTypes.map(type => (
                                         <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
                                     ))}
