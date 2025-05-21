@@ -32,6 +32,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { getCompanyDetailsByOwner, addService, getAvailabilityTypesForSelect } from "@/services/supabaseService";
 import type { ServiceData } from "@/services/supabaseService";
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 const serviceCategories = [
   "Beleza e Estética",
@@ -49,7 +51,7 @@ const serviceSchema = z.object({
   description: z.string().optional(),
   category: z.string().min(1, "A categoria é obrigatória."),
   image_url: z.string().url("URL da imagem inválida").optional().or(z.literal("")),
-  duration_minutes: z.coerce.number().int().positive("A duração deve ser um número positivo.").min(5, "Duração mínima de 5 minutos."),
+  duration_minutes: z.coerce.number({invalid_type_error: "Duração deve ser um número."}).int().positive("A duração deve ser um número positivo.").min(5, "Duração mínima de 5 minutos."),
   display_duration: z.boolean().default(true),
   unique_scheduling_link_slug: z.string()
     .min(3, "O link deve ter pelo menos 3 caracteres.")
@@ -57,19 +59,25 @@ const serviceSchema = z.object({
     .optional().or(z.literal('')),
   price: z.string().min(1, "O preço é obrigatório.").regex(/^\d+([,.]\d{1,2})?$/, "Formato de preço inválido (ex: 50 ou 50,00)"),
   commission_type: z.enum(["fixed", "percentage"]).optional(),
-  commission_value: z.coerce.number().nonnegative("A comissão não pode ser negativa.").optional().or(z.literal(NaN)), 
+  commission_value: z.preprocess(
+    (val) => (String(val).trim() === "" || val === null || val === undefined ? undefined : Number(val)),
+    z.number({invalid_type_error: "Comissão deve ser um número."}).nonnegative("A comissão não pode ser negativa.").optional()
+  ),
   has_booking_fee: z.boolean().default(false),
-  booking_fee_value: z.coerce.number().nonnegative("A taxa não pode ser negativa.").optional().or(z.literal(NaN)),
-  simultaneous_appointments_per_user: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por usuário.").default(1),
-  simultaneous_appointments_per_slot: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por horário.").default(1),
+  booking_fee_value: z.preprocess(
+    (val) => (String(val).trim() === "" || val === null || val === undefined ? undefined : Number(val)),
+    z.number({invalid_type_error: "Taxa deve ser um número."}).nonnegative("A taxa não pode ser negativa.").optional()
+  ),
+  simultaneous_appointments_per_user: z.coerce.number({invalid_type_error: "Deve ser um número."}).int().min(1, "Mínimo de 1 agendamento simultâneo por usuário.").default(1),
+  simultaneous_appointments_per_slot: z.coerce.number({invalid_type_error: "Deve ser um número."}).int().min(1, "Mínimo de 1 agendamento simultâneo por horário.").default(1),
   simultaneous_appointments_per_slot_automatic: z.boolean().default(false),
   block_after_24_hours: z.boolean().default(false),
-  interval_between_slots_minutes: z.coerce.number().int().min(0, "O intervalo não pode ser negativo.").default(0),
+  interval_between_slots_minutes: z.coerce.number({invalid_type_error: "Deve ser um número."}).int().min(0, "O intervalo não pode ser negativo.").default(0),
   confirmation_type: z.enum(["manual", "automatic"]).default("automatic"),
   availability_type_id: z.string().optional().nullable(),
   active: z.boolean().default(true),
 }).refine(data => {
-  if (data.has_booking_fee && (data.booking_fee_value === undefined || isNaN(data.booking_fee_value) || data.booking_fee_value < 0)) {
+  if (data.has_booking_fee && (data.booking_fee_value === undefined || data.booking_fee_value < 0)) {
     return false;
   }
   return true;
@@ -77,7 +85,7 @@ const serviceSchema = z.object({
   message: "O valor da taxa de agendamento é obrigatório e deve ser positivo se a taxa estiver habilitada.",
   path: ["booking_fee_value"],
 }).refine(data => {
-    if (data.commission_type && (data.commission_value === undefined || isNaN(data.commission_value) || data.commission_value < 0)) {
+    if (data.commission_type && (data.commission_value === undefined || data.commission_value < 0)) {
         return false;
     }
     return true;
@@ -109,9 +117,9 @@ export default function AddServicePage() {
     unique_scheduling_link_slug: "",
     price: "", 
     commission_type: undefined, 
-    commission_value: NaN, 
+    commission_value: undefined, 
     has_booking_fee: false,
-    booking_fee_value: NaN,
+    booking_fee_value: undefined,
     simultaneous_appointments_per_user: 1,
     simultaneous_appointments_per_slot: 1,
     simultaneous_appointments_per_slot_automatic: false,
@@ -126,6 +134,7 @@ export default function AddServicePage() {
   const form = useForm<ServiceFormZodData>({
     resolver: zodResolver(serviceSchema),
     defaultValues: defaultServiceValues,
+     mode: "onChange", // Para ver erros de validação mais cedo
   });
 
   useEffect(() => {
@@ -133,54 +142,61 @@ export default function AddServicePage() {
     let isMounted = true;
     setIsLoadingPage(true);
 
-    if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
-      getCompanyDetailsByOwner(user.id).then(companyDetails => {
-        if (!isMounted) return;
-        if (companyDetails && companyDetails.id) {
-          setCompanyId(companyDetails.id);
-          fetchAvailabilityTypes(companyDetails.id);
-        } else {
-          toast({ title: "Erro", description: "Empresa não encontrada. Cadastre os detalhes da empresa primeiro.", variant: "destructive" });
-           router.push('/dashboard/company');
-        }
-      }).catch(error => {
-        if (!isMounted) return;
-        console.error("Erro ao buscar detalhes da empresa:", error);
-        toast({ title: "Erro ao buscar empresa", description: "Não foi possível obter detalhes da sua empresa.", variant: "destructive" });
-      }).finally(() => {
-        if (isMounted) setIsLoadingPage(false);
-      });
-    } else if(!authLoading && user && role !== USER_ROLES.COMPANY_ADMIN) { // Adicionado !authLoading
-        toast({ title: "Acesso Negado", description: "Você não tem permissão para adicionar serviços.", variant: "destructive" });
-        router.push('/dashboard');
-        if (isMounted) setIsLoadingPage(false);
-    } else if (!authLoading && !user) { // Adicionado !authLoading
-        router.push('/login'); 
-        if (isMounted) setIsLoadingPage(false);
+    if (!authLoading) {
+      if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+        getCompanyDetailsByOwner(user.id).then(companyDetails => {
+          if (!isMounted) return;
+          if (companyDetails && companyDetails.id) {
+            setCompanyId(companyDetails.id);
+            fetchAvailabilityTypes(companyDetails.id);
+          } else {
+            toast({ title: "Erro", description: "Empresa não encontrada. Cadastre os detalhes da empresa primeiro.", variant: "destructive" });
+            router.push('/dashboard/company');
+            setCompanyId(null);
+          }
+        }).catch(error => {
+          if (!isMounted) return;
+          console.error("Erro ao buscar detalhes da empresa:", error);
+          toast({ title: "Erro ao buscar empresa", description: "Não foi possível obter detalhes da sua empresa.", variant: "destructive" });
+          setCompanyId(null);
+        }).finally(() => {
+          if (isMounted) setIsLoadingPage(false);
+        });
+      } else if (user && role !== USER_ROLES.COMPANY_ADMIN) {
+          toast({ title: "Acesso Negado", description: "Você não tem permissão para adicionar serviços.", variant: "destructive" });
+          router.push('/dashboard');
+          if (isMounted) setIsLoadingPage(false);
+          setCompanyId(null);
+      } else if (!user) {
+          router.push('/login'); 
+          if (isMounted) setIsLoadingPage(false);
+          setCompanyId(null);
+      } else {
+         if (isMounted) setIsLoadingPage(false); // Caso authLoading seja false mas ainda não tenha user/role
+         setCompanyId(null);
+      }
     }
 
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && isMounted) { // Adicionado isMounted
         const params = new URLSearchParams(window.location.search);
         if (params.get('fromDuplicate') === 'true') {
             const duplicatedDataString = localStorage.getItem('tdsagenda_duplicate_service_data');
             if (duplicatedDataString) {
                 try {
                     const duplicatedData = JSON.parse(duplicatedDataString) as Partial<ServiceFormZodData>;
-                    if (isMounted) {
-                        form.reset({
-                            ...defaultServiceValues,
-                            ...duplicatedData,
-                            name: duplicatedData.name || "", 
-                            price: String(duplicatedData.price || "").replace('.',','), 
-                            image_url: duplicatedData.image_url || defaultServiceValues.image_url,
-                            availability_type_id: duplicatedData.availability_type_id || "none",
-                            commission_value: duplicatedData.commission_value ?? NaN,
-                            booking_fee_value: duplicatedData.booking_fee_value ?? NaN,
-                        }); 
-                        setImagePreview(duplicatedData.image_url || defaultServiceValues.image_url);
-                        toast({ title: "Duplicando Serviço", description: "Dados do serviço anterior carregados. Ajuste e salve." });
-                    }
+                    form.reset({
+                        ...defaultServiceValues,
+                        ...duplicatedData,
+                        name: duplicatedData.name || "", 
+                        price: String(duplicatedData.price || "").replace('.',','), 
+                        image_url: duplicatedData.image_url || defaultServiceValues.image_url,
+                        availability_type_id: duplicatedData.availability_type_id || "none",
+                        commission_value: duplicatedData.commission_value ?? undefined,
+                        booking_fee_value: duplicatedData.booking_fee_value ?? undefined,
+                    }); 
+                    setImagePreview(duplicatedData.image_url || defaultServiceValues.image_url);
+                    toast({ title: "Duplicando Serviço", description: "Dados do serviço anterior carregados. Ajuste e salve." });
                 } catch (e) {
                     console.error("Erro ao parsear dados duplicados:", e);
                     toast({ title: "Erro ao Duplicar", description: "Não foi possível carregar os dados do serviço para duplicação.", variant: "destructive"});
@@ -188,13 +204,12 @@ export default function AddServicePage() {
                     localStorage.removeItem('tdsagenda_duplicate_service_data');
                 }
             }
-        } else if (isMounted) {
+        } else {
              setImagePreview(form.getValues("image_url") || defaultServiceValues.image_url);
         }
     }
     return () => { isMounted = false; }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, role, authLoading, router, toast]); // form foi removido das dependências
+  }, [user, role, authLoading, router, toast, form]); 
 
   const fetchAvailabilityTypes = async (currentCompanyId: string) => {
     try {
@@ -229,8 +244,12 @@ export default function AddServicePage() {
   };
 
   const onSubmit = async (data: ServiceFormZodData) => {
+    console.log("onSubmit called. Data:", data);
+    console.log("Form validation errors:", form.formState.errors);
+
     if (!companyId) {
-      toast({ title: "Erro", description: "ID da empresa não encontrado.", variant: "destructive" });
+      toast({ title: "Erro de Submissão", description: "ID da empresa não está disponível. Não é possível salvar.", variant: "destructive" });
+      setIsSaving(false);
       return;
     }
     setIsSaving(true);
@@ -238,41 +257,62 @@ export default function AddServicePage() {
     const serviceDataToSave: Omit<ServiceData, 'id' | 'company_id' | 'created_at' | 'updated_at'> = {
       ...data,
       price: parseFloat(data.price.replace(",", ".")),
-      availability_type_id: data.availability_type_id === "none" ? null : data.availability_type_id,
+      availability_type_id: data.availability_type_id === "none" || data.availability_type_id === "" ? null : data.availability_type_id,
       image_url: data.image_url === "https://placehold.co/300x200.png?text=Serviço" ? undefined : data.image_url,
-      commission_value: isNaN(data.commission_value as number) ? undefined : data.commission_value,
-      booking_fee_value: isNaN(data.booking_fee_value as number) ? undefined : data.booking_fee_value,
+      commission_value: data.commission_value === undefined || isNaN(data.commission_value) ? undefined : data.commission_value,
+      booking_fee_value: data.booking_fee_value === undefined || isNaN(data.booking_fee_value) ? undefined : data.booking_fee_value,
     };
+    console.log("Dados para salvar no Supabase:", serviceDataToSave);
 
     try {
-      await addService(companyId, serviceDataToSave);
-      toast({
-        title: "Serviço Adicionado!",
-        description: `O serviço "${data.name}" foi cadastrado com sucesso.`,
-      });
-      form.reset(defaultServiceValues); 
-      setImagePreview(defaultServiceValues.image_url); 
-      router.push('/dashboard/company/services');
+      const addedService = await addService(companyId, serviceDataToSave);
+      if (addedService) {
+        toast({
+          title: "Serviço Adicionado!",
+          description: `O serviço "${data.name}" foi cadastrado com sucesso.`,
+        });
+        form.reset(defaultServiceValues); 
+        setImagePreview(defaultServiceValues.image_url); 
+        router.push('/dashboard/company/services');
+      } else {
+        toast({ title: "Erro ao Adicionar", description: "Não foi possível adicionar o serviço. Verifique os logs do console.", variant: "destructive" });
+      }
     } catch (error: any) {
-      toast({ title: "Erro ao Adicionar Serviço", description: error.message, variant: "destructive" });
+      console.error("Erro ao chamar addService:", error);
+      toast({ title: "Erro ao Adicionar Serviço", description: error.message || "Ocorreu um erro desconhecido.", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
   const watchHasBookingFee = form.watch("has_booking_fee");
+  
+  // Log para depuração do estado do botão
+  // console.log("Button disabled states:", { isSaving, isLoadingPage, companyId });
 
-  if (isLoadingPage) {
-      return <div className="text-center p-10">Carregando formulário de serviço...</div>;
+  if (isLoadingPage && !companyId && !authLoading) {
+      return (
+        <div className="text-center p-10">
+          <p className="text-destructive mb-4">Não foi possível carregar os dados da empresa para associar ao serviço.</p>
+          <p className="text-muted-foreground">Verifique se você está logado e se a empresa foi registrada corretamente.</p>
+          <Button onClick={() => router.push('/dashboard/company')} className="mt-4">Voltar ao Painel da Empresa</Button>
+        </div>
+      );
   }
-  if (!companyId && !isLoadingPage && !authLoading) { // Adicionado !authLoading para evitar renderização prematura
-      return <div className="text-center p-10 text-destructive">Não foi possível carregar os dados da empresa para associar ao serviço. Verifique se você está logado e se a empresa foi registrada.</div>;
+   if (isLoadingPage) {
+      return (
+         <div className="space-y-8">
+            <div className="flex items-center justify-between"> <Skeleton className="h-10 w-48" /> <Skeleton className="h-9 w-24" /></div>
+            <Skeleton className="h-12 w-full" />
+            <Card><CardContent className="pt-6 space-y-6">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full" />)}</CardContent></Card>
+         </div>
+      );
   }
 
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.error("Erro de validação do formulário:", errors))} className="space-y-8">
         <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button variant="outline" size="icon" asChild type="button">
@@ -301,9 +341,9 @@ export default function AddServicePage() {
                   </FormItem>
                 )}
               />
-            <Button type="submit" disabled={isSaving}>
-              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <Save className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{isSaving ? "Salvando..." : "Salvar"}</span>
+            <Button type="submit" disabled={isSaving || isLoadingPage || !companyId}>
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-0 md:mr-2 h-4 w-4" />} 
+              <span className="hidden md:inline">{isSaving ? "Salvando..." : "Salvar"}</span>
             </Button>
           </div>
         </div>
@@ -368,24 +408,22 @@ export default function AddServicePage() {
                       render={({ fieldState }) => (
                         <FormItem>
                           <FormLabel>Imagem Ilustrativa do Serviço</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                              {imagePreview && (
-                                <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px] flex-shrink-0">
-                                  <NextImage src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
-                                  {form.getValues("image_url") !== "https://placehold.co/300x200.png?text=Serviço" && (
-                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
-                                      <XCircle className="h-4 w-4"/>
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                              <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload-add" />
-                              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
-                                <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
-                              </Button>
-                            </div>
-                          </FormControl>
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                            {imagePreview && (
+                              <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px] flex-shrink-0">
+                                <NextImage src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
+                                {form.getValues("image_url") !== "https://placehold.co/300x200.png?text=Serviço" && (
+                                  <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
+                                    <XCircle className="h-4 w-4"/>
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                            <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload-add" />
+                            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
+                              <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
+                            </Button>
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -466,7 +504,7 @@ export default function AddServicePage() {
                             <FormItem>
                                 <FormLabel>Valor da Comissão</FormLabel>
                                 <FormControl>
-                                <Input type="number" placeholder="Ex: 10 ou 25" {...field} value={isNaN(field.value as number) ? "" : field.value} />
+                                <Input type="number" placeholder="Ex: 10 ou 25" {...field} value={field.value === undefined || isNaN(field.value) ? "" : field.value} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -501,7 +539,7 @@ export default function AddServicePage() {
                                 <FormItem>
                                     <FormLabel>Valor da Taxa de Agendamento (R$)</FormLabel>
                                     <FormControl>
-                                    <Input type="number" placeholder="Ex: 10,00" {...field} value={isNaN(field.value as number) ? "" : field.value} />
+                                    <Input type="number" placeholder="Ex: 10,00" {...field} value={field.value === undefined || isNaN(field.value) ? "" : field.value} />
                                     </FormControl>
                                     <FormDescription>Cliente pagará este valor para confirmar.</FormDescription>
                                     <FormMessage />
@@ -672,3 +710,4 @@ export default function AddServicePage() {
     </Form>
   );
 }
+
