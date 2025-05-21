@@ -1,16 +1,11 @@
 
 "use client";
 
-import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_NAME } from "@/lib/constants";
 import { FileText } from "lucide-react";
 import React, { useEffect } from 'react';
 
-export const metadata: Metadata = {
-  title: `Termos de Serviço - ${APP_NAME}`,
-  description: `Leia os termos de serviço para utilização da plataforma ${APP_NAME}.`,
-};
 
 export default function TermsPage() {
   useEffect(() => {

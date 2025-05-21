@@ -2,16 +2,12 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useForm } from "react-hook-form"; // Removido useFieldArray
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-// * as z from "zod"; // Removido, pois availabilityTypeSchema é importado
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input"; // Input será usado no DayScheduleForm
-// import { Textarea } from "@/components/ui/textarea"; // Textarea será usado no DayScheduleForm
-// import { Checkbox } from "@/components/ui/checkbox"; // Checkbox será usado no DayScheduleForm
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
-import { ArrowLeft, Save, ListChecks, Trash2, Loader2 } from "lucide-react"; // Removido PlusCircle, XCircle
+import { ArrowLeft, Save, ListChecks, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -38,10 +34,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getAvailabilityTypeById, updateAvailabilityType, deleteAvailabilityType } from "@/services/supabaseService";
 import type { AvailabilityTypeData } from "@/services/supabaseService";
 import { Skeleton } from "@/components/ui/skeleton";
-import { availabilityTypeSchema, type AvailabilityTypeFormZodData } from '../add/page'; // Importar de add/page.tsx
-import { DayScheduleForm } from '@/components/company/DayScheduleForm'; // Importar o novo componente
-import { Input } from '@/components/ui/input'; // Importar Input para nome
-import { Textarea } from '@/components/ui/textarea'; // Importar Textarea para descrição
+import { availabilityTypeSchema, type AvailabilityTypeFormZodData } from '@/app/dashboard/company/availability-types/add/page'; // Corrected import path using alias
+import { DayScheduleForm } from '@/components/company/DayScheduleForm';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 
 const daysOfWeek = [
@@ -106,7 +102,7 @@ export default function EditAvailabilityTypePage() {
               const dbDaySchedule = dbSchedule?.[dayKey];
               if (dbDaySchedule) {
                 scheduleForForm[dayKey].active = dbDaySchedule.active || false; // Garante boolean
-                scheduleForForm[dayKey].intervals = (dbDaySchedule.intervals && Array.isArray(dbDaySchedule.intervals) && dbDaySchedule.intervals.length > 0)
+                scheduleForForm[dayKey].intervals = (dbDaySchedule.intervals && Array.isArray(dbSchedule.intervals) && dbSchedule.intervals.length > 0)
                   ? dbDaySchedule.intervals.map((interval: any) => ({ 
                       start: interval.start || "", 
                       end: interval.end || "" 

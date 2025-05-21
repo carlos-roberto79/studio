@@ -1,16 +1,11 @@
 
 "use client";
 
-import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_NAME } from "@/lib/constants";
 import { ShieldCheck } from "lucide-react";
 import React, { useEffect } from 'react';
 
-export const metadata: Metadata = {
-  title: `Política de Privacidade - ${APP_NAME}`,
-  description: `Entenda como o ${APP_NAME} coleta, usa e protege suas informações pessoais.`,
-};
 
 export default function PrivacyPolicyPage() {
   useEffect(() => {
@@ -110,3 +105,4 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
+
