@@ -54,22 +54,23 @@ const timeIntervalSchema = z.object({
   start: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
   end: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
 }).refine(data => {
-  if (data.start && !data.end) return false;
-  if (!data.start && data.end) return false;
-  if (data.start && data.end) {
+  if (data.start && data.end) { 
     return data.start < data.end;
   }
-  return true;
+  if (!data.start && !data.end) {
+    return true;
+  }
+  return !(data.start && !data.end) && !(!data.start && data.end);
 }, {
-  message: "Início deve ser antes do Fim e ambos devem ser preenchidos se um deles estiver.",
+  message: "Se um horário (início ou fim) for preenchido, o outro também deve ser. Início deve ser antes do Fim.",
   path: ["end"],
 });
 
 const dayScheduleSchema = z.object({
   active: z.boolean().default(false),
   intervals: z.array(timeIntervalSchema)
-    .min(1, "Deve haver pelo menos um bloco de horário (pode estar vazio se o dia estiver inativo).")
-    .default([{start: "", end: ""}]), // Garante que sempre haja um item no array
+    .min(1, "Deve haver pelo menos um bloco de horário (mesmo que vazio se o dia estiver inativo).")
+    .default([{start: "", end: ""}]),
 });
 
 const availabilityTypeSchema = z.object({
@@ -88,22 +89,24 @@ const availabilityTypeSchema = z.object({
   for (const dayKey in data.schedule) {
     const day = data.schedule[dayKey as keyof typeof data.schedule];
     if (day.active) {
-      const hasValidInterval = day.intervals.some(interval => interval.start && interval.end && interval.start < interval.end);
+      const hasValidInterval = day.intervals.some(interval => 
+        interval.start && interval.end && interval.start < interval.end
+      );
       if (!hasValidInterval) {
-        return false; // Se o dia está ativo, pelo menos um intervalo deve ser válido
+        return false;
       }
     }
   }
   return true;
-}, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido (início e fim, com início antes do fim)." });
+}, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido e válido (Início < Fim)." });
 
 
 type AvailabilityTypeFormZodData = z.infer<typeof availabilityTypeSchema>;
 
 const createInitialScheduleForEdit = (): AvailabilityTypeFormZodData['schedule'] => daysOfWeek.reduce((acc, day) => {
   acc[day.id as keyof AvailabilityTypeFormZodData['schedule']] = {
-    active: false, // Começa inativo até os dados serem carregados
-    intervals: [{ start: "", end: "" }] // Apenas um intervalo inicial vazio
+    active: false, 
+    intervals: [{ start: "", end: "" }] 
   };
   return acc;
 }, {} as AvailabilityTypeFormZodData['schedule']);
@@ -123,73 +126,72 @@ export default function EditAvailabilityTypePage() {
 
   const form = useForm<AvailabilityTypeFormZodData>({
     resolver: zodResolver(availabilityTypeSchema),
-    defaultValues: {
+    defaultValues: { // Inicializa com uma estrutura válida, mas vazia/inativa.
       name: "",
       description: "",
-      schedule: createInitialScheduleForEdit(), // Usa uma função que inicializa com dias inativos
+      schedule: createInitialScheduleForEdit(),
     }
   });
-  const formReset = form.reset; // Estabiliza a referência
+  const formReset = form.reset;
 
   useEffect(() => {
+    let isMounted = true;
     if (user && user.id && role === USER_ROLES.COMPANY_ADMIN && typeId) {
-      fetchTypeData(typeId);
+      setIsLoadingPage(true);
+      getAvailabilityTypeById(typeId)
+        .then(dataFromDb => {
+          if (!isMounted) return;
+          if (dataFromDb) {
+            setPageTitle(dataFromDb.name || "Editar Tipo de Disponibilidade");
+            
+            const scheduleForForm: AvailabilityTypeFormZodData['schedule'] = createInitialScheduleForEdit();
+            const dbSchedule = dataFromDb.schedule as any; 
+
+            (Object.keys(scheduleForForm) as Array<keyof AvailabilityTypeFormZodData['schedule']>).forEach(dayKey => {
+              const dbDaySchedule = dbSchedule?.[dayKey];
+              if (dbDaySchedule) {
+                scheduleForForm[dayKey].active = dbDaySchedule.active || false; // Garante boolean
+                scheduleForForm[dayKey].intervals = (dbDaySchedule.intervals && Array.isArray(dbDaySchedule.intervals) && dbDaySchedule.intervals.length > 0)
+                  ? dbDaySchedule.intervals.map((interval: any) => ({ 
+                      start: interval.start || "", 
+                      end: interval.end || "" 
+                    }))
+                  : [{ start: "", end: "" }]; 
+              } else {
+                 scheduleForForm[dayKey].active = false;
+                 scheduleForForm[dayKey].intervals = [{ start: "", end: "" }];
+              }
+            });
+            
+            formReset({ 
+              name: dataFromDb.name || "",
+              description: dataFromDb.description || "",
+              schedule: scheduleForForm,
+            });
+            setIsDataProcessed(true); 
+          } else {
+            toast({ title: "Erro", description: `Tipo de disponibilidade com ID '${typeId}' não encontrado.`, variant: "destructive" });
+            router.push('/dashboard/company/availability-types');
+          }
+        })
+        .catch(error => {
+          if (!isMounted) return;
+          toast({ title: "Erro ao Carregar Tipo", description: error.message, variant: "destructive" });
+          router.push('/dashboard/company/availability-types');
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingPage(false);
+        });
     } else if (!typeId) {
         toast({ title: "Erro", description: "ID do tipo de disponibilidade não fornecido.", variant: "destructive" });
         router.push('/dashboard/company/availability-types');
-        setIsLoadingPage(false);
+        if (isMounted) setIsLoadingPage(false);
     } else {
-        setIsLoadingPage(false);
+        if (isMounted) setIsLoadingPage(false);
     }
+    return () => { isMounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeId, user, role, router, toast]); 
-
-  const fetchTypeData = async (currentTypeId: string) => {
-    setIsLoadingPage(true);
-    setIsDataProcessed(false);
-    try {
-      const dataFromDb = await getAvailabilityTypeById(currentTypeId);
-      if (dataFromDb) {
-        setPageTitle(dataFromDb.name || "Editar Tipo de Disponibilidade");
-        
-        const scheduleForForm: AvailabilityTypeFormZodData['schedule'] = createInitialScheduleForEdit();
-        const dbSchedule = dataFromDb.schedule as any; 
-
-        (Object.keys(scheduleForForm) as Array<keyof AvailabilityTypeFormZodData['schedule']>).forEach(dayKey => {
-          const dbDaySchedule = dbSchedule?.[dayKey];
-          if (dbDaySchedule) {
-            scheduleForForm[dayKey].active = dbDaySchedule.active;
-            scheduleForForm[dayKey].intervals = (dbDaySchedule.intervals && Array.isArray(dbDaySchedule.intervals) && dbDaySchedule.intervals.length > 0)
-              ? dbDaySchedule.intervals.map((interval: any) => ({ 
-                  start: interval.start || "", 
-                  end: interval.end || "" 
-                }))
-              : [{ start: "", end: "" }]; 
-          } else {
-             // Mantém o padrão de createInitialScheduleForEdit (dia inativo com um intervalo vazio)
-             scheduleForForm[dayKey].active = false;
-             scheduleForForm[dayKey].intervals = [{ start: "", end: "" }];
-          }
-        });
-        
-        formReset({ 
-          name: dataFromDb.name || "",
-          description: dataFromDb.description || "",
-          schedule: scheduleForForm,
-        });
-        setIsDataProcessed(true); 
-      } else {
-        toast({ title: "Erro", description: `Tipo de disponibilidade com ID '${currentTypeId}' não encontrado.`, variant: "destructive" });
-        router.push('/dashboard/company/availability-types');
-      }
-    } catch (error: any) {
-      toast({ title: "Erro ao Carregar Tipo", description: error.message, variant: "destructive" });
-      router.push('/dashboard/company/availability-types');
-    } finally {
-      setIsLoadingPage(false);
-    }
-  };
-
+  }, [typeId, user, role, router, toast, formReset]); 
 
   useEffect(() => {
     if (pageTitle && !isLoadingPage) {
@@ -205,12 +207,10 @@ export default function EditAvailabilityTypePage() {
       if (day.active) {
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
          if (day.intervals.length === 0) {
-            // O refine do Zod deve pegar isso se o dia estiver ativo.
-            // Para consistência de dados, podemos forçar um intervalo vazio se a intenção é "limpar" um dia ativo.
-            // day.intervals.push({start: "", end: ""});
+            // Validação Zod deve pegar isso
         }
       } else {
-        day.intervals = [{ start: "", end: "" }]; // Garante um array com um item vazio se inativo
+        day.intervals = [{ start: "", end: "" }]; 
       }
     }
     const typeDataToUpdate: Partial<Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'>> = {
@@ -357,7 +357,7 @@ export default function EditAvailabilityTypePage() {
                 <CardContent className="space-y-4">
                     {daysOfWeek.map((day) => {
                     const dayKey = day.id as keyof AvailabilityTypeFormZodData['schedule'];
-                    const { fields, append, remove, update } = useFieldArray({
+                    const { fields, append, remove } = useFieldArray({
                         control: form.control,
                         name: `schedule.${dayKey}.intervals`
                     });
@@ -367,19 +367,14 @@ export default function EditAvailabilityTypePage() {
                         <FormField
                             control={form.control}
                             name={`schedule.${dayKey}.active`}
-                            render={({ field: dayActiveField }) => ( // Renomeado para evitar conflito
+                            render={({ field: dayActiveField }) => (
                             <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                                 <FormControl>
                                 <Checkbox
                                     checked={dayActiveField.value}
                                     onCheckedChange={(checked) => {
                                         dayActiveField.onChange(checked);
-                                        if (checked && fields.length > 0) {
-                                            const firstInterval = fields[0];
-                                            if (!firstInterval.start && !firstInterval.end) {
-                                                update(0, { start: "09:00", end: "18:00"});
-                                            }
-                                        }
+                                        // Lógica simplificada
                                     }}
                                 />
                                 </FormControl>
@@ -437,10 +432,8 @@ export default function EditAvailabilityTypePage() {
                             </Button>
                             </div>
                         )}
-                        {/* Mensagens de erro globais para o array de intervalos ou para o dia */}
                         <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.root?.message}</FormMessage>
                         <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage>
-                        {/* Mensagem de erro global do Zod refine para o schedule */}
                         {dayKey === 'seg' && <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage>}
                         </div>
                     );

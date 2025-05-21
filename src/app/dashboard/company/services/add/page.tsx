@@ -47,25 +47,28 @@ const serviceSchema = z.object({
   name: z.string().min(3, "O nome do serviço deve ter pelo menos 3 caracteres."),
   description: z.string().optional(),
   category: z.string().min(1, "A categoria é obrigatória."),
-  image_url: z.string().optional(),
+  image_url: z.string().url("URL da imagem inválida").optional().or(z.literal("")),
   duration_minutes: z.coerce.number().int().positive("A duração deve ser um número positivo.").min(5, "Duração mínima de 5 minutos."),
   display_duration: z.boolean().default(true),
-  unique_scheduling_link_slug: z.string().min(3, "O link deve ter pelo menos 3 caracteres.").regex(/^[a-z0-9-]+$/, { message: "O link pode conter apenas letras minúsculas, números e hífens." }).optional().or(z.literal('')),
+  unique_scheduling_link_slug: z.string()
+    .min(3, "O link deve ter pelo menos 3 caracteres.")
+    .regex(/^[a-z0-9-]+$/, { message: "O link pode conter apenas letras minúsculas, números e hífens." })
+    .optional().or(z.literal('')),
   price: z.string().min(1, "O preço é obrigatório.").regex(/^\d+([,.]\d{1,2})?$/, "Formato de preço inválido (ex: 50 ou 50,00)"),
   commission_type: z.enum(["fixed", "percentage"]).optional(),
-  commission_value: z.coerce.number().nonnegative("A comissão não pode ser negativa.").optional(),
+  commission_value: z.coerce.number().nonnegative("A comissão não pode ser negativa.").optional().or(z.literal(NaN)), // Allow NaN for optional coercion
   has_booking_fee: z.boolean().default(false),
-  booking_fee_value: z.coerce.number().nonnegative("A taxa não pode ser negativa.").optional(),
+  booking_fee_value: z.coerce.number().nonnegative("A taxa não pode ser negativa.").optional().or(z.literal(NaN)),
   simultaneous_appointments_per_user: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por usuário.").default(1),
   simultaneous_appointments_per_slot: z.coerce.number().int().min(1, "Mínimo de 1 agendamento simultâneo por horário.").default(1),
   simultaneous_appointments_per_slot_automatic: z.boolean().default(false),
   block_after_24_hours: z.boolean().default(false),
   interval_between_slots_minutes: z.coerce.number().int().min(0, "O intervalo não pode ser negativo.").default(0),
   confirmation_type: z.enum(["manual", "automatic"]).default("automatic"),
-  availability_type_id: z.string().optional().nullable(), // Pode ser null do banco
+  availability_type_id: z.string().optional().nullable(),
   active: z.boolean().default(true),
 }).refine(data => {
-  if (data.has_booking_fee && (data.booking_fee_value === undefined || data.booking_fee_value < 0)) {
+  if (data.has_booking_fee && (data.booking_fee_value === undefined || isNaN(data.booking_fee_value) || data.booking_fee_value < 0)) {
     return false;
   }
   return true;
@@ -73,7 +76,7 @@ const serviceSchema = z.object({
   message: "O valor da taxa de agendamento é obrigatório e deve ser positivo se a taxa estiver habilitada.",
   path: ["booking_fee_value"],
 }).refine(data => {
-    if (data.commission_type && (data.commission_value === undefined || data.commission_value < 0)) {
+    if (data.commission_type && (data.commission_value === undefined || isNaN(data.commission_value) || data.commission_value < 0)) {
         return false;
     }
     return true;
@@ -94,30 +97,32 @@ export default function AddServicePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [availabilityTypes, setAvailabilityTypes] = useState<{ id: string; name: string }[]>([]);
 
+  const defaultServiceValues: ServiceFormZodData = {
+    name: "",
+    description: "",
+    category: "",
+    duration_minutes: 60,
+    display_duration: true,
+    unique_scheduling_link_slug: "",
+    price: "",
+    commission_type: undefined, // Explicitly undefined for optional enum
+    commission_value: NaN,
+    has_booking_fee: false,
+    booking_fee_value: NaN,
+    simultaneous_appointments_per_user: 1,
+    simultaneous_appointments_per_slot: 1,
+    simultaneous_appointments_per_slot_automatic: false,
+    block_after_24_hours: false,
+    interval_between_slots_minutes: 10,
+    confirmation_type: "automatic",
+    availability_type_id: "", // Represent null/empty as empty string for select
+    active: true,
+    image_url: "https://placehold.co/300x200.png?text=Serviço",
+  };
+
   const form = useForm<ServiceFormZodData>({
     resolver: zodResolver(serviceSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      category: "",
-      duration_minutes: 60,
-      display_duration: true,
-      unique_scheduling_link_slug: "",
-      price: "",
-      commission_type: "percentage",
-      commission_value: 0,
-      has_booking_fee: false,
-      booking_fee_value: 0,
-      simultaneous_appointments_per_user: 1,
-      simultaneous_appointments_per_slot: 1,
-      simultaneous_appointments_per_slot_automatic: false,
-      block_after_24_hours: false,
-      interval_between_slots_minutes: 10,
-      confirmation_type: "automatic",
-      availability_type_id: "",
-      active: true,
-      image_url: "https://placehold.co/300x200.png?text=Serviço",
-    },
+    defaultValues: defaultServiceValues,
   });
 
   useEffect(() => {
@@ -135,27 +140,24 @@ export default function AddServicePage() {
       });
     }
 
-    // Lógica para duplicar serviço
     if (typeof window !== "undefined") {
         const params = new URLSearchParams(window.location.search);
         if (params.get('fromDuplicate') === 'true') {
             const duplicatedDataString = localStorage.getItem('tdsagenda_duplicate_service_data');
             if (duplicatedDataString) {
                 try {
-                    const duplicatedData = JSON.parse(duplicatedDataString) as ServiceData;
+                    const duplicatedData = JSON.parse(duplicatedDataString) as Partial<ServiceFormZodData>;
                     if (isMounted) {
                         form.reset({
+                            ...defaultServiceValues, // Start with defaults
                             ...duplicatedData,
-                            price: String(duplicatedData.price).replace('.',','), 
-                            image_url: duplicatedData.image_url || "https://placehold.co/300x200.png?text=Serviço",
+                            price: String(duplicatedData.price || "").replace('.',','), 
+                            image_url: duplicatedData.image_url || defaultServiceValues.image_url,
                             availability_type_id: duplicatedData.availability_type_id || "",
-                            description: duplicatedData.description || "",
-                            unique_scheduling_link_slug: duplicatedData.unique_scheduling_link_slug || "",
-                            commission_type: duplicatedData.commission_type || undefined,
-                            commission_value: duplicatedData.commission_value || 0,
-                            booking_fee_value: duplicatedData.booking_fee_value || 0,
+                            commission_value: duplicatedData.commission_value || NaN,
+                            booking_fee_value: duplicatedData.booking_fee_value || NaN,
                         }); 
-                        setImagePreview(duplicatedData.image_url || "https://placehold.co/300x200.png?text=Serviço");
+                        setImagePreview(duplicatedData.image_url || defaultServiceValues.image_url);
                         toast({ title: "Duplicando Serviço", description: "Dados do serviço anterior carregados. Ajuste e salve." });
                     }
                 } catch (e) {
@@ -166,12 +168,12 @@ export default function AddServicePage() {
                 }
             }
         } else if (isMounted) {
-             setImagePreview(form.getValues("image_url") || "https://placehold.co/300x200.png?text=Serviço");
+             setImagePreview(form.getValues("image_url") || defaultServiceValues.image_url);
         }
     }
     return () => { isMounted = false; }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, role, toast]); // form.reset e form.getValues foram removidos daqui para evitar re-renders excessivos
+  }, [user, role, toast]); 
 
   const fetchAvailabilityTypes = async (currentCompanyId: string) => {
     try {
@@ -216,6 +218,9 @@ export default function AddServicePage() {
       ...data,
       price: parseFloat(data.price.replace(",", ".")),
       availability_type_id: data.availability_type_id === "" ? null : data.availability_type_id,
+      image_url: data.image_url === "https://placehold.co/300x200.png?text=Serviço" ? undefined : data.image_url,
+      commission_value: isNaN(data.commission_value as number) ? undefined : data.commission_value,
+      booking_fee_value: isNaN(data.booking_fee_value as number) ? undefined : data.booking_fee_value,
     };
 
     try {
@@ -224,7 +229,7 @@ export default function AddServicePage() {
         title: "Serviço Adicionado!",
         description: `O serviço "${data.name}" foi cadastrado com sucesso.`,
       });
-      form.reset(); 
+      form.reset(defaultServiceValues); 
       removeImage(); 
       router.push('/dashboard/company/services');
     } catch (error: any) {
@@ -416,7 +421,7 @@ export default function AddServicePage() {
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Tipo de Comissão</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value || ""}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
@@ -434,7 +439,7 @@ export default function AddServicePage() {
                             <FormItem>
                                 <FormLabel>Valor da Comissão</FormLabel>
                                 <FormControl>
-                                <Input type="number" placeholder="Ex: 10 ou 25" {...field} />
+                                <Input type="number" placeholder="Ex: 10 ou 25" {...field} value={isNaN(field.value as number) ? "" : field.value} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -469,7 +474,7 @@ export default function AddServicePage() {
                                 <FormItem>
                                     <FormLabel>Valor da Taxa de Agendamento (R$)</FormLabel>
                                     <FormControl>
-                                    <Input type="number" placeholder="Ex: 10,00" {...field} />
+                                    <Input type="number" placeholder="Ex: 10,00" {...field} value={isNaN(field.value as number) ? "" : field.value} />
                                     </FormControl>
                                     <FormDescription>Cliente pagará este valor para confirmar.</FormDescription>
                                     <FormMessage />

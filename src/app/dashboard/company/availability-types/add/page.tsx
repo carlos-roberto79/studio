@@ -42,21 +42,25 @@ const timeIntervalSchema = z.object({
   start: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
   end: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "HH:MM inválido").optional().or(z.literal("")),
 }).refine(data => {
-  if ((data.start && !data.end) || (!data.start && data.end)) return false; 
-  if (data.start && data.end) {
+  if (data.start && data.end) { // Se ambos estão preenchidos, start deve ser menor que end
     return data.start < data.end;
   }
-  return true;
+  if (!data.start && !data.end) { // Ambos vazios é ok
+    return true;
+  }
+  // Se apenas um está preenchido, é inválido (a menos que a lógica de validação geral do dia ativo cuide disso)
+  // Para o refinamento do intervalo individual, consideramos inválido se um está preenchido e outro não.
+  return !(data.start && !data.end) && !(!data.start && data.end);
 }, {
-  message: "Início deve ser antes do Fim e ambos devem ser preenchidos se um deles estiver.",
-  path: ["end"], // Pode aplicar a ambos ou ao 'end'
+  message: "Se um horário (início ou fim) for preenchido, o outro também deve ser. Início deve ser antes do Fim.",
+  path: ["end"], 
 });
 
 const dayScheduleSchema = z.object({
   active: z.boolean().default(false),
   intervals: z.array(timeIntervalSchema)
-    .min(1, "Deve haver pelo menos um bloco de horário (pode estar vazio se o dia estiver inativo).")
-    .default([{start: "", end: ""}]), // Garante que sempre haja um item no array
+    .min(1, "Deve haver pelo menos um bloco de horário (mesmo que vazio se o dia estiver inativo).")
+    .default([{start: "", end: ""}]),
 });
 
 const availabilityTypeSchema = z.object({
@@ -75,14 +79,16 @@ const availabilityTypeSchema = z.object({
   for (const dayKey in data.schedule) {
     const day = data.schedule[dayKey as keyof typeof data.schedule];
     if (day.active) {
-      const hasValidInterval = day.intervals.some(interval => interval.start && interval.end && interval.start < interval.end);
+      const hasValidInterval = day.intervals.some(interval => 
+        interval.start && interval.end && interval.start < interval.end
+      );
       if (!hasValidInterval) {
-        return false; // Se o dia está ativo, pelo menos um intervalo deve ser válido
+        return false; 
       }
     }
   }
   return true;
-}, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido (início e fim, com início antes do fim)." });
+}, { message: "Para dias ativos, pelo menos um intervalo de horário deve ser completamente preenchido e válido (Início < Fim)." });
 
 
 type AvailabilityTypeFormZodData = z.infer<typeof availabilityTypeSchema>;
@@ -91,7 +97,7 @@ const createInitialSchedule = (): AvailabilityTypeFormZodData['schedule'] => day
   const isActive = day.id !== 'sab' && day.id !== 'dom';
   acc[day.id as keyof AvailabilityTypeFormZodData['schedule']] = {
     active: isActive, 
-    intervals: [{ start: isActive ? "09:00" : "", end: isActive ? "18:00" : "" }] // Apenas um intervalo inicial
+    intervals: [{ start: isActive ? "09:00" : "", end: isActive ? "18:00" : "" }]
   };
   return acc;
 }, {} as AvailabilityTypeFormZodData['schedule']);
@@ -141,20 +147,15 @@ export default function AddAvailabilityTypePage() {
     for (const dayKey in scheduleWithFilteredIntervals) {
       const day = scheduleWithFilteredIntervals[dayKey as keyof typeof scheduleWithFilteredIntervals];
       if (day.active) {
-        // Filtra apenas intervalos onde tanto start quanto end estão preenchidos
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
-        // Se após filtrar não sobrar nenhum intervalo válido mas o dia está ativo, 
-        // o `refine` do Zod deve pegar isso. Ou podemos forçar um intervalo vazio.
-        // No entanto, o `refine` já cuida disso.
         if (day.intervals.length === 0) {
-            // Poderia adicionar um intervalo vazio [{start:"", end:""}] aqui, mas o refine deve tratar.
-            // Se o dia está ativo e não tem intervalos válidos, o Zod vai reclamar.
+           // O refine do Zod já deve pegar isso, mas para ser explícito:
+           // um dia ativo precisa de pelo menos um intervalo válido.
+           // Se chegou aqui, significa que a validação do Zod falhou ou não foi acionada como esperado
+           // para este caso. A validação do Zod `.refine` no schema principal deve tratar isso.
         }
       } else {
-        // Se o dia não está ativo, garantir que os intervalos sejam "limpos" para consistência ou
-        // simplesmente deixar como está, pois o `refine` não se importa com eles.
-        // Por segurança, vamos limpar ou garantir um único intervalo vazio.
-        day.intervals = [{ start: "", end: "" }];
+        day.intervals = [{ start: "", end: "" }]; // Dia inativo, normaliza para um intervalo vazio
       }
     }
     const typeDataToSave: Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'> = {
@@ -249,7 +250,7 @@ export default function AddAvailabilityTypePage() {
               <CardContent className="space-y-4">
                 {daysOfWeek.map((day) => {
                   const dayKey = day.id as keyof AvailabilityTypeFormZodData['schedule'];
-                  const { fields, append, remove, update } = useFieldArray({
+                  const { fields, append, remove } = useFieldArray({ // removido 'update'
                     control: form.control,
                     name: `schedule.${dayKey}.intervals`
                   });
@@ -266,13 +267,8 @@ export default function AddAvailabilityTypePage() {
                                 checked={dayActiveField.value}
                                 onCheckedChange={(checked) => {
                                   dayActiveField.onChange(checked);
-                                  if (checked && fields.length > 0) {
-                                    const firstInterval = fields[0];
-                                    if (!firstInterval.start && !firstInterval.end) {
-                                       update(0, { start: "09:00", end: "18:00"});
-                                    }
-                                  }
-                                  // Se desmarcar, o refine do Zod não vai validar os intervalos
+                                  // Lógica simplificada: não tenta mais preencher valores aqui
+                                  // A validação do Zod cuidará de exigir preenchimento se ativo.
                                 }}
                               />
                             </FormControl>
@@ -314,7 +310,7 @@ export default function AddAvailabilityTypePage() {
                                 onClick={() => remove(index)}
                                 className="text-destructive hover:text-destructive"
                                 title="Remover horário"
-                                disabled={fields.length <= 1}
+                                disabled={fields.length <= 1} // Mantém desabilitado se for o último
                               >
                                 <XCircle className="h-5 w-5" />
                               </Button>
@@ -330,10 +326,8 @@ export default function AddAvailabilityTypePage() {
                           </Button>
                         </div>
                       )}
-                       {/* Mensagens de erro globais para o array de intervalos ou para o dia */}
                        <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.root?.message}</FormMessage>
                        <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage>
-                       {/* Mensagem de erro global do Zod refine para o schedule */}
                        {dayKey === 'seg' && <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage>}
                     </div>
                   );
