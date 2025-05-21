@@ -21,6 +21,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger, // Importação adicionada
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCompanyDetailsByOwner } from "@/services/supabaseService";
@@ -39,14 +40,14 @@ export default function CompanyServicesPage() {
     setIsLoading(true);
     try {
       const fetchedServices = await getServicesByCompany(currentCompanyId);
-      setServices(fetchedServices || []); // Garante que services é sempre um array
+      setServices(fetchedServices || []); 
     } catch (error: any) {
       toast({ title: "Erro ao buscar serviços", description: error.message, variant: "destructive" });
-      setServices([]); // Em caso de erro, define como array vazio
+      setServices([]); 
     } finally {
       setIsLoading(false);
     }
-  }, [toast]); // toast é estável
+  }, [toast]); 
 
   useEffect(() => {
     document.title = `Gerenciar Serviços - ${APP_NAME}`;
@@ -54,7 +55,6 @@ export default function CompanyServicesPage() {
       getCompanyDetailsByOwner(user.id).then(companyDetails => {
         if (companyDetails && companyDetails.id) {
           setCompanyId(companyDetails.id);
-          // fetchServices será chamado pelo useEffect abaixo quando companyId for definido
         } else {
           toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
           setIsLoading(false);
@@ -65,11 +65,19 @@ export default function CompanyServicesPage() {
         setIsLoading(false);
         setServices([]);
       });
-    } else if (!user && !isLoading) {
+    } else if (!user && isLoading) { // Ajustado para verificar isLoading também
+        // Não faz nada se estiver autenticando
+    } else if (!user) {
         setIsLoading(false);
         setServices([]);
+        router.push('/login'); // Redireciona se não houver usuário após o carregamento inicial
+    } else {
+        // Usuário logado, mas não é COMPANY_ADMIN, pode redirecionar ou mostrar mensagem
+        setIsLoading(false);
+        setServices([]);
+        router.push('/dashboard');
     }
-  }, [user, role, toast, isLoading]);
+  }, [user, role, toast, isLoading, router]); // Adicionado router a dependência
 
   useEffect(() => {
     if (companyId) {
@@ -99,7 +107,7 @@ export default function CompanyServicesPage() {
   const handleDuplicateService = (serviceId: string) => {
     const serviceToDuplicate = services.find(s => s.id === serviceId);
     if (serviceToDuplicate) {
-      localStorage.setItem('tdsagenda_duplicate_service_data', JSON.stringify({ // Chave atualizada
+      localStorage.setItem('tdsagenda_duplicate_service_data', JSON.stringify({ 
         ...serviceToDuplicate,
         name: `${serviceToDuplicate.name} (Cópia)`,
         unique_scheduling_link_slug: `${serviceToDuplicate.unique_scheduling_link_slug || serviceToDuplicate.name.toLowerCase().replace(/\s+/g, '-')}-copia`
