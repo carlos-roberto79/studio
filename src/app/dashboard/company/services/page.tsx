@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, PlusCircle, Edit, Trash2, ShoppingBag, Eye, EyeOff, Copy, Loader2 } from "lucide-react";
@@ -21,7 +21,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCompanyDetailsByOwner } from "@/services/supabaseService";
@@ -36,34 +35,48 @@ export default function CompanyServicesPage() {
   const [services, setServices] = useState<ServiceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchServices = useCallback(async (currentCompanyId: string) => {
+    setIsLoading(true);
+    try {
+      const fetchedServices = await getServicesByCompany(currentCompanyId);
+      setServices(fetchedServices || []); // Garante que services é sempre um array
+    } catch (error: any) {
+      toast({ title: "Erro ao buscar serviços", description: error.message, variant: "destructive" });
+      setServices([]); // Em caso de erro, define como array vazio
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]); // toast é estável
+
   useEffect(() => {
     document.title = `Gerenciar Serviços - ${APP_NAME}`;
     if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
       getCompanyDetailsByOwner(user.id).then(companyDetails => {
         if (companyDetails && companyDetails.id) {
           setCompanyId(companyDetails.id);
-          fetchServices(companyDetails.id);
+          // fetchServices será chamado pelo useEffect abaixo quando companyId for definido
         } else {
           toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
           setIsLoading(false);
+          setServices([]); 
         }
+      }).catch(err => {
+        toast({ title: "Erro ao buscar detalhes da empresa", description: err.message, variant: "destructive" });
+        setIsLoading(false);
+        setServices([]);
       });
-    } else {
-      setIsLoading(false);
+    } else if (!user && !isLoading) {
+        setIsLoading(false);
+        setServices([]);
     }
-  }, [user, role, toast]);
+  }, [user, role, toast, isLoading]);
 
-  const fetchServices = async (currentCompanyId: string) => {
-    setIsLoading(true);
-    try {
-      const fetchedServices = await getServicesByCompany(currentCompanyId);
-      setServices(fetchedServices);
-    } catch (error: any) {
-      toast({ title: "Erro ao buscar serviços", description: error.message, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (companyId) {
+      fetchServices(companyId);
     }
-  };
+  }, [companyId, fetchServices]);
+
 
   const handleDeleteService = async (serviceId: string) => {
     const serviceToDelete = services.find(s => s.id === serviceId);
@@ -71,7 +84,9 @@ export default function CompanyServicesPage() {
 
     try {
       await deleteService(serviceId);
-      setServices(prevServices => prevServices.filter(service => service.id !== serviceId));
+      setServices(prevServices => 
+        Array.isArray(prevServices) ? prevServices.filter(service => service.id !== serviceId) : []
+      );
       toast({
         title: "Serviço Excluído",
         description: `O serviço "${serviceToDelete.name}" foi removido.`,
@@ -84,7 +99,7 @@ export default function CompanyServicesPage() {
   const handleDuplicateService = (serviceId: string) => {
     const serviceToDuplicate = services.find(s => s.id === serviceId);
     if (serviceToDuplicate) {
-      localStorage.setItem('duplicate_service_data', JSON.stringify({
+      localStorage.setItem('tdsagenda_duplicate_service_data', JSON.stringify({ // Chave atualizada
         ...serviceToDuplicate,
         name: `${serviceToDuplicate.name} (Cópia)`,
         unique_scheduling_link_slug: `${serviceToDuplicate.unique_scheduling_link_slug || serviceToDuplicate.name.toLowerCase().replace(/\s+/g, '-')}-copia`
@@ -106,9 +121,9 @@ export default function CompanyServicesPage() {
       const updatedService = await updateService(serviceId, { active: newStatus });
       if (updatedService) {
         setServices(prevServices =>
-          prevServices.map(s =>
+          Array.isArray(prevServices) ? prevServices.map(s =>
             s.id === serviceId ? { ...s, active: newStatus } : s
-          )
+          ) : []
         );
         toast({
           title: `Status Alterado`,
@@ -120,7 +135,7 @@ export default function CompanyServicesPage() {
     }
   };
 
-  if (isLoading && services.length === 0) { // Mostrar skeleton apenas no carregamento inicial
+  if (isLoading && services.length === 0) { 
     return (
       <div className="space-y-8">
         <div className="flex items-center justify-between">
@@ -208,7 +223,7 @@ export default function CompanyServicesPage() {
                     </TableCell>
                     <TableCell className="font-medium">{service.name}</TableCell>
                     <TableCell>{service.category}</TableCell>
-                    <TableCell>R$ {service.price.toFixed(2).replace('.', ',')}</TableCell>
+                    <TableCell>R$ {service.price ? service.price.toFixed(2).replace('.', ',') : '0,00'}</TableCell>
                     <TableCell>
                       <Badge variant={service.active ? "default" : "outline"} className={service.active ? "bg-green-500 hover:bg-green-600" : "bg-red-100 text-red-700 hover:bg-red-200"}>
                         {service.active ? "Ativo" : "Inativo"}
@@ -261,5 +276,4 @@ export default function CompanyServicesPage() {
     </div>
   );
 }
-
     
