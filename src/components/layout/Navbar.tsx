@@ -9,7 +9,7 @@ import { Menu, LogIn, UserPlus, LayoutDashboard, LogOut, Briefcase, Users, Calen
 import { Logo } from '@/components/shared/Logo';
 import { useAuth } from '@/contexts/AuthContext'; 
 import { Separator } from '@/components/ui/separator';
-import { USER_ROLES } from '@/lib/constants';
+import { USER_ROLES, APP_NAME } from '@/lib/constants';
 
 const navLinks = [
   { href: '/', label: 'Início' },
@@ -40,9 +40,11 @@ export function Navbar() {
         variant="ghost"
         asChild
         className={cn(
-          "text-sm font-medium transition-colors hover:text-primary",
-          pathname === link.href ? "text-primary" : "text-muted-foreground",
-          isMobile && "w-full justify-start text-base py-3"
+          "text-sm font-medium transition-colors",
+          pathname === link.href
+            ? "text-primary hover:text-primary hover:bg-accent/50" // Link ativo tem um leve hover
+            : "text-muted-foreground hover:text-muted-foreground hover:bg-transparent", // Link inativo não muda no hover
+          isMobile && "w-full justify-start text-base py-3 hover:text-primary hover:bg-accent/50" // Em mobile, mantém o hover padrão do botão
         )}
       >
         <Link href={link.href}>
@@ -72,13 +74,12 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="ghost" size="sm" asChild className="hover:bg-transparent hover:text-muted-foreground">
                 <Link href="/login"><LogIn className="mr-2 h-4 w-4" /> Login</Link>
               </Button>
               <Button size="sm" asChild>
                 <Link href="/signup"><UserPlus className="mr-2 h-4 w-4" /> Cadastrar</Link>
               </Button>
-              {/* O botão "Restrito" foi completamente removido daqui */}
             </>
           )}
           <div className="md:hidden">
@@ -94,7 +95,7 @@ export function Navbar() {
                   {renderNavLinks(true)}
                   <Separator className="my-4"/>
                   {user && (
-                    <Button variant="ghost" onClick={logout} className="w-full justify-start text-base py-3 text-destructive hover:text-destructive">
+                    <Button variant="ghost" onClick={logout} className="w-full justify-start text-base py-3 text-destructive hover:text-destructive hover:bg-destructive/10">
                       <LogOut className="mr-2 h-5 w-5" /> Sair
                     </Button>
                   )}
@@ -110,3 +111,4 @@ export function Navbar() {
 
 // Helper cn function
 const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(' ');
+    
