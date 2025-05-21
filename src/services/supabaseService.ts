@@ -4,6 +4,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import type { UserRole } from '@/lib/constants';
+import type { AppointmentData } from '@/lib/types';
 
 export interface UserProfile {
   id: string; 
@@ -116,12 +117,11 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       .eq('id', userId)
       .single();
 
-    if (error && status !== 406) { // 406 significa "Not Acceptable", mas o Supabase usa para "No rows found" com .single()
+    if (error && status !== 406) { 
       console.error('SupabaseService: Erro ao buscar perfil do usuário:', error.message);
       return null;
     }
      if (!data) {
-        // console.warn(`SupabaseService: Nenhum perfil encontrado para UID: ${userId}. Isso é normal para um novo usuário que ainda não teve o perfil criado.`);
         return null;
     }
     return data as UserProfile;
@@ -155,13 +155,13 @@ export async function createUserProfile(userId: string, email: string, role: Use
     return data as UserProfile;
   } catch (err: any) {
     console.error('SupabaseService: Exceção em createUserProfile:', err);
-    // console.error('Detalhes do Erro em createUserProfile:', JSON.stringify(err, null, 2));
+    console.error('Detalhes do Erro em createUserProfile:', JSON.stringify(err, null, 2));
     throw err;
   }
 }
 
 export async function addCompanyDetails(companyData: Omit<CompanyData, 'id' | 'created_at' | 'updated_at'>): Promise<string | null> {
-  console.log(`SupabaseService: Adicionando detalhes da empresa para o proprietário ${companyData.owner_uid}:`);
+  console.log(`SupabaseService: Adicionando detalhes da empresa para o proprietário ${companyData.owner_uid}:`, companyData);
   try {
     const companyDataToInsert = {
         owner_uid: companyData.owner_uid,
@@ -252,8 +252,8 @@ export async function addService(companyId: string, serviceData: Omit<ServiceDat
     const dataToInsert = {
       ...serviceData,
       company_id: companyId,
-      price: parseFloat(String(serviceData.price).replace(",", ".")), // Garantir que o preço é um número
-      availability_type_id: serviceData.availability_type_id === "" ? null : serviceData.availability_type_id,
+      price: parseFloat(String(serviceData.price).replace(",", ".")), 
+      availability_type_id: serviceData.availability_type_id === "none" || serviceData.availability_type_id === "" ? null : serviceData.availability_type_id,
     };
     const { data, error } = await supabase
       .from('services')
@@ -301,7 +301,7 @@ export async function getServiceById(serviceId: string): Promise<ServiceData | n
       .single();
     if (error) {
       console.error('SupabaseService: Erro ao buscar serviço por ID:', error.message);
-      if (error.code === 'PGRST116') return null; // "Not Found"
+      if (error.code === 'PGRST116') return null; 
       throw error; 
     }
     return data as ServiceData;
@@ -318,7 +318,7 @@ export async function updateService(serviceId: string, serviceData: Partial<Omit
     if (serviceData.price !== undefined) {
       dataToUpdate.price = parseFloat(String(serviceData.price).replace(",", "."));
     }
-    if (serviceData.availability_type_id === "") { // Explicitly set to null if cleared
+    if (serviceData.availability_type_id === "") { 
         dataToUpdate.availability_type_id = null;
     }
 
@@ -406,9 +406,9 @@ export async function getProfessionalByUserId(userId: string): Promise<Professio
   try {
     const { data, error } = await supabase
       .from('professionals')
-      .select('*, companies ( company_name )') // Exemplo de join para pegar nome da empresa
+      .select('*, companies ( company_name )') 
       .eq('user_id', userId)
-      .maybeSingle(); // Use maybeSingle se um usuário pode não ser um profissional
+      .maybeSingle(); 
 
     if (error) {
       console.error('SupabaseService: Erro ao buscar profissional por user_id:', error.message);
@@ -495,7 +495,7 @@ export async function getAvailabilityTypeById(typeId: string): Promise<Availabil
             .single();
         if (error) {
             console.error('SupabaseService: Erro ao buscar tipo de disponibilidade por ID:', error.message);
-            if (error.code === 'PGRST116') return null; // "Not Found" - .single()
+            if (error.code === 'PGRST116') return null; 
             throw error;
         }
         return data as AvailabilityTypeData;
@@ -555,8 +555,8 @@ export async function addAgendaBlock(companyId: string, agendaBlockData: Omit<Ag
       ...agendaBlockData, 
       company_id: companyId,
       professional_id: agendaBlockData.professional_id === "" ? null : agendaBlockData.professional_id,
-      start_time: new Date(agendaBlockData.start_time).toISOString(), // Garantir formato ISO
-      end_time: new Date(agendaBlockData.end_time).toISOString(),     // Garantir formato ISO
+      start_time: new Date(agendaBlockData.start_time).toISOString(), 
+      end_time: new Date(agendaBlockData.end_time).toISOString(),     
     };
     const { data, error } = await supabase
       .from('agenda_blocks')
@@ -580,19 +580,18 @@ export async function getAgendaBlocksByCompany(companyId: string): Promise<Agend
   try {
     const { data, error } = await supabase
       .from('agenda_blocks')
-      .select('*, professionals ( name )') // Tenta fazer join com professionals para pegar o nome
+      .select('*, professionals ( name )') 
       .eq('company_id', companyId)
       .order('start_time', { ascending: false });
     if (error) {
       console.error('SupabaseService: Erro ao buscar bloqueios de agenda:', error);
       throw error;
     }
-    // Mapear para incluir professionalName se o join funcionar
     return (data?.map(block => {
-        const professionalRelation = block.professionals as { name: string } | null; // Type assertion
+        const professionalRelation = block.professionals as { name: string } | null; 
         return {
             ...block,
-            professionals: undefined, // Remove o objeto aninhado 'professionals'
+            professionals: undefined, 
             professionalName: professionalRelation?.name || undefined
         };
     }) as AgendaBlockData[]) || [];
@@ -612,7 +611,7 @@ export async function getAgendaBlockById(blockId: string): Promise<AgendaBlockDa
             .single();
         if (error) {
             console.error('SupabaseService: Erro ao buscar bloqueio de agenda por ID:', error);
-             if (error.code === 'PGRST116') return null; // "Not Found"
+             if (error.code === 'PGRST116') return null; 
             throw error;
         }
         return data as AgendaBlockData;
@@ -669,6 +668,37 @@ export async function deleteAgendaBlock(blockId: string): Promise<boolean> {
     throw err;
   }
 }
+
+// --- Funções para Agendamentos (Appointments) ---
+export async function getClientAppointments(clientId: string): Promise<AppointmentData[]> {
+  console.log(`SupabaseService: Buscando agendamentos para o cliente ID ${clientId}`);
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      // Exemplo de como fazer join para buscar o nome da empresa. Ajuste conforme sua necessidade.
+      .select(`
+        *,
+        companies (
+          company_name,
+          logo_url
+        )
+      `)
+      .eq('client_id', clientId)
+      .order('appointment_datetime', { ascending: false }); // Ou true para futuros primeiro
+
+    if (error) {
+      console.error('SupabaseService: Erro ao buscar agendamentos do cliente:', error);
+      throw error;
+    }
+    // O Supabase retorna o join como um objeto aninhado.
+    // Você pode precisar mapear isso para a estrutura plana de AppointmentData se preferir.
+    return (data as any[]) || [];
+  } catch (err) {
+    console.error('SupabaseService: Exceção em getClientAppointments:', err);
+    throw err;
+  }
+}
+
 
 // Função para buscar profissionais para o Select (ex: no formulário de AgendaBlock)
 export async function getProfessionalsForSelect(companyId: string): Promise<{ id: string; name: string }[]> {

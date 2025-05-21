@@ -6,48 +6,65 @@ import { CalendarPlus, History, Star, Settings, Bell, Package } from "lucide-rea
 import Link from "next/link";
 import Image from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Mock data
-const upcomingClientAppointments = [
-  { id: "1", date: "Amanhã, 25 de Junho", time: "14:00", service: "Check-up Odontológico", professional: "Dr. Alice Silva", company: "Sorrisos Brilhantes Dental", companyLogo: "https://placehold.co/40x40.png?text=SB" },
-  { id: "2", date: "1 de Julho", time: "16:30", service: "Corte & Estilo", professional: "João Dantas", company: "Salão Cortes Modernos", companyLogo: "https://placehold.co/40x40.png?text=CM" },
-];
-
-const clientStats = [
-    { title: "Próximos Agendamentos", value: "2", icon: <CalendarPlus className="h-6 w-6 text-primary" /> },
-    { title: "Agendamentos Passados", value: "15", icon: <History className="h-6 w-6 text-primary" /> },
-    { title: "Profissionais Favoritos", value: "3", icon: <Star className="h-6 w-6 text-primary" /> },
-];
-
-const mockClientAlerts = [
-    "Seu agendamento de 'Check-up Odontológico' é amanhã às 14:00.",
-    "Pagamento pendente para 'Sessão de Terapia'.",
-    "🎉 Aproveite! Desconto de 15% em todos os serviços de spa esta semana."
-];
+import { getClientAppointments, type AppointmentData } from "@/services/supabaseService";
+import { format, isFuture, parseISO } from "date-fns";
+import { ptBR } from 'date-fns/locale';
 
 export default function ClientPage() {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const router = useRouter();
+  const [upcomingAppointments, setUpcomingAppointments] = useState<AppointmentData[]>([]);
+  const [pastAppointmentsCount, setPastAppointmentsCount] = useState<number>(0);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
 
   useEffect(() => {
     document.title = `Painel do Cliente - ${APP_NAME}`;
   }, []);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!authLoading && user) {
       if (role !== USER_ROLES.CLIENT) {
         router.push('/dashboard');
+      } else {
+        setIsLoadingAppointments(true);
+        getClientAppointments(user.id)
+          .then(allAppointments => {
+            const now = new Date();
+            const futureAppts = allAppointments.filter(appt => isFuture(parseISO(appt.appointment_datetime)));
+            const pastAppts = allAppointments.filter(appt => !isFuture(parseISO(appt.appointment_datetime)));
+            
+            setUpcomingAppointments(futureAppts.sort((a,b) => parseISO(a.appointment_datetime).getTime() - parseISO(b.appointment_datetime).getTime()).slice(0, 5)); // Mostra os 5 próximos
+            setPastAppointmentsCount(pastAppts.length);
+          })
+          .catch(error => {
+            console.error("Erro ao buscar agendamentos do cliente:", error);
+            // toast({ title: "Erro", description: "Não foi possível carregar seus agendamentos.", variant: "destructive" });
+          })
+          .finally(() => setIsLoadingAppointments(false));
       }
-    } else if (!loading && !user) {
+    } else if (!authLoading && !user) {
       router.push('/login');
     }
-  }, [user, role, loading, router]);
+  }, [user, role, authLoading, router]);
 
-  if (loading || !user || (user && role !== USER_ROLES.CLIENT)) {
+  const clientStats = [
+    { title: "Próximos Agendamentos", value: upcomingAppointments.length.toString(), icon: <CalendarPlus className="h-6 w-6 text-primary" /> },
+    { title: "Agendamentos Passados", value: pastAppointmentsCount.toString(), icon: <History className="h-6 w-6 text-primary" /> },
+    { title: "Profissionais Favoritos (Mock)", value: "3", icon: <Star className="h-6 w-6 text-primary" /> },
+  ];
+
+  const mockClientAlerts = [
+    "Seu agendamento de 'Check-up Odontológico' é amanhã às 14:00.",
+    "Pagamento pendente para 'Sessão de Terapia'.",
+    "🎉 Aproveite! Desconto de 15% em todos os serviços de spa esta semana."
+  ];
+
+
+  if (authLoading || isLoadingAppointments || !user || (user && role !== USER_ROLES.CLIENT) ) {
     return (
       <div className="space-y-8">
         <CardHeader className="px-0">
@@ -120,7 +137,6 @@ export default function ClientPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-               {/* Optional: <p className="text-xs text-muted-foreground">Ver todos</p> */}
             </CardContent>
           </Card>
         ))}
@@ -131,17 +147,24 @@ export default function ClientPage() {
           <CardTitle>Seus Próximos Agendamentos</CardTitle>
         </CardHeader>
         <CardContent>
-          {upcomingClientAppointments.length > 0 ? (
+          {upcomingAppointments.length > 0 ? (
             <ul className="space-y-4">
-              {upcomingClientAppointments.map((appt) => (
+              {upcomingAppointments.map((appt) => (
                 <li key={appt.id} className="p-4 border rounded-lg hover:bg-secondary/50">
                     <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-3">
-                            <Image src={appt.companyLogo} alt={appt.company} width={40} height={40} className="rounded-md" data-ai-hint="logotipo empresa prédio" />
+                            <Image 
+                              src={appt.companies?.logo_url || "https://placehold.co/40x40.png?text=Emp"} 
+                              alt={appt.companies?.company_name || "Logo Empresa"} 
+                              width={40} height={40} 
+                              className="rounded-md" 
+                              data-ai-hint="logotipo empresa prédio" />
                             <div>
-                                <p className="font-semibold text-lg">{appt.service}</p>
-                                <p className="text-sm text-muted-foreground">com {appt.professional} em {appt.company}</p>
-                                <p className="text-sm text-muted-foreground">{appt.date} - {appt.time}</p>
+                                <p className="font-semibold text-lg">{appt.service_name}</p>
+                                <p className="text-sm text-muted-foreground">com {appt.professional_name} em {appt.companies?.company_name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {format(parseISO(appt.appointment_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                </p>
                             </div>
                         </div>
                          <Button variant="outline" size="sm">Gerenciar</Button>
