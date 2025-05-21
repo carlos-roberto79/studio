@@ -33,12 +33,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getCompanyDetailsByOwner, addService, getAvailabilityTypesForSelect } from "@/services/supabaseService";
 import type { ServiceData } from "@/services/supabaseService";
 
-const MOCK_PROFESSIONALS = [
-  { id: "prof1", name: "Dr. João Silva (Mock)" },
-  { id: "prof2", name: "Dra. Maria Oliveira (Mock)" },
-  { id: "prof3", name: "Carlos Souza (Esteticista Mock)" },
-];
-
 const serviceCategories = [
   "Beleza e Estética",
   "Saúde e Bem-estar",
@@ -68,7 +62,7 @@ const serviceSchema = z.object({
   block_after_24_hours: z.boolean().default(false),
   interval_between_slots_minutes: z.coerce.number().int().min(0, "O intervalo não pode ser negativo.").default(0),
   confirmation_type: z.enum(["manual", "automatic"]).default("automatic"),
-  availability_type_id: z.string().optional(),
+  availability_type_id: z.string().optional().nullable(), // Pode ser null do banco
   active: z.boolean().default(true),
 }).refine(data => {
   if (data.has_booking_fee && (data.booking_fee_value === undefined || data.booking_fee_value < 0)) {
@@ -128,41 +122,56 @@ export default function AddServicePage() {
 
   useEffect(() => {
     document.title = `Adicionar Novo Serviço - ${APP_NAME}`;
+    let isMounted = true;
+
     if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
       getCompanyDetailsByOwner(user.id).then(companyDetails => {
-        if (companyDetails && companyDetails.id) {
+        if (isMounted && companyDetails && companyDetails.id) {
           setCompanyId(companyDetails.id);
           fetchAvailabilityTypes(companyDetails.id);
-        } else {
+        } else if (isMounted) {
           toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
         }
       });
     }
 
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('fromDuplicate') === 'true') {
-        const duplicatedDataString = localStorage.getItem('duplicate_service_data');
-        if (duplicatedDataString) {
-            try {
-                const duplicatedData = JSON.parse(duplicatedDataString) as ServiceData;
-                form.reset({
-                    ...duplicatedData,
-                    price: String(duplicatedData.price).replace('.',','), 
-                    image_url: duplicatedData.image_url || "https://placehold.co/300x200.png?text=Serviço"
-                }); 
-                setImagePreview(duplicatedData.image_url || "https://placehold.co/300x200.png?text=Serviço");
-                toast({ title: "Duplicando Serviço", description: "Dados do serviço anterior carregados. Ajuste e salve." });
-            } catch (e) {
-                console.error("Erro ao parsear dados duplicados:", e);
-                toast({ title: "Erro ao Duplicar", description: "Não foi possível carregar os dados do serviço para duplicação.", variant: "destructive"});
-            } finally {
-                localStorage.removeItem('duplicate_service_data');
+    // Lógica para duplicar serviço
+    if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('fromDuplicate') === 'true') {
+            const duplicatedDataString = localStorage.getItem('tdsagenda_duplicate_service_data');
+            if (duplicatedDataString) {
+                try {
+                    const duplicatedData = JSON.parse(duplicatedDataString) as ServiceData;
+                    if (isMounted) {
+                        form.reset({
+                            ...duplicatedData,
+                            price: String(duplicatedData.price).replace('.',','), 
+                            image_url: duplicatedData.image_url || "https://placehold.co/300x200.png?text=Serviço",
+                            availability_type_id: duplicatedData.availability_type_id || "",
+                            description: duplicatedData.description || "",
+                            unique_scheduling_link_slug: duplicatedData.unique_scheduling_link_slug || "",
+                            commission_type: duplicatedData.commission_type || undefined,
+                            commission_value: duplicatedData.commission_value || 0,
+                            booking_fee_value: duplicatedData.booking_fee_value || 0,
+                        }); 
+                        setImagePreview(duplicatedData.image_url || "https://placehold.co/300x200.png?text=Serviço");
+                        toast({ title: "Duplicando Serviço", description: "Dados do serviço anterior carregados. Ajuste e salve." });
+                    }
+                } catch (e) {
+                    console.error("Erro ao parsear dados duplicados:", e);
+                    toast({ title: "Erro ao Duplicar", description: "Não foi possível carregar os dados do serviço para duplicação.", variant: "destructive"});
+                } finally {
+                    localStorage.removeItem('tdsagenda_duplicate_service_data');
+                }
             }
+        } else if (isMounted) {
+             setImagePreview(form.getValues("image_url") || "https://placehold.co/300x200.png?text=Serviço");
         }
-    } else {
-        setImagePreview(form.getValues("image_url") || "https://placehold.co/300x200.png?text=Serviço");
     }
-  }, [user, role, form, toast]);
+    return () => { isMounted = false; }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, role, toast]); // form.reset e form.getValues foram removidos daqui para evitar re-renders excessivos
 
   const fetchAvailabilityTypes = async (currentCompanyId: string) => {
     try {
@@ -258,7 +267,7 @@ export default function AddServicePage() {
                   </FormItem>
                 )}
               />
-            <Button type="submit" disabled={isSaving} className="flex-grow sm:flex-grow-0">
+            <Button type="submit" disabled={isSaving}>
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Save className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{isSaving ? "Salvando..." : "Salvar"}</span>
             </Button>
@@ -392,7 +401,7 @@ export default function AddServicePage() {
                                 <Input placeholder="meu-servico-incrivel" {...field} onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/\s+/g, '-'))} className="rounded-l-none"/>
                             </div>
                           </FormControl>
-                           <FormDescription>Será usado para: {`tds.agenda/agendar/nome-empresa/servico/${field.value || "meu-servico"}`}</FormDescription>
+                           <FormDescription>Será usado para: {`${typeof window !== 'undefined' ? window.location.origin : 'https://tds.agenda'}/agendar/nome-empresa/servico/${field.value || "meu-servico"}`}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -572,7 +581,7 @@ export default function AddServicePage() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Tipo de Disponibilidade Vinculado</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Selecione um tipo de disponibilidade" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     <SelectItem value="">Nenhum (usar horários do profissional/empresa)</SelectItem>
@@ -631,3 +640,4 @@ export default function AddServicePage() {
     </Form>
   );
 }
+    

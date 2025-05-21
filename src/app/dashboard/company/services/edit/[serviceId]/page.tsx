@@ -44,13 +44,6 @@ import { getServiceById, updateService, deleteService, getAvailabilityTypesForSe
 import type { ServiceData } from "@/services/supabaseService";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Mantendo MOCK_PROFESSIONALS por enquanto
-const MOCK_PROFESSIONALS = [
-  { id: "prof1", name: "Dr. João Silva (Mock)" },
-  { id: "prof2", name: "Dra. Maria Oliveira (Mock)" },
-  { id: "prof3", name: "Carlos Souza (Esteticista Mock)" },
-];
-
 const serviceCategories = [
   "Beleza e Estética",
   "Saúde e Bem-estar",
@@ -64,7 +57,6 @@ const serviceCategories = [
 const serviceSchema = z.object({
   name: z.string().min(3, "O nome do serviço deve ter pelo menos 3 caracteres."),
   description: z.string().optional(),
-  // professionals: z.array(z.string()).optional().default([]), // Mock
   category: z.string().min(1, "A categoria é obrigatória."),
   image_url: z.string().optional(),
   duration_minutes: z.coerce.number().int().positive("A duração deve ser um número positivo.").min(5, "Duração mínima de 5 minutos."),
@@ -81,7 +73,7 @@ const serviceSchema = z.object({
   block_after_24_hours: z.boolean().default(false),
   interval_between_slots_minutes: z.coerce.number().int().min(0, "O intervalo não pode ser negativo.").default(0),
   confirmation_type: z.enum(["manual", "automatic"]).default("automatic"),
-  availability_type_id: z.string().optional(),
+  availability_type_id: z.string().optional().nullable(), // Pode ser null do banco
   active: z.boolean().default(true),
 }).refine(data => {
   if (data.has_booking_fee && (data.booking_fee_value === undefined || data.booking_fee_value < 0)) {
@@ -109,16 +101,37 @@ export default function EditServicePage() {
   const router = useRouter();
   const serviceId = params.serviceId as string;
   const { user, role } = useAuth();
-  const [companyId, setCompanyId] = useState<string | null>(null);
   
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingPage, setIsLoadingPage] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [availabilityTypes, setAvailabilityTypes] = useState<{ id: string; name: string }[]>([]);
+  const [companyId, setCompanyId] = useState<string | null>(null); // Necessário para buscar tipos de disponibilidade
 
   const form = useForm<ServiceFormZodData>({
     resolver: zodResolver(serviceSchema),
+    defaultValues: { // Default values para evitar erros de "uncontrolled to controlled"
+      name: "",
+      description: "",
+      category: "",
+      image_url: "https://placehold.co/300x200.png?text=Serviço",
+      duration_minutes: 60,
+      display_duration: true,
+      unique_scheduling_link_slug: "",
+      price: "0,00",
+      commission_value: 0,
+      has_booking_fee: false,
+      booking_fee_value: 0,
+      simultaneous_appointments_per_user: 1,
+      simultaneous_appointments_per_slot: 1,
+      simultaneous_appointments_per_slot_automatic: false,
+      block_after_24_hours: false,
+      interval_between_slots_minutes: 10,
+      confirmation_type: "automatic",
+      availability_type_id: "",
+      active: true,
+    }
   });
   
   const serviceName = form.watch("name");
@@ -128,12 +141,14 @@ export default function EditServicePage() {
     if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
       getCompanyDetailsByOwner(user.id).then(companyDetails => {
         if (companyDetails && companyDetails.id) {
-          setCompanyId(companyDetails.id);
+          setCompanyId(companyDetails.id); // Armazena o ID da empresa
           fetchAvailabilityTypes(companyDetails.id);
           if (serviceId) {
             fetchServiceData(serviceId);
           } else {
-            setIsLoadingPage(false); // No serviceId, nothing to load for edit
+            toast({ title: "Erro", description: "ID do serviço não fornecido.", variant: "destructive" });
+            router.push('/dashboard/company/services');
+            setIsLoadingPage(false);
           }
         } else {
           toast({ title: "Erro", description: "Empresa não encontrada.", variant: "destructive" });
@@ -142,9 +157,10 @@ export default function EditServicePage() {
         }
       });
     } else {
-      setIsLoadingPage(false); // No user or wrong role
+      setIsLoadingPage(false); 
     }
-  }, [user, role, serviceId, toast, router]); // Adicionado serviceId e router
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, role, serviceId, router, toast]); 
 
   const fetchServiceData = async (currentServiceId: string) => {
     setIsLoadingPage(true);
@@ -155,7 +171,12 @@ export default function EditServicePage() {
           ...existingService,
           price: String(existingService.price).replace('.', ','),
           image_url: existingService.image_url || "https://placehold.co/300x200.png?text=Serviço",
-          availability_type_id: existingService.availability_type_id || "", // Ensure it's a string for Select
+          availability_type_id: existingService.availability_type_id || "", 
+          description: existingService.description || "",
+          unique_scheduling_link_slug: existingService.unique_scheduling_link_slug || "",
+          commission_type: existingService.commission_type || undefined,
+          commission_value: existingService.commission_value || 0,
+          booking_fee_value: existingService.booking_fee_value || 0,
         });
         setImagePreview(existingService.image_url || "https://placehold.co/300x200.png?text=Serviço");
       } else {
@@ -260,7 +281,7 @@ export default function EditServicePage() {
       unique_scheduling_link_slug: `${currentValues.unique_scheduling_link_slug || currentValues.name.toLowerCase().replace(/\s+/g, '-')}-copia`
     };
     
-    localStorage.setItem('duplicate_service_data', JSON.stringify(duplicatedValues));
+    localStorage.setItem('tdsagenda_duplicate_service_data', JSON.stringify(duplicatedValues));
     
     toast({
       title: "Serviço Pronto para Duplicação",
@@ -383,52 +404,6 @@ export default function EditServicePage() {
                         </FormItem>
                       )}
                     />
-                     {/* <FormField
-                        control={form.control}
-                        name="professionals"
-                        render={() => (
-                            <FormItem>
-                            <div className="mb-2">
-                                <FormLabel className="text-base">Profissionais Responsáveis (Mock)</FormLabel>
-                                <FormDescription>Selecione os profissionais que podem realizar este serviço.</FormDescription>
-                            </div>
-                            <div className="space-y-2">
-                                {MOCK_PROFESSIONALS.map((prof) => (
-                                <FormField
-                                    key={prof.id}
-                                    control={form.control}
-                                    name="professionals"
-                                    render={({ field }) => {
-                                    return (
-                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-2 border rounded-md hover:bg-secondary/50">
-                                        <FormControl>
-                                            <Checkbox
-                                            checked={field.value?.includes(prof.id)}
-                                            onCheckedChange={(checked) => {
-                                                const currentValue = field.value || [];
-                                                return checked
-                                                ? field.onChange([...currentValue, prof.id])
-                                                : field.onChange(
-                                                    currentValue.filter(
-                                                    (value) => value !== prof.id
-                                                    )
-                                                );
-                                            }}
-                                            />
-                                        </FormControl>
-                                        <FormLabel className="font-normal text-sm">
-                                            {prof.name}
-                                        </FormLabel>
-                                        </FormItem>
-                                    );
-                                    }}
-                                />
-                                ))}
-                            </div>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    /> */}
                     <FormField
                       control={form.control}
                       name="category"
@@ -454,9 +429,9 @@ export default function EditServicePage() {
                           <FormLabel>Imagem Ilustrativa do Serviço</FormLabel>
                           <FormControl>
                             <>
-                              <div className="flex items-center gap-4">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                                 {imagePreview && (
-                                  <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px]">
+                                  <div className="relative w-[150px] h-[100px] md:w-[200px] md:h-[133px] flex-shrink-0">
                                     <NextImage src={imagePreview} alt="Preview do serviço" layout="fill" objectFit="cover" className="rounded-md border" data-ai-hint="ilustração serviço evento" />
                                     {form.getValues("image_url") !== "https://placehold.co/300x200.png?text=Serviço" && (
                                       <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 bg-background/70 hover:bg-destructive hover:text-destructive-foreground h-6 w-6" onClick={removeImage}>
@@ -466,7 +441,7 @@ export default function EditServicePage() {
                                   </div>
                                 )}
                                 <input type="file" accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="hidden" id="service-image-upload-edit" />
-                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
                                   <ImagePlus className="mr-2 h-4 w-4" /> Selecionar Imagem
                                 </Button>
                               </div>
@@ -519,7 +494,7 @@ export default function EditServicePage() {
                                 <Input placeholder="meu-servico-incrivel" {...field} onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/\s+/g, '-'))} className="rounded-l-none"/>
                             </div>
                           </FormControl>
-                          <FormDescription>Será usado para: {`tds.agenda/agendar/nome-empresa/servico/${field.value || "meu-servico"}`}</FormDescription>
+                          <FormDescription>Será usado para: {`${typeof window !== 'undefined' ? window.location.origin : 'https://tds.agenda'}/agendar/nome-empresa/servico/${field.value || "meu-servico"}`}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -699,7 +674,7 @@ export default function EditServicePage() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Tipo de Disponibilidade Vinculado</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Selecione um tipo de disponibilidade" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                      <SelectItem value="">Nenhum (usar horários do profissional/empresa)</SelectItem>
@@ -759,5 +734,4 @@ export default function EditServicePage() {
     </Form>
   );
 }
-
     

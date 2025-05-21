@@ -49,14 +49,14 @@ const timeIntervalSchema = z.object({
   return true;
 }, {
   message: "Início deve ser antes do Fim e ambos devem ser preenchidos se um deles estiver.",
-  path: ["end"],
+  path: ["end"], // Pode aplicar a ambos ou ao 'end'
 });
 
 const dayScheduleSchema = z.object({
   active: z.boolean().default(false),
   intervals: z.array(timeIntervalSchema)
     .min(1, "Deve haver pelo menos um bloco de horário (pode estar vazio se o dia estiver inativo).")
-    .default([{start: "", end: ""}]),
+    .default([{start: "", end: ""}]), // Garante que sempre haja um item no array
 });
 
 const availabilityTypeSchema = z.object({
@@ -77,7 +77,7 @@ const availabilityTypeSchema = z.object({
     if (day.active) {
       const hasValidInterval = day.intervals.some(interval => interval.start && interval.end && interval.start < interval.end);
       if (!hasValidInterval) {
-        return false;
+        return false; // Se o dia está ativo, pelo menos um intervalo deve ser válido
       }
     }
   }
@@ -91,7 +91,7 @@ const createInitialSchedule = (): AvailabilityTypeFormZodData['schedule'] => day
   const isActive = day.id !== 'sab' && day.id !== 'dom';
   acc[day.id as keyof AvailabilityTypeFormZodData['schedule']] = {
     active: isActive, 
-    intervals: isActive ? [{ start: "09:00", end: "18:00" }] : [{ start: "", end: "" }]
+    intervals: [{ start: isActive ? "09:00" : "", end: isActive ? "18:00" : "" }] // Apenas um intervalo inicial
   };
   return acc;
 }, {} as AvailabilityTypeFormZodData['schedule']);
@@ -141,12 +141,20 @@ export default function AddAvailabilityTypePage() {
     for (const dayKey in scheduleWithFilteredIntervals) {
       const day = scheduleWithFilteredIntervals[dayKey as keyof typeof scheduleWithFilteredIntervals];
       if (day.active) {
+        // Filtra apenas intervalos onde tanto start quanto end estão preenchidos
         day.intervals = day.intervals.filter(interval => interval.start && interval.end);
-         if (day.intervals.length === 0) { // Ensure at least one empty interval if active but all cleared
-            day.intervals.push({start: "", end: ""});
+        // Se após filtrar não sobrar nenhum intervalo válido mas o dia está ativo, 
+        // o `refine` do Zod deve pegar isso. Ou podemos forçar um intervalo vazio.
+        // No entanto, o `refine` já cuida disso.
+        if (day.intervals.length === 0) {
+            // Poderia adicionar um intervalo vazio [{start:"", end:""}] aqui, mas o refine deve tratar.
+            // Se o dia está ativo e não tem intervalos válidos, o Zod vai reclamar.
         }
       } else {
-        day.intervals = [{ start: "", end: "" }]; // Reset to one empty if not active
+        // Se o dia não está ativo, garantir que os intervalos sejam "limpos" para consistência ou
+        // simplesmente deixar como está, pois o `refine` não se importa com eles.
+        // Por segurança, vamos limpar ou garantir um único intervalo vazio.
+        day.intervals = [{ start: "", end: "" }];
       }
     }
     const typeDataToSave: Omit<AvailabilityTypeData, 'id' | 'company_id' | 'created_at' | 'updated_at'> = {
@@ -241,7 +249,7 @@ export default function AddAvailabilityTypePage() {
               <CardContent className="space-y-4">
                 {daysOfWeek.map((day) => {
                   const dayKey = day.id as keyof AvailabilityTypeFormZodData['schedule'];
-                  const { fields, append, remove } = useFieldArray({
+                  const { fields, append, remove, update } = useFieldArray({
                     control: form.control,
                     name: `schedule.${dayKey}.intervals`
                   });
@@ -251,23 +259,20 @@ export default function AddAvailabilityTypePage() {
                       <FormField
                         control={form.control}
                         name={`schedule.${dayKey}.active`}
-                        render={({ field }) => (
+                        render={({ field: dayActiveField }) => (
                           <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                             <FormControl>
                               <Checkbox
-                                checked={field.value}
+                                checked={dayActiveField.value}
                                 onCheckedChange={(checked) => {
-                                  field.onChange(checked);
-                                  if (checked && fields.length === 0) {
-                                    append({ start: "09:00", end: "18:00" });
-                                  } else if (!checked && fields.length > 1) {
-                                    // Ao desativar, se houver múltiplos intervalos, reseta para um intervalo vazio
-                                    // fields.forEach((_, index) => remove(index)); // Causa erro de "too many re-renders"
-                                    form.setValue(`schedule.${dayKey}.intervals`, [{start: "", end: ""}]);
-                                  } else if (!checked && fields.length === 1) {
-                                    form.setValue(`schedule.${dayKey}.intervals.0.start`, "");
-                                    form.setValue(`schedule.${dayKey}.intervals.0.end`, "");
+                                  dayActiveField.onChange(checked);
+                                  if (checked && fields.length > 0) {
+                                    const firstInterval = fields[0];
+                                    if (!firstInterval.start && !firstInterval.end) {
+                                       update(0, { start: "09:00", end: "18:00"});
+                                    }
                                   }
+                                  // Se desmarcar, o refine do Zod não vai validar os intervalos
                                 }}
                               />
                             </FormControl>
@@ -325,16 +330,11 @@ export default function AddAvailabilityTypePage() {
                           </Button>
                         </div>
                       )}
+                       {/* Mensagens de erro globais para o array de intervalos ou para o dia */}
                        <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.root?.message}</FormMessage>
-                       {fields.map((_, index) => ( 
-                        <React.Fragment key={`${dayKey}-intervals-errors-${index}`}>
-                          <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.start?.message}</FormMessage>
-                          <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.end?.message}</FormMessage>
-                          <FormMessage>{form.formState.errors.schedule?.[dayKey]?.intervals?.[index]?.root?.message}</FormMessage>
-                        </React.Fragment>
-                       ))}
                        <FormMessage>{form.formState.errors.schedule?.[dayKey]?.root?.message}</FormMessage>
-                       <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage> 
+                       {/* Mensagem de erro global do Zod refine para o schedule */}
+                       {dayKey === 'seg' && <FormMessage>{form.formState.errors.schedule?.root?.message}</FormMessage>}
                     </div>
                   );
                 })}
@@ -346,5 +346,4 @@ export default function AddAvailabilityTypePage() {
     </Form>
   );
 }
-
     
