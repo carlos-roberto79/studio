@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import Link from "next/link";
-import { ArrowLeft, Save, Loader2, AlertCircle, User } from "lucide-react";
+import { ArrowLeft, Save, Loader2, AlertCircle, User, Info } from "lucide-react"; // Adicionado Info aqui caso não esteja
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -78,8 +78,9 @@ export default function EditProfessionalPage({ params }: { params: { professiona
       toast({ title: "Erro", description: "Dados do profissional incompletos.", variant: "destructive" });
       return;
     }
-     if (!name || !email || !specialty) {
-      toast({ title: "Erro de Validação", description: "Nome, e-mail e especialidade são obrigatórios.", variant: "destructive" });
+     // A validação de e-mail agora só é necessária se o campo não estiver desabilitado (ou seja, se user_id for null)
+     if (!name || !specialty || (!professionalData.user_id && !email)) {
+      toast({ title: "Erro de Validação", description: "Nome, e-mail (se não vinculado) e especialidade são obrigatórios.", variant: "destructive" });
       return;
     }
 
@@ -88,10 +89,15 @@ export default function EditProfessionalPage({ params }: { params: { professiona
     try {
       const updatedData: Partial<ProfessionalData> = {
         name,
-        email,
+        // Não inclua o e-mail na atualização se ele for gerenciado pela autenticação
+        // email, // Removido ou tornado condicional se necessário
         specialty,
         phone: phone || null,
       };
+       // Adicionar email apenas se não houver user_id associado
+      if (!professionalData.user_id) {
+           updatedData.email = email;
+       }
 
       await updateProfessional(professionalData.id, updatedData);
 
@@ -184,7 +190,16 @@ export default function EditProfessionalPage({ params }: { params: { professiona
               </div>
               <div>
                 <Label htmlFor="prof-email">E-mail</Label>
-                <Input id="prof-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Ex: joao.silva@example.com" className="mt-1" required />
+                <Input 
+                  id="prof-email" 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  placeholder="Ex: joao.silva@example.com" 
+                  className="mt-1" 
+                  required 
+                  disabled={!!professionalData.user_id} // Desabilita se user_id existir
+                />
               </div>
             </div>
             
@@ -205,7 +220,7 @@ export default function EditProfessionalPage({ params }: { params: { professiona
             {/* Informação sobre a conta de usuário associada (opcional, dependendo da complexidade desejada) */}
             {professionalData.user_id && (
                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-700 text-sm">
-                    <p>Este profissional está vinculado à uma conta de usuário. Alterações de e-mail aqui podem precisar ser sincronizadas com a autenticação do Supabase.</p>
+                    <p>Este profissional está associado a uma conta de usuário. O e-mail cadastrado é utilizado como meio de autenticação e, por motivos de segurança, não pode ser alterado.</p>
                  </div>
             )}
 
