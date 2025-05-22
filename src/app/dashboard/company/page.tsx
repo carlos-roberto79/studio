@@ -2,87 +2,116 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+// Input não é usado diretamente aqui, mas pode ser em futuras edições.
+// import { Input } from "@/components/ui/input"; 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PlusCircle, Edit, Trash2, Users, CalendarDays, BarChart3, LinkIcon, UserPlus, Clock, Settings2, ShoppingBag, Settings, DollarSign, Eye, Info, ListChecks, FileSpreadsheet, TrendingUp, Package, UserX, Activity, CalendarX2, Repeat, Star, Award, LineChart, Timer, Bell, Loader2 } from "lucide-react";
 import Link from "next/link";
-import NextImage from "next/image"; 
+import NextImage from "next/image";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect, useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCompanyDetailsByOwner, type CompanyData, getProfessionalsByCompany, type ProfessionalData } from "@/services/supabaseService";
+import { getCompanyDetailsByOwner, type CompanyData, getProfessionalsByCompany, type ProfessionalData, deleteProfessional } from "@/services/supabaseService";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
-const companyStats = [
-    { title: "Total de Agendamentos (Mock)", value: "256", icon: <CalendarDays className="h-6 w-6 text-primary" /> },
-    { title: "Receita Mensal Estimada (Mock)", value: "R$12.500", icon: <BarChart3 className="h-6 w-6 text-primary" /> },
+const companyStatsMock = [
+    { title: "Total de Agendamentos (Supabase)", value: "0", icon: <CalendarDays className="h-6 w-6 text-primary" /> },
+    { title: "Receita Mensal Estimada (Supabase)", value: "R$0,00", icon: <BarChart3 className="h-6 w-6 text-primary" /> },
 ];
 
 const mockCompanyAlerts = [
-    "Lembrete: 5 pagamentos pendentes esta semana.",
-    "Pico de agendamentos previsto para Sexta-feira.",
-    "Atualize os horários de feriado para o próximo mês.",
-    "💡 Dica: Use o relatório de 'Serviços Mais Populares' para identificar oportunidades!"
+    "Lembrete: Verifique os novos agendamentos para esta semana.",
+    "Atualize as informações do seu horário de funcionamento para feriados.",
+    "💡 Dica: Utilize os relatórios para acompanhar o desempenho da sua empresa!"
 ];
 
 export default function CompanyAdminPage() {
   const { user, role, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  
+
   const [companyData, setCompanyData] = useState<CompanyData | null>(null);
   const [professionals, setProfessionals] = useState<ProfessionalData[]>([]);
   const [isLoadingPage, setIsLoadingPage] = useState(true);
   const [publicLink, setPublicLink] = useState("");
 
-  useEffect(() => {
-    document.title = `Painel da Empresa - ${APP_NAME}`;
-  }, []); 
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [professionalToDelete, setProfessionalToDelete] = useState<ProfessionalData | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
-      setIsLoadingPage(true);
-      getCompanyDetailsByOwner(user.id)
-        .then(data => {
-          setCompanyData(data);
-          if (data && data.id) {
-            fetchProfessionals(data.id);
-            if (data.public_link_slug && typeof window !== "undefined") {
-              setPublicLink(`${window.location.origin}/schedule/${data.public_link_slug}`);
-            } else if (typeof window !== "undefined") {
-               setPublicLink(`${window.location.origin}/schedule/configure-seu-slug`);
+    document.title = `Painel da Empresa - ${APP_NAME}`;
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!authLoading) {
+      if (user && user.id && role === USER_ROLES.COMPANY_ADMIN) {
+        setIsLoadingPage(true);
+        getCompanyDetailsByOwner(user.id)
+          .then(data => {
+            if (!isMounted) return;
+            setCompanyData(data);
+            if (data && data.id) {
+              fetchProfessionals(data.id);
+              if (data.public_link_slug && typeof window !== "undefined") {
+                setPublicLink(`${window.location.origin}/schedule/${data.public_link_slug}`);
+              } else if (typeof window !== "undefined") {
+                setPublicLink(`${window.location.origin}/schedule/configure-seu-slug`);
+              }
+            } else {
+              if (typeof window !== "undefined") {
+                 setPublicLink(`${window.location.origin}/schedule/configure-seu-slug`);
+              }
             }
-          }
-        })
-        .catch(error => {
-          console.error("Erro ao buscar dados da empresa:", error);
-          toast({ title: "Erro", description: "Não foi possível carregar os dados da sua empresa.", variant: "destructive" });
-        })
-        .finally(() => {
-          setIsLoadingPage(false); 
-        });
-    } else if (!authLoading && (!user || role !== USER_ROLES.COMPANY_ADMIN)) {
-      router.push(user ? '/dashboard' : '/login');
-    } else if (!authLoading && !user) {
-      setIsLoadingPage(false);
+          })
+          .catch(error => {
+            if (!isMounted) return;
+            console.error("Erro ao buscar dados da empresa:", error);
+            toast({ title: "Erro", description: "Não foi possível carregar os dados da sua empresa.", variant: "destructive" });
+          })
+          .finally(() => {
+            if (isMounted) setIsLoadingPage(false);
+          });
+      } else if (!user && !authLoading) {
+        router.push('/login');
+      } else if (user && role !== USER_ROLES.COMPANY_ADMIN && !authLoading) {
+        router.push('/dashboard');
+      } else if (!user) {
+        setIsLoadingPage(false); // Explicitly set loading to false if no user
+      }
     }
+    return () => { isMounted = false; };
   }, [user, role, authLoading, router, toast]);
 
   const fetchProfessionals = async (companyId: string) => {
     try {
       const fetchedProfessionals = await getProfessionalsByCompany(companyId);
-      setProfessionals(fetchedProfessionals);
+      setProfessionals(fetchedProfessionals || []); // Garantir que seja um array
     } catch (error: any) {
       toast({ title: "Erro ao buscar profissionais", description: error.message, variant: "destructive" });
+      setProfessionals([]); // Definir como array vazio em caso de erro
     }
   };
 
   const copyPublicLink = () => {
-    if (!publicLink || publicLink.includes("configure-seu-slug")) {
-        toast({ title: "Link Indisponível", description: "Complete o perfil da sua empresa para gerar o link.", variant: "destructive" });
+    if (!publicLink || publicLink.includes("configure-seu-slug") || !companyData?.profile_complete) {
+        toast({ title: "Link Indisponível", description: "Complete o perfil da sua empresa para gerar e usar o link público.", variant: "destructive" });
         return;
     }
     navigator.clipboard.writeText(publicLink)
@@ -94,6 +123,30 @@ export default function CompanyAdminPage() {
         console.error('Erro ao copiar link: ', err);
       });
   };
+
+  const handleDeleteProfessional = async () => {
+    if (!professionalToDelete || !professionalToDelete.id) return;
+
+    setIsSaving(true);
+    try {
+      const success = await deleteProfessional(professionalToDelete.id);
+      if (success) {
+        toast({ title: "Profissional Excluído", description: `${professionalToDelete.name} foi removido(a) com sucesso.` });
+        setProfessionals(prevProfessionals => prevProfessionals.filter(prof => prof.id !== professionalToDelete.id));
+      } else {
+         toast({ title: "Erro", description: `Não foi possível remover ${professionalToDelete.name}.`, variant: "destructive" });
+      }
+    } catch (error: any) {
+      console.error("Erro ao excluir profissional:", error);
+      toast({ title: "Erro", description: error.message || "Ocorreu um erro ao excluir o profissional.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+      setIsDeleteDialogOpen(false);
+      setProfessionalToDelete(null);
+    }
+  };
+
+  const showCompleteProfileCard = !isLoadingPage && (!companyData || !companyData.profile_complete);
 
   if (authLoading || isLoadingPage) {
      return (
@@ -131,16 +184,9 @@ export default function CompanyAdminPage() {
       </div>
     );
   }
-  
-  const showCompleteProfileCard = !companyData || !companyData.profile_complete;
 
   return (
     <div className="space-y-8">
-      <CardHeader className="px-0">
-        <CardTitle className="text-2xl sm:text-3xl font-bold">{companyData?.company_name || "Painel da Empresa"}</CardTitle>
-        <CardDescription>Supervisione as operações, profissionais, serviços e desempenho da sua empresa.</CardDescription>
-      </CardHeader>
-
       {showCompleteProfileCard && (
         <Card className="mb-8 shadow-lg border-primary bg-primary/5">
          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
@@ -172,15 +218,15 @@ export default function CompanyAdminPage() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {companyStats.map(stat => (
+        {companyStatsMock.map(stat => (
           <Card key={stat.title} className="shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
               {stat.icon}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">+10% do último mês (Mock)</p>
+              <div className="text-2xl font-bold">{stat.title.includes("Agendamentos") ? (companyData?.id ? professionals.reduce((acc, p) => acc + (/*mocked appointments count per prof*/ 5), 0) : "0") : stat.value}</div>
+              <p className="text-xs text-muted-foreground">{stat.title.includes("Agendamentos") ? `Baseado nos profissionais cadastrados` : "+10% do último mês (Mock)"}</p>
             </CardContent>
           </Card>
         ))}
@@ -191,7 +237,7 @@ export default function CompanyAdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{professionals.length}</div>
-              <p className="text-xs text-muted-foreground">&nbsp;</p> 
+              <p className="text-xs text-muted-foreground">&nbsp;</p>
             </CardContent>
           </Card>
       </div>
@@ -241,10 +287,17 @@ export default function CompanyAdminPage() {
                     <TableCell>{prof.specialty}</TableCell>
                     <TableCell>{prof.email}</TableCell>
                     <TableCell className="text-right space-x-1 sm:space-x-2">
-                      <Button variant="outline" size="icon" aria-label="Editar profissional" onClick={() => toast({title: "Em breve", description: "Edição de profissional."})}>
-                        <Edit className="h-4 w-4" />
+                      <Button variant="outline" size="icon" aria-label="Editar profissional" asChild>
+                         <Link href={`/dashboard/company/professionals/edit/${prof.id}`}>
+                           <Edit className="h-4 w-4" />
+                         </Link>
                       </Button>
-                      <Button variant="destructive" size="icon" aria-label="Remover profissional" onClick={() => toast({title: "Em breve", description: "Remoção de profissional."})}>
+                      <Button variant="destructive" size="icon" aria-label="Remover profissional"
+                        onClick={() => {
+                          setProfessionalToDelete(prof);
+                          setIsDeleteDialogOpen(true);
+                        }}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -253,12 +306,31 @@ export default function CompanyAdminPage() {
               </TableBody>
             </Table>
           ) : (
-            <p className="text-muted-foreground py-4">Nenhum profissional cadastrado.</p>
+            <p className="text-muted-foreground py-4 text-center">Nenhum profissional cadastrado. Adicione seu primeiro profissional!</p>
           )}
         </CardContent>
       </Card>
 
-      <Card className="shadow-lg">
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o profissional
+              <strong>{professionalToDelete?.name}</strong> e removerá seus dados de nossos servidores.
+               Certifique-se de que não há agendamentos futuros vinculados a este profissional antes de prosseguir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProfessional} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+       <Card className="shadow-lg">
         <CardHeader>
             <CardTitle>Gestão de Serviços e Agendas</CardTitle>
         </CardHeader>
@@ -277,6 +349,57 @@ export default function CompanyAdminPage() {
               <Link href="/dashboard/company/schedules-overview">
                 <Eye className="mr-2 h-4 w-4" /> Visão Geral das Agendas
               </Link>
+            </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-lg">
+        <CardHeader>
+            <CardTitle>Gestão de Clientes e Acesso Público</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div>
+                <Label htmlFor="publicLinkDisplay">Link Público de Agendamento da Sua Empresa:</Label>
+                <div className="flex items-center gap-2 mt-1">
+                    <Input id="publicLinkDisplay" value={publicLink} readOnly className="bg-muted/50" />
+                    <Button onClick={copyPublicLink} variant="outline" disabled={!publicLink || publicLink.includes("configure-seu-slug") || !companyData?.profile_complete}>
+                        <LinkIcon className="mr-2 h-4 w-4" /> Copiar Link
+                    </Button>
+                </div>
+                {!companyData?.profile_complete && <p className="text-xs text-destructive mt-1">Complete o perfil da sua empresa para ativar o link público.</p>}
+            </div>
+            <Button asChild variant="outline">
+                <Link href="/dashboard/company/add-client">
+                    <UserPlus className="mr-2 h-4 w-4" /> Adicionar Cliente Manualmente
+                </Link>
+            </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-lg">
+        <CardHeader>
+            <CardTitle>Configurações da Empresa</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Button asChild variant="outline">
+              <Link href="/dashboard/company/edit-profile">
+                <Edit className="mr-2 h-4 w-4" /> Editar Perfil da Empresa
+              </Link>
+            </Button>
+             <Button asChild variant="outline">
+              <Link href="/dashboard/company/general-settings/availability">
+                <Clock className="mr-2 h-4 w-4" /> Horário de Funcionamento
+              </Link>
+            </Button>
+             <Button asChild variant="outline">
+              <Link href="/dashboard/company/agenda-blocks">
+                <CalendarX2 className="mr-2 h-4 w-4" /> Bloqueios de Agenda
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+                <Link href="/dashboard/company/notifications">
+                    <Bell className="mr-2 h-4 w-4" /> Configurar Notificações
+                </Link>
             </Button>
         </CardContent>
       </Card>
@@ -309,15 +432,14 @@ export default function CompanyAdminPage() {
                             <DollarSign className="mr-2 h-4 w-4" /> Faturamento por Profissional
                         </Link>
                     </Button>
-                    <Button asChild variant="outline">
+                     <Button asChild variant="outline">
                         <Link href="/dashboard/company/reports/commissions">
                             <FileSpreadsheet className="mr-2 h-4 w-4" /> Relatório de Comissões
                         </Link>
                     </Button>
                 </div>
             </div>
-
-            <div>
+             <div>
                 <h4 className="text-md font-semibold mb-3 text-primary">Operacional e Agenda</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     <Button asChild variant="outline">
@@ -337,21 +459,20 @@ export default function CompanyAdminPage() {
                     </Button>
                 </div>
             </div>
-
-            <div>
+             <div>
                 <h4 className="text-md font-semibold mb-3 text-primary">Clientes</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                     <Button asChild variant="outline">
+                    <Button asChild variant="outline">
                         <Link href="/dashboard/company/reports/new-clients">
                             <UserPlus className="mr-2 h-4 w-4" /> Relatório de Novos Clientes
                         </Link>
                     </Button>
                     <Button asChild variant="outline">
                         <Link href="/dashboard/company/reports/client-activity">
-                            <UserX className="mr-2 h-4 w-4" /> Clientes Ativos vs. Inativos
+                            <Activity className="mr-2 h-4 w-4" /> Clientes Ativos vs. Inativos
                         </Link>
                     </Button>
-                    <Button asChild variant="outline">
+                     <Button asChild variant="outline">
                         <Link href="/dashboard/company/reports/client-frequency">
                             <Repeat className="mr-2 h-4 w-4" /> Frequência por Cliente
                         </Link>
@@ -363,87 +484,30 @@ export default function CompanyAdminPage() {
                     </Button>
                 </div>
             </div>
-            
             <div>
                 <h4 className="text-md font-semibold mb-3 text-primary">Serviços e Profissionais</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/company/reports/top-services">
+                            <Package className="mr-2 h-4 w-4" /> Serviços Mais Populares
+                        </Link>
+                    </Button>
                     <Button asChild variant="outline">
                         <Link href="/dashboard/company/reports/professional-performance">
                             <Activity className="mr-2 h-4 w-4" /> Desempenho por Profissional
                         </Link>
                     </Button>
-                    <Button asChild variant="outline">
+                     <Button asChild variant="outline">
                         <Link href="/dashboard/company/reports/professional-ranking">
                             <Award className="mr-2 h-4 w-4" /> Ranking de Profissionais
                         </Link>
                     </Button>
-                     <Button asChild variant="outline">
-                        <Link href="/dashboard/company/reports/top-services">
-                            <Package className="mr-2 h-4 w-4" /> Serviços Mais Populares
-                        </Link>
-                    </Button>
                 </div>
             </div>
-        </CardContent>
-      </Card>
-
-
-      <Card className="shadow-lg">
-        <CardHeader>
-            <CardTitle>Gestão de Clientes e Acesso Público</CardTitle>
-            <CardDescription>Adicione novos clientes e compartilhe seu link de agendamento.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-            <div>
-                <h4 className="font-medium mb-2">Link Público de Agendamento</h4>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                    <Input type="text" value={publicLink} readOnly className="bg-muted flex-grow" />
-                    <Button onClick={copyPublicLink} variant="outline" disabled={!publicLink || publicLink.includes("configure-seu-slug")} className="w-full sm:w-auto">
-                        <LinkIcon className="mr-2 h-4 w-4" /> Copiar Link
-                    </Button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Compartilhe este link com seus clientes para que eles possam agendar horários online.</p>
-            </div>
-            <div className="border-t pt-6">
-                 <h4 className="font-medium mb-2">Cadastro de Clientes</h4>
-                 <p className="text-sm text-muted-foreground mb-3">Adicione clientes que não se cadastraram pelo link público ou que precisam de assistência para o primeiro agendamento.</p>
-                 <Button asChild>
-                  <Link href="/dashboard/company/add-client">
-                    <UserPlus className="mr-2 h-4 w-4" /> Adicionar Cliente Manualmente
-                  </Link>
-                </Button>
-            </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="shadow-lg">
-        <CardHeader>
-            <CardTitle>Configurações da Empresa</CardTitle>
-            <CardDescription>Defina as configurações gerais e de perfil da sua empresa.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Button asChild>
-              <Link href="/dashboard/company/edit-profile">
-                <Edit className="mr-2 h-4 w-4" /> Editar Perfil da Empresa
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/general-settings/availability">
-                <Clock className="mr-2 h-4 w-4" /> Horário de Funcionamento
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/notifications">
-                <Bell className="mr-2 h-4 w-4" /> Configurar Notificações
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/company/agenda-blocks">
-                <CalendarDays className="mr-2 h-4 w-4" /> Bloqueios de Agenda
-              </Link>
-            </Button>
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    

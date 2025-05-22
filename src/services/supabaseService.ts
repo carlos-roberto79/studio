@@ -1,4 +1,3 @@
-
 // src/services/supabaseService.ts
 'use server'; 
 
@@ -421,6 +420,27 @@ export async function getProfessionalByUserId(userId: string): Promise<Professio
   }
 }
 
+// Nova função para buscar profissional por ID da tabela 'professionals'
+export async function getProfessionalById(professionalId: string): Promise<ProfessionalData | null> {
+  console.log(`SupabaseService: Buscando profissional por ID: ${professionalId}`);
+  try {
+    const { data, error } = await supabase
+      .from('professionals')
+      .select('*')
+      .eq('id', professionalId)
+      .single();
+    if (error) {
+      console.error('SupabaseService: Erro ao buscar profissional por ID:', error.message);
+      if (error.code === 'PGRST116') return null; 
+      throw error; 
+    }
+    return data as ProfessionalData;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em getProfessionalById:', err);
+    throw err;
+  }
+}
+
 export async function updateProfessional(professionalId: string, professionalData: Partial<Omit<ProfessionalData, 'id' | 'company_id' | 'created_at' | 'updated_at'>>): Promise<ProfessionalData | null> {
   console.log(`SupabaseService: Atualizando profissional ID ${professionalId}:`, professionalData);
   try {
@@ -439,6 +459,25 @@ export async function updateProfessional(professionalId: string, professionalDat
     return data as ProfessionalData;
   } catch (err) {
     console.error('SupabaseService: Exceção em updateProfessional:', err);
+    throw err;
+  }
+}
+
+export async function deleteProfessional(professionalId: string): Promise<boolean> {
+  console.log(`SupabaseService: Deletando profissional ID ${professionalId}`);
+  try {
+    const { error } = await supabase
+      .from('professionals')
+      .delete()
+      .eq('id', professionalId);
+    if (error) {
+      console.error('SupabaseService: Erro ao deletar profissional:', error);
+      throw error;
+    }
+    console.log('SupabaseService: Profissional deletado com sucesso.');
+    return true;
+  } catch (err) {
+    console.error('SupabaseService: Exceção em deleteProfessional:', err);
     throw err;
   }
 }
