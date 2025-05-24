@@ -9,13 +9,23 @@ import { Label } from "@/components/ui/label";
 import { APP_NAME, USER_ROLES } from "@/lib/constants";
 import React, { useEffect, useState, useRef } from 'react';
 import Link from "next/link";
-import { ArrowLeft, UserCog, Save, Image as ImageIcon, Loader2 } from "lucide-react";
+import { ArrowLeft, UserCog, Save, Image as ImageIcon, Loader2, Smartphone, QrCode } from "lucide-react"; // Adicionado Smartphone, QrCode
 import { useToast } from "@/hooks/use-toast";
-import NextImage from "next/image"; // Next.js Image
+import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProfessionalByUserId, updateProfessional, type ProfessionalData } from "@/services/supabaseService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 export default function ProfessionalProfilePage() {
   const { toast } = useToast();
@@ -36,7 +46,14 @@ export default function ProfessionalProfilePage() {
   
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingPage, setIsLoadingPage] = useState(true);
-  
+
+  // Estado para simulação da conexão WhatsApp
+  const [whatsAppConnected, setWhatsAppConnected] = useState(false);
+  const [connectedWhatsAppNumber, setConnectedWhatsAppNumber] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState("https://placehold.co/256x256.png?text=QR+Code");
+  const [qrDialogStatus, setQrDialogStatus] = useState<"idle" | "loading" | "connected" | "error">("idle");
+
+
   useEffect(() => {
     document.title = `Editar Meu Perfil - ${APP_NAME}`;
   }, []);
@@ -57,6 +74,9 @@ export default function ProfessionalProfilePage() {
               services_offered_text: profData.services_offered_text || "",
             });
             setImagePreview(profData.profile_picture_url || "https://placehold.co/120x120.png?text=Perfil");
+            // Simular busca do status da conexão WhatsApp para este profissional
+            // setWhatsAppConnected(profData.whatsapp_connected_mock || false); 
+            // setConnectedWhatsAppNumber(profData.whatsapp_number_mock || null);
           } else {
             toast({ title: "Erro", description: "Perfil profissional não encontrado. Contate o administrador da sua empresa.", variant: "destructive" });
           }
@@ -93,7 +113,7 @@ export default function ProfessionalProfilePage() {
       phone: formData.phone,
       specialty: formData.specialty,
       bio: formData.bio,
-      profile_picture_url: formData.profile_picture_url, // Manter URL, upload real seria separado
+      profile_picture_url: formData.profile_picture_url,
       services_offered_text: formData.services_offered_text,
     };
 
@@ -115,8 +135,7 @@ export default function ProfessionalProfilePage() {
       reader.onloadend = () => {
         const result = reader.result as string;
         setImagePreview(result);
-        setFormData(prev => ({ ...prev, profile_picture_url: result })); // Salva como Data URL para simulação de preview
-        // Em um app real, aqui você faria o upload para o Supabase Storage e salvaria a URL pública.
+        setFormData(prev => ({ ...prev, profile_picture_url: result }));
       };
       reader.readAsDataURL(file);
       toast({ title: "Simulação", description: "Foto carregada para preview. Em um app real, seria enviada ao servidor."});
@@ -126,6 +145,33 @@ export default function ProfessionalProfilePage() {
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
+
+  const handleWhatsAppConnect = () => {
+    // Simulação de conexão
+    setQrDialogStatus("loading");
+    setQrCodeUrl(`https://placehold.co/256x256.png?text=QR+Code&v=${Date.now()}`); // Força recarga
+    setTimeout(() => {
+      const success = Math.random() > 0.3; // Simular sucesso/falha
+      if (success) {
+        setQrDialogStatus("connected");
+        setWhatsAppConnected(true);
+        setConnectedWhatsAppNumber(formData.phone || "+55 (XX) XXXXX-XXXX (Mock)"); // Usa o telefone do perfil ou um mock
+        toast({ title: "WhatsApp Conectado!", description: "Seu WhatsApp foi conectado com sucesso."});
+      } else {
+        setQrDialogStatus("error");
+        toast({ title: "Falha na Conexão", description: "Não foi possível conectar o WhatsApp. Tente gerar um novo QR Code.", variant: "destructive"});
+      }
+    }, 3000);
+  };
+  
+  const handleGenerateNewQrCode = () => {
+    setQrDialogStatus("loading");
+    setQrCodeUrl(`https://placehold.co/256x256.png?text=QR+Code&v=${Date.now()}`); // Novo QR Code
+    setTimeout(() => {
+        if(qrDialogStatus !== 'connected') setQrDialogStatus("idle"); // Volta para idle se não estiver conectado
+    }, 1500);
+  }
+
 
   if (authLoading || isLoadingPage) {
     return (
@@ -242,6 +288,64 @@ export default function ProfessionalProfilePage() {
           </CardContent>
         </form>
       </Card>
+
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-xl flex items-center"><Smartphone className="mr-2 h-5 w-5 text-primary"/>Conexão WhatsApp</CardTitle>
+          <CardDescription>Conecte seu WhatsApp para receber notificações e interagir com clientes (funcionalidade simulada).</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {whatsAppConnected && connectedWhatsAppNumber ? (
+            <div>
+              <p className="text-green-600 font-semibold">Conectado ao número: {connectedWhatsAppNumber}</p>
+              <Button variant="outline" className="mt-2" onClick={() => { setWhatsAppConnected(false); setConnectedWhatsAppNumber(null); toast({title: "WhatsApp Desconectado"}); }}>Desconectar</Button>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">Seu WhatsApp não está conectado.</p>
+          )}
+          {!whatsAppConnected && (
+            <Dialog onOpenChange={(open) => { if (!open) setQrDialogStatus("idle"); }}>
+              <DialogTrigger asChild>
+                <Button variant="default">
+                  <QrCode className="mr-2 h-4 w-4"/> Conectar WhatsApp via QR Code
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Conectar WhatsApp</DialogTitle>
+                  <DialogDescription>
+                    Abra o WhatsApp no seu celular, vá em Configurações &gt; Aparelhos Conectados &gt; Conectar um aparelho e escaneie o QR Code abaixo.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="my-6 flex flex-col items-center justify-center space-y-3">
+                  {qrDialogStatus === "loading" && <Loader2 className="h-10 w-10 animate-spin text-primary"/>}
+                  {(qrDialogStatus === "idle" || qrDialogStatus === "error") && <NextImage src={qrCodeUrl} alt="QR Code Placeholder" width={256} height={256} data-ai-hint="qrcode"/>}
+                  {qrDialogStatus === "connected" && <p className="text-green-600 font-semibold">Conectado com sucesso!</p>}
+                  
+                  {qrDialogStatus === "idle" && <p className="text-sm text-muted-foreground">Aguardando leitura do QR Code...</p>}
+                  {qrDialogStatus === "loading" && <p className="text-sm text-muted-foreground">Processando...</p>}
+                  {qrDialogStatus === "error" && <p className="text-sm text-destructive">Falha ao conectar. Tente gerar um novo código.</p>}
+                </div>
+                <DialogFooter className="sm:justify-between">
+                  <Button type="button" variant="outline" onClick={handleGenerateNewQrCode} disabled={qrDialogStatus === "loading"}>
+                    Gerar Novo QR Code
+                  </Button>
+                  {qrDialogStatus !== "connected" ? (
+                    <Button type="button" onClick={handleWhatsAppConnect} disabled={qrDialogStatus === "loading"}>
+                     {qrDialogStatus === "loading" ? "Conectando..." : "Simular Conexão"}
+                    </Button>
+                  ) : (
+                     <DialogClose asChild><Button type="button">Fechar</Button></DialogClose>
+                  )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
+
+    
