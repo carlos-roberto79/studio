@@ -15,23 +15,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { APP_NAME } from '@/lib/constants';
-import type { WhatsAppConnection, NotificationTemplate, NotificationLog, NotificationEvent, NotificationRecipient, NotificationType } from '@/lib/types';
+import type { WhatsAppConnection, NotificationTemplate, NotificationLog } from '@/lib/types';
 import { NotificationEvents, NotificationRecipients, NotificationTypes } from '@/lib/types';
-import { Bell, PlusCircle, Edit, Trash2, MessageSquare, CheckCircle, AlertTriangle, ExternalLink, Filter, ListChecks, Save, Smartphone, Mail, History } from "lucide-react";
+import { Bell, PlusCircle, Edit, Trash2, MessageSquare, CheckCircle, AlertTriangle, ExternalLink, Filter, ListChecks, Save, Smartphone, Mail, History, QrCode, Loader2 } from "lucide-react"; // Adicionado QrCode, Loader2
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Badge } from "@/components/ui/badge"; // Importação adicionada
+import { Badge } from "@/components/ui/badge";
+import NextImage from "next/image"; // Adicionado NextImage
 
-// Zod Schemas
-const whatsAppConnectionSchema = z.object({
-  numeroWhatsApp: z.string().min(10, "Número de WhatsApp inválido."),
-  provedor: z.enum(["Z-API", "Chat-API", "WhatsApp Cloud API", ""], { required_error: "Selecione um provedor." }),
-  tokenAPI: z.string().optional(),
-});
-type WhatsAppConnectionFormData = z.infer<typeof whatsAppConnectionSchema>;
-
+// Zod Schema para template de notificação (mantido)
 const notificationTemplateSchema = z.object({
   id: z.string().optional(),
   evento: z.enum(NotificationEvents, { required_error: "Evento é obrigatório." }),
@@ -43,19 +37,19 @@ const notificationTemplateSchema = z.object({
 type NotificationTemplateFormData = z.infer<typeof notificationTemplateSchema>;
 
 
-// Mock Data
+// Mock Data (mantido)
 const mockInitialWhatsAppConnection: WhatsAppConnection = {
   empresaId: "mockEmpresa123",
   numeroWhatsApp: "",
   conectado: false,
-  provedor: "",
-  tokenAPI: "",
+  provedor: "QR Code Scan", // Default para a nova abordagem
 };
 
 const mockNotificationTemplates: NotificationTemplate[] = [
   { id: "tpl1", evento: "agendamento_criado", destinatario: "cliente", tipo: "whatsapp", mensagem: "Olá {{cliente_nome}}, seu agendamento para {{servico}} com {{profissional_nome}} em {{data_hora}} foi criado! Status: {{status}}.", ativo: true },
   { id: "tpl2", evento: "agendamento_aprovado", destinatario: "cliente", tipo: "email", mensagem: "Seu agendamento para {{servico}} com {{profissional_nome}} em {{data_hora}} foi APROVADO pela {{empresa_nome}}.", ativo: true },
   { id: "tpl3", evento: "agendamento_cancelado", destinatario: "profissional", tipo: "whatsapp", mensagem: "Atenção {{profissional_nome}}, o agendamento de {{cliente_nome}} para {{servico}} em {{data_hora}} foi cancelado.", ativo: false },
+  { id: "tpl4", evento: "agendamento_cancelado_bloqueio", destinatario: "cliente", tipo: "whatsapp", mensagem: "Olá {{cliente_nome}}, seu agendamento em {{data_hora}} com {{empresa_nome}} foi cancelado devido a uma indisponibilidade. Por favor, escolha um novo horário. Agradecemos a compreensão.", ativo: true },
 ];
 
 const mockNotificationLogs: NotificationLog[] = [
@@ -85,14 +79,11 @@ export default function CompanyNotificationsPage() {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null);
 
-  const whatsAppForm = useForm<WhatsAppConnectionFormData>({
-    resolver: zodResolver(whatsAppConnectionSchema),
-    defaultValues: {
-      numeroWhatsApp: whatsAppConnection.numeroWhatsApp || "",
-      provedor: whatsAppConnection.provedor || "",
-      tokenAPI: whatsAppConnection.tokenAPI || "",
-    },
-  });
+  // Estados para o diálogo de conexão WhatsApp via QR Code
+  const [companyWhatsAppNumberInput, setCompanyWhatsAppNumberInput] = useState("");
+  const [qrCodeUrl, setQrCodeUrl] = useState("https://placehold.co/256x256.png?text=QR+Code+Empresa");
+  const [qrDialogStatus, setQrDialogStatus] = useState<"idle" | "loading" | "connected" | "error">("idle");
+
 
   const templateForm = useForm<NotificationTemplateFormData>({
     resolver: zodResolver(notificationTemplateSchema),
@@ -107,46 +98,53 @@ export default function CompanyNotificationsPage() {
   
   useEffect(() => {
     document.title = `Configurar Notificações - ${APP_NAME}`;
-    // Simular carregamento de dados existentes
-    whatsAppForm.reset({
-        numeroWhatsApp: whatsAppConnection.numeroWhatsApp,
-        provedor: whatsAppConnection.provedor || "", // Ensure empty string if undefined
-        tokenAPI: whatsAppConnection.tokenAPI || ""
-    });
-  }, [whatsAppConnection, whatsAppForm]);
+    // Simular carregamento de dados existentes (se houver backend)
+    // Por agora, o estado inicial `whatsAppConnection` já contém mock.
+  }, []);
 
-
-  const handleSaveWhatsAppConnection = (data: WhatsAppConnectionFormData) => {
-    console.log("BACKEND_SIM: Salvando conexão WhatsApp", data);
-    setWhatsAppConnection(prev => ({
-      ...prev,
-      ...data,
-      conectado: true, // Simular conexão bem-sucedida
-      data_conexao: new Date().toISOString()
-    }));
-    toast({ title: "Conexão WhatsApp Salva (Simulação)", description: "A conexão foi configurada." });
-    setIsWhatsAppModalOpen(false);
-  };
-
-  const handleTestWhatsAppConnection = () => {
-    const data = whatsAppForm.getValues();
-    if(!data.numeroWhatsApp || !data.provedor) {
-        toast({title: "Erro", description: "Número e provedor são obrigatórios para testar.", variant: "destructive"});
+  const handleSaveWhatsAppConnection = () => {
+    if (!companyWhatsAppNumberInput) {
+        toast({ title: "Erro", description: "Por favor, insira um número de WhatsApp para simular a conexão.", variant: "destructive"});
+        setQrDialogStatus("error");
         return;
     }
-    console.log("BACKEND_SIM: Testando conexão WhatsApp", data);
-    toast({ title: "Teste de Conexão (Simulação)", description: "Enviando mensagem de teste..." });
-    // Simular sucesso/falha
-    setTimeout(() => toast({ description: "Mensagem de teste enviada/recebida com sucesso (simulado)." }), 2000);
+    setQrDialogStatus("loading");
+    // Simulação de conexão
+    setTimeout(() => {
+      const success = Math.random() > 0.2; // Simular sucesso/falha
+      if (success) {
+        setQrDialogStatus("connected");
+        setWhatsAppConnection(prev => ({
+            ...prev,
+            numeroWhatsApp: companyWhatsAppNumberInput,
+            conectado: true,
+            data_conexao: new Date().toISOString(),
+            provedor: "QR Code Scan"
+        }));
+        toast({ title: "WhatsApp da Empresa Conectado!", description: `Conectado ao número ${companyWhatsAppNumberInput}.` });
+        // setIsWhatsAppModalOpen(false); // Fecharia se fosse um fluxo real de QR
+      } else {
+        setQrDialogStatus("error");
+        toast({ title: "Falha na Conexão", description: "Não foi possível conectar o WhatsApp. Tente gerar um novo QR Code.", variant: "destructive"});
+      }
+    }, 2500);
   };
+
+  const handleGenerateNewQrCode = () => {
+    setQrDialogStatus("loading");
+    setCompanyWhatsAppNumberInput(""); // Limpa o input ao gerar novo QR
+    setQrCodeUrl(`https://placehold.co/256x256.png?text=QR+Code+Empresa&v=${Date.now()}`); // Novo QR Code
+    setTimeout(() => {
+        if(qrDialogStatus !== 'connected') setQrDialogStatus("idle");
+    }, 1500);
+  };
+
 
   const handleSaveTemplate = (data: NotificationTemplateFormData) => {
     if (editingTemplate) {
-      // Edit
       setTemplates(prev => prev.map(t => t.id === editingTemplate.id ? { ...editingTemplate, ...data } : t));
       toast({ title: "Modelo Atualizado (Simulação)" });
     } else {
-      // Add
       const newTemplate: NotificationTemplate = { ...data, id: `tpl${Date.now()}` };
       setTemplates(prev => [...prev, newTemplate]);
       toast({ title: "Modelo Adicionado (Simulação)" });
@@ -211,70 +209,82 @@ export default function CompanyNotificationsPage() {
                 )}
               </Card>
 
-              <Dialog open={isWhatsAppModalOpen} onOpenChange={setIsWhatsAppModalOpen}>
+              <Dialog open={isWhatsAppModalOpen} onOpenChange={(open) => {
+                  setIsWhatsAppModalOpen(open);
+                  if (!open && qrDialogStatus !== 'connected') setQrDialogStatus("idle"); // Reset status if closed without connecting
+                  if (!open && qrDialogStatus === 'connected') setCompanyWhatsAppNumberInput(""); // Limpa input se já conectou e fechou
+              }}>
                 <DialogTrigger asChild>
-                  <Button><Smartphone className="mr-2"/> {whatsAppConnection.conectado ? "Gerenciar Conexão" : "Conectar Número WhatsApp"}</Button>
+                  <Button onClick={() => {
+                      setQrDialogStatus(whatsAppConnection.conectado ? "connected" : "idle");
+                      setCompanyWhatsAppNumberInput(whatsAppConnection.numeroWhatsApp || "");
+                      setIsWhatsAppModalOpen(true);
+                  }}>
+                    <QrCode className="mr-2 h-4 w-4"/> 
+                    {whatsAppConnection.conectado ? "Gerenciar Conexão WhatsApp" : "Conectar WhatsApp via QR Code"}
+                  </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Configurar Conexão WhatsApp</DialogTitle>
-                    <DialogDescription>Insira os detalhes da sua API de WhatsApp.</DialogDescription>
+                    <DialogTitle>Conectar WhatsApp da Empresa</DialogTitle>
+                    <DialogDescription>
+                      {qrDialogStatus !== 'connected' ? 
+                        "Insira o número da empresa e escaneie o QR Code com o WhatsApp Business." : 
+                        "WhatsApp da empresa conectado."}
+                    </DialogDescription>
                   </DialogHeader>
-                  <Form {...whatsAppForm}>
-                    <form onSubmit={whatsAppForm.handleSubmit(handleSaveWhatsAppConnection)} className="space-y-4 py-4">
-                      <FormField
-                        control={whatsAppForm.control}
-                        name="numeroWhatsApp"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Número WhatsApp (com código do país)</FormLabel>
-                            <FormControl><Input placeholder="+5511999999999" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={whatsAppForm.control}
-                        name="provedor"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Provedor da API</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl><SelectTrigger><SelectValue placeholder="Selecione um provedor" /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                <SelectItem value="Z-API">Z-API</SelectItem>
-                                <SelectItem value="Chat-API">Chat-API</SelectItem>
-                                <SelectItem value="WhatsApp Cloud API">WhatsApp Cloud API</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={whatsAppForm.control}
-                        name="tokenAPI"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Token da API (se aplicável)</FormLabel>
-                            <FormControl><Input type="password" placeholder="Seu token secreto" {...field} /></FormControl>
-                            <FormDescription>Consulte a documentação do seu provedor.</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <DialogFooter className="gap-2 sm:gap-0">
-                        <Button type="button" variant="outline" onClick={handleTestWhatsAppConnection}>Testar Conexão</Button>
-                        <Button type="submit">Salvar Conexão</Button>
-                      </DialogFooter>
-                    </form>
-                  </Form>
+                  <div className="my-6 flex flex-col items-center justify-center space-y-3">
+                    {qrDialogStatus === "loading" && <Loader2 className="h-10 w-10 animate-spin text-primary"/>}
+                    {(qrDialogStatus === "idle" || qrDialogStatus === "error") && (
+                        <>
+                            <Label htmlFor="company-whatsapp-number">Número WhatsApp da Empresa</Label>
+                            <Input 
+                                id="company-whatsapp-number"
+                                placeholder="+5511999999999"
+                                value={companyWhatsAppNumberInput}
+                                onChange={(e) => setCompanyWhatsAppNumberInput(e.target.value)}
+                                className="w-full max-w-xs mb-2"
+                            />
+                            <NextImage src={qrCodeUrl} alt="QR Code Placeholder" width={200} height={200} data-ai-hint="qrcode"/>
+                        </>
+                    )}
+                    {qrDialogStatus === "connected" && (
+                        <div className="text-center">
+                            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-2" />
+                            <p className="text-green-600 font-semibold">Conectado com sucesso!</p>
+                            <p className="text-sm text-muted-foreground">Número: {whatsAppConnection.numeroWhatsApp}</p>
+                        </div>
+                    )}
+                    
+                    {qrDialogStatus === "idle" && <p className="text-xs text-muted-foreground mt-1">Aguardando leitura do QR Code...</p>}
+                    {qrDialogStatus === "loading" && <p className="text-sm text-muted-foreground">Processando...</p>}
+                    {qrDialogStatus === "error" && <p className="text-sm text-destructive">Falha ao conectar. Tente novamente ou gere um novo código.</p>}
+                  </div>
+                  <DialogFooter className="sm:justify-between gap-2">
+                    {qrDialogStatus !== "connected" && (
+                        <Button type="button" variant="outline" onClick={handleGenerateNewQrCode} disabled={qrDialogStatus === "loading"}>
+                            Gerar Novo QR
+                        </Button>
+                    )}
+                    {qrDialogStatus !== "connected" ? (
+                        <Button type="button" onClick={handleSaveWhatsAppConnection} disabled={qrDialogStatus === "loading"}>
+                        {qrDialogStatus === "loading" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Conectando...</> : "Conectar Número"}
+                        </Button>
+                    ) : (
+                        <Button type="button" variant="destructive" onClick={() => {
+                             setWhatsAppConnection(prev => ({...prev, conectado: false, numeroWhatsApp: "", data_conexao: undefined}));
+                             setQrDialogStatus("idle");
+                             setCompanyWhatsAppNumberInput("");
+                             toast({title: "WhatsApp Desconectado"});
+                        }}>Desconectar</Button>
+                    )}
+                    <DialogClose asChild><Button variant="ghost">Fechar</Button></DialogClose>
+                  </DialogFooter>
                 </DialogContent>
               </Dialog>
-              <CardDescription className="text-xs">Recomendamos o uso de APIs oficiais ou provedores confiáveis para integração com o WhatsApp.</CardDescription>
+              <CardDescription className="text-xs mt-2">Recomendamos o uso de APIs oficiais ou provedores confiáveis para integração com o WhatsApp.</CardDescription>
             </CardContent>
             
-            {/* Placeholder para Configurações de Email */}
             <CardHeader className="mt-6 border-t pt-6">
               <CardTitle className="text-xl flex items-center"><Mail className="mr-2"/> Configurações de E-mail</CardTitle>
             </CardHeader>
@@ -348,9 +358,11 @@ export default function CompanyNotificationsPage() {
                     )}/>
                     <Card className="p-3 bg-muted/50">
                         <p className="text-xs font-semibold mb-1">Variáveis Disponíveis:</p>
-                        <ul className="text-xs grid grid-cols-2 gap-x-4 gap-y-1">
-                            {availableVariables.map(v => <li key={v.variable}><code className="bg-primary/20 p-0.5 rounded text-primary font-mono">{v.variable}</code>: {v.description}</li>)}
-                        </ul>
+                        <ScrollArea className="h-24">
+                          <ul className="text-xs grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                              {availableVariables.map(v => <li key={v.variable}><code className="bg-primary/20 p-0.5 rounded text-primary font-mono">{v.variable}</code>: {v.description}</li>)}
+                          </ul>
+                        </ScrollArea>
                     </Card>
                      <FormField control={templateForm.control} name="ativo" render={({ field }) => (
                         <FormItem className="flex flex-row items-center space-x-3 space-y-0">
@@ -379,7 +391,7 @@ export default function CompanyNotificationsPage() {
                         <TableCell><Badge variant={tpl.tipo === 'whatsapp' ? 'default' : 'secondary'} className={tpl.tipo === 'whatsapp' ? 'bg-green-500' : ''}>{tpl.tipo.toUpperCase()}</Badge></TableCell>
                         <TableCell className="text-xs max-w-xs truncate">{tpl.mensagem}</TableCell>
                         <TableCell>
-                            <Switch checked={tpl.ativo} onCheckedChange={() => toggleTemplateStatus(tpl.id)} aria-label={tpl.ativo ? 'Desativar' : 'Ativar'}/>
+                            <Switch checked={tpl.ativo} onCheckedChange={() => toggleTemplateStatus(tpl.id!)} aria-label={tpl.ativo ? 'Desativar' : 'Ativar'}/>
                         </TableCell>
                         <TableCell className="text-right space-x-1">
                           <Button variant="ghost" size="icon" onClick={() => openEditTemplateModal(tpl)}><Edit className="h-4 w-4"/></Button>
@@ -387,7 +399,7 @@ export default function CompanyNotificationsPage() {
                             <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader><AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle><AlertDialogDescription>Tem certeza que deseja excluir este modelo de mensagem? Esta ação não poderá ser desfeita.</AlertDialogDescription></AlertDialogHeader>
-                                <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteTemplate(tpl.id)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Excluir</AlertDialogAction></AlertDialogFooter>
+                                <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteTemplate(tpl.id!)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Excluir</AlertDialogAction></AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
                         </TableCell>
