@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import type { User as SupabaseUser, Session as SupabaseSession, AuthError, ApiError } from '@supabase/supabase-js';
 import { getUserProfile, createUserProfile, type UserProfile, type CompanyData, getCompanyDetailsByOwner, addCompanyDetails as addCompanyDetailsService } from '@/services/supabaseService'; // Ajustado para evitar conflito
 
-const SITE_ADMIN_EMAIL = "superadmin@" + APP_NAME.toLowerCase().replace(/\s+/g, '') + ".com";
+const SITE_ADMIN_EMAIL = "superadmin@easyagenda.com"; // Ajustado para o email fornecido pelo usuário
 const SITE_ADMIN_PASS = "superadmin123"; 
 const PROFESSIONAL_TEST_EMAIL = "profissional@" + APP_NAME.toLowerCase().replace(/\s+/g, '') + ".com";
 const PROFESSIONAL_TEST_PASS = "prof123"; 
@@ -101,13 +101,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const normalizedEmail = email.toLowerCase();
     
     // Special mock logins - manter por enquanto para acesso facilitado a estes perfis
-    if (normalizedEmail === SITE_ADMIN_EMAIL && pass === SITE_ADMIN_PASS) {
+    if (normalizedEmail === SITE_ADMIN_EMAIL.toLowerCase() && pass === SITE_ADMIN_PASS) { // Comparar com lowercase
         setUser({ id: 'site_admin_mock_id', email: normalizedEmail });
         setRole(USER_ROLES.SITE_ADMIN);
         setLoading(false);
         return USER_ROLES.SITE_ADMIN;
     }
-    if (normalizedEmail === PROFESSIONAL_TEST_EMAIL && pass === PROFESSIONAL_TEST_PASS) {
+    if (normalizedEmail === PROFESSIONAL_TEST_EMAIL.toLowerCase() && pass === PROFESSIONAL_TEST_PASS) { // Comparar com lowercase
         setUser({ id: 'prof_test_mock_id', email: normalizedEmail });
         setRole(USER_ROLES.PROFESSIONAL);
         setLoading(false);

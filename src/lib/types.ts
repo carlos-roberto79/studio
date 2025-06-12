@@ -9,6 +9,15 @@ export interface Plan {
   ativo: boolean;
 }
 
+// Tipo para Usuários (incorporando detalhes de plano)
+export interface User {
+  // Assuming other user fields like id, email, name, etc. exist
+  planoAtual?: string; // ID do plano atual assinado
+  metodoPagamento?: "pix" | "boleto" | "cartao";
+  statusPagamento?: "pendente" | "confirmado" | "falhou";
+  // ... other user properties
+}
+
 // Tipos para o Sistema de Notificações
 export interface WhatsAppConnection {
   empresaId: string; 
